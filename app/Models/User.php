@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\UserTypeEnum;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,6 +32,8 @@ final class User extends Authenticatable implements MustVerifyEmail
 
     use Notifiable;
 
+    use HasUlids;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -42,6 +45,7 @@ final class User extends Authenticatable implements MustVerifyEmail
         'password',
         'avatar',
         'user_type',
+        'username',
     ];
 
     /**
