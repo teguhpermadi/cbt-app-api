@@ -11,17 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subjects', function (Blueprint $table) {
+        Schema::create('academic_years', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->string('name');
-            $table->string('code');
-            $table->text('description')->nullable();
-            $table->string('image_url')->nullable();
-            $table->string('logo_url')->nullable();
+            $table->string('year');
+            $table->string('semester');
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('color')->nullable();
-            $table->string('class_name')->nullable();
-            $table->foreignUlid('academic_year_id')->constrained('academic_years')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -32,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subjects');
+        Schema::dropIfExists('academic_years');
     }
 };

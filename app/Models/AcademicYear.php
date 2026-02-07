@@ -7,21 +7,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Subject extends Model
+class AcademicYear extends Model
 {
-    /** @use HasFactory<\Database\Factories\SubjectFactory> */
+    /** @use HasFactory<\Database\Factories\AcademicYearFactory> */
     use HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = [
-        'name',
-        'code',
-        'description',
-        'image_url',
-        'logo_url',
+        'year',
+        'semester',
         'user_id',
-        'color',
-        'class_name',
-        'academic_year_id',
     ];
 
     public function user()
@@ -29,8 +23,8 @@ class Subject extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function academicYear()
+    public function subjects()
     {
-        return $this->belongsTo(AcademicYear::class);
+        return $this->hasMany(Subject::class);
     }
 }
