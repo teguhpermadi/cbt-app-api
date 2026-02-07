@@ -19,6 +19,7 @@ class Subject extends Model
         'logo_url',
         'user_id',
         'color',
+        'class_name',
     ];
 
     public function user()

@@ -25,6 +25,7 @@ class SubjectFactory extends Factory
             'logo_url' => fake()->imageUrl(),
             'user_id' => User::factory(),
             'color' => fake()->colorName(),
+            'class_name' => fake()->word(),
         ];
     }
 }

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('logo_url')->nullable();
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('color')->nullable();
+            $table->string('class_name')->nullable();
+            $table->string('year')->nullable();
             $table->timestamps();
         });
     }
