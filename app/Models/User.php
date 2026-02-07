@@ -71,4 +71,9 @@ final class User extends Authenticatable implements MustVerifyEmail
             'user_type' => UserTypeEnum::class,
         ];
     }
+
+    public function subjects()
+    {
+        return $this->hasMany(Subject::class);
+    }
 }
