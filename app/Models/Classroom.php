@@ -7,36 +7,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Subject extends Model
+class Classroom extends Model
 {
-    /** @use HasFactory<\Database\Factories\SubjectFactory> */
+    /** @use HasFactory<\Database\Factories\ClassroomFactory> */
     use HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = [
         'name',
         'code',
-        'description',
-        'image_url',
-        'logo_url',
-        'user_id',
-        'color',
-        'class_name',
+        'level',
         'academic_year_id',
-        'classroom_id',
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
 
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
     }
 
-    public function classroom()
+    public function subjects()
     {
-        return $this->belongsTo(Classroom::class);
+        return $this->hasMany(Subject::class);
     }
 }

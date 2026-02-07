@@ -11,18 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subjects', function (Blueprint $table) {
+        Schema::create('classrooms', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->string('name');
             $table->string('code');
-            $table->text('description')->nullable();
-            $table->string('image_url')->nullable();
-            $table->string('logo_url')->nullable();
-            $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('color')->nullable();
-            $table->string('class_name')->nullable();
+            $table->string('level');
             $table->foreignUlid('academic_year_id')->constrained('academic_years')->cascadeOnDelete();
-            $table->foreignUlid('classroom_id')->constrained('classrooms')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -33,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subjects');
+        Schema::dropIfExists('classrooms');
     }
 };
