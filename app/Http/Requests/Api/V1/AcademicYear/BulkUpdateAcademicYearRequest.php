@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Http\Requests\Api\V1\AcademicYear;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class BulkUpdateAcademicYearRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'academic_years' => ['required', 'array'],
+            'academic_years.*.id' => [
+                'required',
+                'ulid',
+                Rule::exists('academic_years', 'id'),
+            ],
+            'academic_years.*.year' => ['sometimes', 'string', 'max:20'],
+            'academic_years.*.semester' => ['sometimes', 'string', 'max:20'],
+            'academic_years.*.user_id' => ['sometimes', 'ulid', 'exists:users,id'],
+        ];
+    }
+}

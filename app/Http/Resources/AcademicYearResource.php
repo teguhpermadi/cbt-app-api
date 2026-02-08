@@ -22,6 +22,7 @@ final class AcademicYearResource extends JsonResource
             'id' => $this->id,
             'year' => $this->year,
             'semester' => $this->semester,
+            'user' => new UserResource($this->whenLoaded('user')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

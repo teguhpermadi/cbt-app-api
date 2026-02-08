@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AcademicYearController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
@@ -58,6 +59,16 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('bulk-update', [SubjectController::class, 'bulkUpdate'])->name('api.v1.subjects.bulk-update');
     });
     Route::apiResource('subjects', SubjectController::class)->names('api.v1.subjects');
+
+    // Academic Years
+    Route::prefix('academic-years')->group(function () {
+        Route::get('trashed', [AcademicYearController::class, 'trashed'])->name('api.v1.academic-years.trashed');
+        Route::post('{academicYear}/restore', [AcademicYearController::class, 'restore'])->name('api.v1.academic-years.restore');
+        Route::delete('{academicYear}/force-delete', [AcademicYearController::class, 'forceDelete'])->name('api.v1.academic-years.force-delete');
+        Route::post('bulk-delete', [AcademicYearController::class, 'bulkDelete'])->name('api.v1.academic-years.bulk-delete');
+        Route::post('bulk-update', [AcademicYearController::class, 'bulkUpdate'])->name('api.v1.academic-years.bulk-update');
+    });
+    Route::apiResource('academic-years', AcademicYearController::class)->names('api.v1.academic-years');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
