@@ -8,6 +8,9 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +28,11 @@ final class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiting();
+        Scramble::extendOpenApi(function (OpenApi $openApi) {
+        $openApi->secure(
+            SecurityScheme::http('bearer')
+        );
+    });
     }
 
     /**
