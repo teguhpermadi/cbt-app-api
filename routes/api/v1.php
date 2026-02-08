@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\TeacherController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 | Routes for API version 1.
 |
+|--------------------------------------------------------------------------
 */
 
 // Public routes with auth rate limiter (5/min - brute force protection)
@@ -24,6 +26,16 @@ Route::middleware('throttle:auth')->group(function (): void {
 Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout'])->name('api.v1.logout');
     Route::get('me', [AuthController::class, 'me'])->name('api.v1.me');
+
+    // Teachers
+    Route::prefix('teachers')->group(function () {
+        Route::get('trashed', [TeacherController::class, 'trashed'])->name('api.v1.teachers.trashed');
+        Route::post('{teacher}/restore', [TeacherController::class, 'restore'])->name('api.v1.teachers.restore');
+        Route::delete('{teacher}/force-delete', [TeacherController::class, 'forceDelete'])->name('api.v1.teachers.force-delete');
+        Route::post('bulk-delete', [TeacherController::class, 'bulkDelete'])->name('api.v1.teachers.bulk-delete');
+        Route::post('bulk-update', [TeacherController::class, 'bulkUpdate'])->name('api.v1.teachers.bulk-update');
+    });
+    Route::apiResource('teachers', TeacherController::class)->names('api.v1.teachers');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
