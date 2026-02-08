@@ -228,4 +228,30 @@ final class StudentController extends ApiController
 
         return $this->success(message: 'Students updated successfully');
     }
+
+    /**
+     * Display a listing of students who are not assigned to any classroom for a specific academic year.
+     */
+    public function available(Request $request): JsonResponse
+    {
+        $request->validate([
+            'academic_year_id' => ['required', 'ulid', 'exists:academic_years,id'],
+        ]);
+
+        $academicYearId = $request->string('academic_year_id');
+        $perPage = $request->integer('per_page', 15);
+
+        $students = User::query()
+            ->where('user_type', UserTypeEnum::STUDENT)
+            ->whereDoesntHave('classrooms', function ($query) use ($academicYearId) {
+                $query->where('classroom_users.academic_year_id', $academicYearId);
+            })
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            StudentResource::collection($students)->response()->getData(true),
+            'Available students retrieved successfully'
+        );
+    }
 }

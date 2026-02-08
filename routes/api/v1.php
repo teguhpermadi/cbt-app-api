@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AcademicYearController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ClassroomController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
@@ -42,6 +43,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Students
     Route::prefix('students')->group(function () {
+        Route::get('available', [StudentController::class, 'available'])->name('api.v1.students.available');
         Route::get('trashed', [StudentController::class, 'trashed'])->name('api.v1.students.trashed');
         Route::post('{student}/restore', [StudentController::class, 'restore'])->name('api.v1.students.restore');
         Route::delete('{student}/force-delete', [StudentController::class, 'forceDelete'])->name('api.v1.students.force-delete');
@@ -69,6 +71,17 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('bulk-update', [AcademicYearController::class, 'bulkUpdate'])->name('api.v1.academic-years.bulk-update');
     });
     Route::apiResource('academic-years', AcademicYearController::class)->names('api.v1.academic-years');
+
+    // Classrooms
+    Route::prefix('classrooms')->group(function () {
+        Route::get('trashed', [ClassroomController::class, 'trashed'])->name('api.v1.classrooms.trashed');
+        Route::post('{classroom}/restore', [ClassroomController::class, 'restore'])->name('api.v1.classrooms.restore');
+        Route::delete('{classroom}/force-delete', [ClassroomController::class, 'forceDelete'])->name('api.v1.classrooms.force-delete');
+        Route::post('bulk-delete', [ClassroomController::class, 'bulkDelete'])->name('api.v1.classrooms.bulk-delete');
+        Route::post('bulk-update', [ClassroomController::class, 'bulkUpdate'])->name('api.v1.classrooms.bulk-update');
+        Route::post('{classroom}/sync', [ClassroomController::class, 'syncStudents'])->name('api.v1.classrooms.sync');
+    });
+    Route::apiResource('classrooms', ClassroomController::class)->names('api.v1.classrooms');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])

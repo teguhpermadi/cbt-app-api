@@ -16,8 +16,14 @@ class Classroom extends Model
         'name',
         'code',
         'level',
+        'user_id',
         'academic_year_id',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function academicYear()
     {
@@ -27,5 +33,26 @@ class Classroom extends Model
     public function subjects()
     {
         return $this->hasMany(Subject::class);
+    }
+
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'classroom_users', 'classroom_id', 'user_id')
+            ->withPivot('academic_year_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Synchronize students for a specific academic year.
+     */
+    public function syncStudents(array $studentIds, string $academicYearId): void
+    {
+        $syncData = [];
+        foreach ($studentIds as $id) {
+            $syncData[$id] = ['academic_year_id' => $academicYearId];
+        }
+
+        $this->students()->wherePivot('academic_year_id', $academicYearId)->detach();
+        $this->students()->attach($syncData);
     }
 }

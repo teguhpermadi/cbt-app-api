@@ -23,6 +23,10 @@ final class ClassroomResource extends JsonResource
             'name' => $this->name,
             'code' => $this->code,
             'level' => $this->level,
+            'user' => new UserResource($this->whenLoaded('user')),
+            'academic_year' => new AcademicYearResource($this->whenLoaded('academicYear')),
+            'students_count' => $this->whenCounted('students'),
+            'students' => UserResource::collection($this->whenLoaded('students')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
