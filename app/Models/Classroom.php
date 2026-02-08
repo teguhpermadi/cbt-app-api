@@ -38,6 +38,7 @@ class Classroom extends Model
     public function students()
     {
         return $this->belongsToMany(User::class, 'classroom_users', 'classroom_id', 'user_id')
+            ->using(ClassroomUser::class)
             ->withPivot('academic_year_id')
             ->withTimestamps();
     }

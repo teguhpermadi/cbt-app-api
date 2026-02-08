@@ -110,6 +110,30 @@ describe('Login', function (): void {
 
         $response->assertStatus(401);
     });
+
+    it('logs in with admin credentials', function (): void {
+        $user = User::factory()->create([
+            'email' => 'admin@admin.com',
+            'password' => bcrypt('password'),
+            'user_type' => \App\Enums\UserTypeEnum::ADMIN,
+        ]);
+
+        $response = $this->postJson('/api/v1/login', [
+            'email' => 'admin@admin.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'user' => [
+                        'email' => 'admin@admin.com',
+                        'user_type' => 'admin',
+                    ],
+                ],
+            ]);
+    });
 });
 
 describe('Logout', function (): void {
@@ -117,7 +141,7 @@ describe('Logout', function (): void {
         $user = User::factory()->create();
         $token = $user->createToken('test-token')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson('/api/v1/logout');
 
         $response->assertStatus(200)
@@ -139,7 +163,7 @@ describe('Me', function (): void {
         $user = User::factory()->create();
         $token = $user->createToken('test-token')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/v1/me');
 
         $response->assertStatus(200)

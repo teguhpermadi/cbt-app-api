@@ -16,7 +16,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -30,7 +30,7 @@ pest()->extend(TestCase::class)
 |
 */
 
-expect()->extend('toBeOne', fn () => $this->toBe(1));
+expect()->extend('toBeOne', fn() => $this->toBe(1));
 
 /*
 |--------------------------------------------------------------------------
@@ -43,7 +43,11 @@ expect()->extend('toBeOne', fn () => $this->toBe(1));
 |
 */
 
-function something(): void
+function actingAsAdmin(): Tests\TestCase
 {
-    // ..
+    $admin = App\Models\User::factory()->create([
+        'user_type' => App\Enums\UserTypeEnum::ADMIN,
+    ]);
+
+    return test()->actingAs($admin, 'sanctum');
 }
