@@ -2,11 +2,11 @@
 
 namespace App\Enums;
 
-enum UserTypeEnum
+enum UserTypeEnum: string
 {
-    const ADMIN = 'admin';
-    const TEACHER = 'teacher';
-    const STUDENT = 'student';
+    case ADMIN = 'admin';
+    case TEACHER = 'teacher';
+    case STUDENT = 'student';
 
     public function getLabel(): string
     {

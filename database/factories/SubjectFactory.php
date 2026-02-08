@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\AcademicYear;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -26,6 +27,8 @@ class SubjectFactory extends Factory
             'user_id' => User::factory(),
             'color' => fake()->colorName(),
             'class_name' => fake()->word(),
+            'academic_year_id' => fn() => AcademicYear::inRandomOrder()->first()?->id ?? AcademicYear::factory(),
+            'classroom_id' => fn() => \App\Models\Classroom::inRandomOrder()->first()?->id ?? \App\Models\Classroom::factory(),
         ];
     }
 }
