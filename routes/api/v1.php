@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\StudentController;
+use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,16 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('bulk-update', [StudentController::class, 'bulkUpdate'])->name('api.v1.students.bulk-update');
     });
     Route::apiResource('students', StudentController::class)->names('api.v1.students');
+
+    // Subjects
+    Route::prefix('subjects')->group(function () {
+        Route::get('trashed', [SubjectController::class, 'trashed'])->name('api.v1.subjects.trashed');
+        Route::post('{subject}/restore', [SubjectController::class, 'restore'])->name('api.v1.subjects.restore');
+        Route::delete('{subject}/force-delete', [SubjectController::class, 'forceDelete'])->name('api.v1.subjects.force-delete');
+        Route::post('bulk-delete', [SubjectController::class, 'bulkDelete'])->name('api.v1.subjects.bulk-delete');
+        Route::post('bulk-update', [SubjectController::class, 'bulkUpdate'])->name('api.v1.subjects.bulk-update');
+    });
+    Route::apiResource('subjects', SubjectController::class)->names('api.v1.subjects');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])

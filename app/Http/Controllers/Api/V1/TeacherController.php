@@ -25,6 +25,7 @@ final class TeacherController extends ApiController
         $perPage = $request->integer('per_page', 15);
 
         $teachers = User::query()
+            ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
             ->latest()
             ->paginate($perPage);
@@ -60,6 +61,7 @@ final class TeacherController extends ApiController
     public function show(string $id): JsonResponse
     {
         $teacher = User::query()
+            ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
             ->where('id', $id)
             ->first();
@@ -80,6 +82,7 @@ final class TeacherController extends ApiController
     public function update(UpdateTeacherRequest $request, string $id): JsonResponse
     {
         $teacher = User::query()
+            ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
             ->where('id', $id)
             ->first();
@@ -130,6 +133,7 @@ final class TeacherController extends ApiController
         $perPage = $request->integer('per_page', 15);
 
         $teachers = User::onlyTrashed()
+            ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
             ->latest()
             ->paginate($perPage);
@@ -146,6 +150,7 @@ final class TeacherController extends ApiController
     public function restore(string $id): JsonResponse
     {
         $teacher = User::onlyTrashed()
+            ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
             ->where('id', $id)
             ->first();

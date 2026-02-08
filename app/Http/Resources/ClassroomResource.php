@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Models\User;
+use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin User
+ * @mixin Classroom
  */
-final class TeacherResource extends JsonResource
+final class ClassroomResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -21,10 +21,8 @@ final class TeacherResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'username' => $this->username,
-            'email' => $this->email,
-            'avatar' => $this->avatar,
-            'subjects' => SubjectResource::collection($this->whenLoaded('subjects')),
+            'code' => $this->code,
+            'level' => $this->level,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
