@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignUlid('reading_material_id')->constrained()->cascadeOnDelete();
+            $table->foreignUlid('reading_material_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('type');
             $table->string('difficulty');
             $table->integer('timer')->default(0);

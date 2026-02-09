@@ -146,6 +146,7 @@ class QuestionFactory extends Factory
             QuestionTypeEnum::TRUE_FALSE => $this->createTrueFalseOptions($question),
             QuestionTypeEnum::MATCHING => $this->createMatchingOptions($question),
             QuestionTypeEnum::SEQUENCE => $this->createOrderingOptions($question),
+            QuestionTypeEnum::SHORT_ANSWER => $this->createNumericalInputOption($question), // Short answer also uses one correct_answer metadata usually
             QuestionTypeEnum::MATH_INPUT => $this->createNumericalInputOption($question),
             QuestionTypeEnum::ARRANGE_WORDS => $this->createArrangeWordsOptions($question),
             QuestionTypeEnum::ESSAY => $this->createEssayOption($question),

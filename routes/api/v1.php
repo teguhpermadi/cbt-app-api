@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\ClassroomController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
+use App\Http\Controllers\Api\V1\QuestionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,6 +83,21 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{classroom}/sync', [ClassroomController::class, 'syncStudents'])->name('api.v1.classrooms.sync');
     });
     Route::apiResource('classrooms', ClassroomController::class)->names('api.v1.classrooms');
+
+    // Questions
+    Route::prefix('questions')->group(function () {
+        Route::get('trashed', [QuestionController::class, 'trashed'])->name('api.v1.questions.trashed');
+        Route::post('{question}/restore', [QuestionController::class, 'restore'])->name('api.v1.questions.restore');
+        Route::delete('{question}/force-delete', [QuestionController::class, 'forceDelete'])->name('api.v1.questions.force-delete');
+        Route::post('bulk-delete', [QuestionController::class, 'bulkDelete'])->name('api.v1.questions.bulk-delete');
+        Route::post('bulk-update', [QuestionController::class, 'bulkUpdate'])->name('api.v1.questions.bulk-update');
+
+        // Media handling
+        Route::post('{question}/media', [QuestionController::class, 'uploadMedia'])->name('api.v1.questions.media.upload');
+        Route::post('{question}/media/{media}', [QuestionController::class, 'replaceMedia'])->name('api.v1.questions.media.replace');
+        Route::delete('{question}/media/{media}', [QuestionController::class, 'deleteMedia'])->name('api.v1.questions.media.delete');
+    });
+    Route::apiResource('questions', QuestionController::class)->names('api.v1.questions');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
