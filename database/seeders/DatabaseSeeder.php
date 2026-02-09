@@ -23,6 +23,7 @@ final class DatabaseSeeder extends Seeder
             ClassroomSeeder::class,
             SubjectSeeder::class,
             ClassroomUserSeeder::class,
+            QuestionSeeder::class,
         ]);
     }
 }

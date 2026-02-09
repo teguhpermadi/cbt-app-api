@@ -13,6 +13,14 @@ class ClassroomUserSeeder extends Seeder
      */
     public function run(): void
     {
-        ClassroomUser::factory(10)->create();
+        $classroomUsers = ClassroomUser::factory(10)->make();
+
+        foreach ($classroomUsers as $classroomUser) {
+            try {
+                $classroomUser->save();
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
     }
 }

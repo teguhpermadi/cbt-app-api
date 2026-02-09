@@ -11,6 +11,8 @@ class ClassroomUser extends Pivot
     /** @use HasFactory<\Database\Factories\ClassroomUserFactory> */
     use HasFactory, HasUlids;
 
+    protected $table = 'classroom_users';
+
     protected $fillable = [
         'classroom_id',
         'user_id',
