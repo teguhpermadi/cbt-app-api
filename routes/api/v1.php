@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
 use App\Http\Controllers\Api\V1\QuestionController;
+use App\Http\Controllers\Api\V1\OptionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -98,6 +99,15 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{question}/media/{media}', [QuestionController::class, 'deleteMedia'])->name('api.v1.questions.media.delete');
     });
     Route::apiResource('questions', QuestionController::class)->names('api.v1.questions');
+
+    // Options
+    Route::prefix('options')->group(function () {
+        // Media handling
+        Route::post('{option}/media', [OptionController::class, 'uploadMedia'])->name('api.v1.options.media.upload');
+        Route::post('{option}/media/{media}', [OptionController::class, 'replaceMedia'])->name('api.v1.options.media.replace');
+        Route::delete('{option}/media/{media}', [OptionController::class, 'deleteMedia'])->name('api.v1.options.media.delete');
+    });
+    Route::apiResource('options', OptionController::class)->names('api.v1.options');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])

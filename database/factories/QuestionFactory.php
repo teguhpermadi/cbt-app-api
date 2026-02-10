@@ -51,6 +51,10 @@ class QuestionFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (Question $question) {
+            if (isset($question->_skip_options) && $question->_skip_options === true) {
+                return;
+            }
+
             // Attach media to question if GD is available
             if (extension_loaded('gd')) {
                 $this->attachDummyMedia($question, 'question_content', "Question");
@@ -69,6 +73,18 @@ class QuestionFactory extends Factory
             'type' => $type,
             'content' => $this->generateQuestionContent($type),
         ]);
+    }
+
+    /**
+     * Disable automatic option creation
+     */
+    public function withoutOptions(): static
+    {
+        return $this->afterMaking(function (Question $question) {
+            $question->_skip_options = true;
+        })->afterCreating(function (Question $question) {
+            $question->_skip_options = true;
+        });
     }
 
     /**

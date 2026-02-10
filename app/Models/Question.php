@@ -20,6 +20,12 @@ class Question extends Model implements HasMedia
     /** @use HasFactory<\Database\Factories\QuestionFactory> */
     use HasFactory, HasUlids, SoftDeletes, HasTags, InteractsWithMedia;
 
+    /**
+     * Flag to skip automatic option creation in factory.
+     * @var bool
+     */
+    public bool $_skip_options = false;
+
     protected $fillable = [
         'user_id',
         'reading_material_id',

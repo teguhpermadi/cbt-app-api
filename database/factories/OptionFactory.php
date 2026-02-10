@@ -17,7 +17,12 @@ class OptionFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'question_id' => \App\Models\Question::factory()->withoutOptions(),
+            'option_key' => $this->faker->unique()->lexify('?'),
+            'content' => $this->faker->sentence(),
+            'order' => $this->faker->numberBetween(0, 10),
+            'is_correct' => $this->faker->boolean(20),
+            'metadata' => null,
         ];
     }
 }
