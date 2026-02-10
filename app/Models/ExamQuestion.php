@@ -14,6 +14,8 @@ class ExamQuestion extends Model
     /** @use HasFactory<\Database\Factories\ExamQuestionFactory> */
     use HasFactory, HasUlids;
 
+    // model ini berfungsi untuk menyimpan snapshot soal yang akan dikerjakan oleh siswa
+    
     protected $fillable = [
         'exam_id',
         'question_id',          // ID soal asli (untuk referensi/analisis)

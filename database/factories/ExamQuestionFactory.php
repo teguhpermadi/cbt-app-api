@@ -17,18 +17,17 @@ class ExamQuestionFactory extends Factory
      */
     public function definition(): array
     {
-        $exam = Exam::get()->random();
-        $questionBank = $exam->questionBank;
-        $question = $questionBank->questions()->get()->random();
+        $exam = Exam::factory()->create();
+        $question = \App\Models\Question::factory()->create();
 
         return [
             'exam_id' => $exam->id,
             'question_id' => $question->id,
             'question_number' => $this->faker->numberBetween(1, 100),
             'content' => $question->content,
-            'options' => $question->options,
-            'key_answer' => $question->key_answer,
-            'score_value' => $question->score,
+            'options' => $question->getOptionsForExam(),
+            'key_answer' => $question->getKeyAnswerForExam(),
+            'score_value' => (int) ($question->score->value ?? $question->score ?? 10),
             'question_type' => $question->type,
             'difficulty_level' => $question->difficulty,
             'media_path' => $question->media_path,

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\OptionController;
 use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use App\Http\Controllers\Api\V1\ExamController;
+use App\Http\Controllers\Api\V1\ExamQuestionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -143,6 +144,13 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('bulk-update', [ExamController::class, 'bulkUpdate'])->name('api.v1.exams.bulk-update');
     });
     Route::apiResource('exams', ExamController::class)->names('api.v1.exams');
+
+    // Exam Questions
+    Route::prefix('exam-questions')->group(function () {
+        Route::post('bulk-delete', [ExamQuestionController::class, 'bulkDelete'])->name('api.v1.exam-questions.bulk-delete');
+        Route::post('bulk-update', [ExamQuestionController::class, 'bulkUpdate'])->name('api.v1.exam-questions.bulk-update');
+    });
+    Route::apiResource('exam-questions', ExamQuestionController::class)->names('api.v1.exam-questions');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
