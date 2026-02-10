@@ -17,7 +17,7 @@ class Exam extends Model
     protected $fillable = [
         'academic_year_id',
         'subject_id',
-        'teacher_id',       // Guru yang membuat ujian
+        'user_id',          // Guru yang membuat ujian
         'question_bank_id', // Bank soal yang digunakan (opsional)
         'title',
         'type',        // Tipe ujian (Harian, UTS, UAS, dll.)

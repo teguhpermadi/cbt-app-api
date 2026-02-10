@@ -23,10 +23,10 @@ class ExamFactory extends Factory
     public function definition(): array
     {
         return [
-            'academic_year_id' => AcademicYear::get()->random()->id,
-            'subject_id' => Subject::get()->random()->id,
-            'user_id' => User::get()->random()->id,
-            'question_bank_id' => QuestionBank::get()->random()->id,
+            'academic_year_id' => AcademicYear::factory(),
+            'subject_id' => Subject::factory(),
+            'user_id' => User::factory(),
+            'question_bank_id' => QuestionBank::factory(),
             'title' => $this->faker->sentence(3),
             'type' => $this->faker->randomElement(ExamTypeEnum::cases()),
             'duration' => $this->faker->numberBetween(30, 120),

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\OptionController;
 use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
+use App\Http\Controllers\Api\V1\ExamController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -132,6 +133,16 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{questionBank}/force-delete', [QuestionBankController::class, 'forceDelete'])->name('api.v1.question-banks.force-delete');
     });
     Route::apiResource('question-banks', QuestionBankController::class)->names('api.v1.question-banks');
+
+    // Exams
+    Route::prefix('exams')->group(function () {
+        Route::get('trashed', [ExamController::class, 'trashed'])->name('api.v1.exams.trashed');
+        Route::post('{exam}/restore', [ExamController::class, 'restore'])->name('api.v1.exams.restore');
+        Route::delete('{exam}/force-delete', [ExamController::class, 'forceDelete'])->name('api.v1.exams.force-delete');
+        Route::post('bulk-delete', [ExamController::class, 'bulkDelete'])->name('api.v1.exams.bulk-delete');
+        Route::post('bulk-update', [ExamController::class, 'bulkUpdate'])->name('api.v1.exams.bulk-update');
+    });
+    Route::apiResource('exams', ExamController::class)->names('api.v1.exams');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
