@@ -25,6 +25,7 @@ final class DatabaseSeeder extends Seeder
             ClassroomUserSeeder::class,
             // QuestionSeeder::class,
             QuestionBankSeeder::class,
+            ExamSeeder::class,
         ]);
     }
 }
