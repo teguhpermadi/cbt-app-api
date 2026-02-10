@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
 use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\OptionController;
+use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use Illuminate\Support\Facades\Route;
 
@@ -123,6 +124,14 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{readingMaterial}/media/{media}', [ReadingMaterialController::class, 'deleteMedia'])->name('api.v1.reading-materials.media.delete');
     });
     Route::apiResource('reading-materials', ReadingMaterialController::class)->names('api.v1.reading-materials');
+
+    // Question Banks
+    Route::prefix('question-banks')->group(function () {
+        Route::get('trashed', [QuestionBankController::class, 'trashed'])->name('api.v1.question-banks.trashed');
+        Route::post('{questionBank}/restore', [QuestionBankController::class, 'restore'])->name('api.v1.question-banks.restore');
+        Route::delete('{questionBank}/force-delete', [QuestionBankController::class, 'forceDelete'])->name('api.v1.question-banks.force-delete');
+    });
+    Route::apiResource('question-banks', QuestionBankController::class)->names('api.v1.question-banks');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
