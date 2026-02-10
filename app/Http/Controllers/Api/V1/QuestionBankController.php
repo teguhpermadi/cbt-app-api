@@ -56,6 +56,7 @@ final class QuestionBankController extends ApiController
         $questionBank = QuestionBank::query()
             ->with(['user', 'subject', 'questions' => function ($query) {
                 $query->with(['tags', 'options']);
+                $query->orderBy('order', 'asc');
             }])
             ->withCount('questions')
             ->find($id);
