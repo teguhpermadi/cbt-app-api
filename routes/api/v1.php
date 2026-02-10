@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
 use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\OptionController;
+use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -108,6 +109,20 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{option}/media/{media}', [OptionController::class, 'deleteMedia'])->name('api.v1.options.media.delete');
     });
     Route::apiResource('options', OptionController::class)->names('api.v1.options');
+
+    // Reading Materials
+    Route::prefix('reading-materials')->group(function () {
+        Route::get('trashed', [ReadingMaterialController::class, 'trashed'])->name('api.v1.reading-materials.trashed');
+        Route::post('{readingMaterial}/restore', [ReadingMaterialController::class, 'restore'])->name('api.v1.reading-materials.restore');
+        Route::delete('{readingMaterial}/force-delete', [ReadingMaterialController::class, 'forceDelete'])->name('api.v1.reading-materials.force-delete');
+        Route::post('bulk-delete', [ReadingMaterialController::class, 'bulkDelete'])->name('api.v1.reading-materials.bulk-delete');
+
+        // Media handling
+        Route::post('{readingMaterial}/media', [ReadingMaterialController::class, 'uploadMedia'])->name('api.v1.reading-materials.media.upload');
+        Route::post('{readingMaterial}/media/{media}', [ReadingMaterialController::class, 'replaceMedia'])->name('api.v1.reading-materials.media.replace');
+        Route::delete('{readingMaterial}/media/{media}', [ReadingMaterialController::class, 'deleteMedia'])->name('api.v1.reading-materials.media.delete');
+    });
+    Route::apiResource('reading-materials', ReadingMaterialController::class)->names('api.v1.reading-materials');
 
     // Email verification
     Route::post('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
