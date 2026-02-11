@@ -56,4 +56,14 @@ class ExamSession extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function examResultDetails()
+    {
+        return $this->hasMany(ExamResultDetail::class, 'exam_session_id');
+    }
+
+    public function examResult()
+    {
+        return $this->hasOne(ExamResult::class, 'exam_session_id');
+    }
 }

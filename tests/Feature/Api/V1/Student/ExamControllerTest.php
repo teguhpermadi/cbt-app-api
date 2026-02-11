@@ -129,7 +129,7 @@ class ExamControllerTest extends TestCase
 
         $examQuestion = ExamQuestion::factory()->create([
             'exam_id' => $exam->id,
-            'key_answer' => 'A', // Should be hidden
+            'key_answer' => ['answer' => 'A'], // Should be hidden
         ]);
 
         // Manually start session
@@ -167,7 +167,7 @@ class ExamControllerTest extends TestCase
         $examQuestion = ExamQuestion::factory()->create([
             'exam_id' => $exam->id,
             'question_type' => QuestionTypeEnum::MULTIPLE_CHOICE, // Should use valid enum
-            'key_answer' => 'A',
+            'key_answer' => ['answer' => 'A'],
             'score_value' => 10,
         ]);
 
@@ -205,6 +205,8 @@ class ExamControllerTest extends TestCase
 
     public function test_student_can_finish_exam_calculates_score()
     {
+        \Illuminate\Support\Facades\Bus::fake();
+
         $academicYear = AcademicYear::factory()->create();
         $student = User::factory()->student()->create();
         $classroom = Classroom::factory()->create();
@@ -223,7 +225,7 @@ class ExamControllerTest extends TestCase
         $examQuestion = ExamQuestion::factory()->create([
             'exam_id' => $exam->id,
             'question_type' => QuestionTypeEnum::MULTIPLE_CHOICE,
-            'key_answer' => 'A',
+            'key_answer' => ['answer' => 'A'],
             'score_value' => 100,
         ]);
 
@@ -244,6 +246,13 @@ class ExamControllerTest extends TestCase
             ->postJson(route('api.v1.student.exams.finish', $exam->id));
 
         $response->assertOk();
+
+        // Check Job Dispatched
+        \Illuminate\Support\Facades\Bus::assertDispatched(\App\Jobs\CalculateExamScoreJob::class);
+
+        // Manually run the job logic to verify it works
+        $job = new \App\Jobs\CalculateExamScoreJob($session);
+        $job->handle();
 
         // Check Session Finished
         $this->assertDatabaseHas('exam_sessions', [

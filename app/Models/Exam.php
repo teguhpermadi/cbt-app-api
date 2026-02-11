@@ -70,4 +70,14 @@ class Exam extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function examResults()
+    {
+        return $this->hasMany(ExamResult::class);
+    }
+
+    public function examSessions()
+    {
+        return $this->hasMany(ExamSession::class);
+    }
 }

@@ -60,7 +60,7 @@ class ExamController extends ApiController
         // We can append 'current_session' or 'attempts_count' if needed.
         // Let's add `attempts_count` and `latest_session_status` via subqueries or separate loading if performance allows.
 
-        // checking sessions
+        // checking sessions and results
         $exams->getCollection()->transform(function ($exam) use ($user) {
             $sessions = ExamSession::where('exam_id', $exam->id)
                 ->where('user_id', $user->id)
@@ -68,6 +68,11 @@ class ExamController extends ApiController
 
             $exam->attempts_count = $sessions->count();
             $exam->latest_session = $sessions->last();
+
+            $exam->best_result = \App\Models\ExamResult::where('exam_id', $exam->id)
+                ->where('user_id', $user->id)
+                ->first();
+
             return $exam;
         });
 
@@ -97,13 +102,17 @@ class ExamController extends ApiController
             return $this->notFound('Exam not found or you do not have access to it.');
         }
 
-        // Attach session info
+        // Attach session and result info
         $sessions = ExamSession::where('exam_id', $exam->id)
             ->where('user_id', $user->id)
             ->get();
 
         $exam->attempts_count = $sessions->count();
         $exam->latest_session = $sessions->last();
+
+        $exam->best_result = \App\Models\ExamResult::where('exam_id', $exam->id)
+            ->where('user_id', $user->id)
+            ->first();
 
         return $this->success(
             new ExamResource($exam),
@@ -361,61 +370,13 @@ class ExamController extends ApiController
         // Update answer
         $answer = $request->answer;
 
-        // Auto-grading Logic
-        $isCorrect = false;
-        $scoreEarned = 0;
-
-        // Get Key Answer from ExamQuestion
-        $examQuestion = $detail->examQuestion;
-        $keyAnswer = $examQuestion->key_answer; // Array or string
-
-        // Determine if we can auto-grade
-        $questionType = $examQuestion->question_type;
-        // Enum: SINGLE_CHOICE, MULTIPLE_CHOICE, ESSAY (?)
-        // We need to check the Enum values.
-
-        // Assuming strict comparison for Single/Multiple choice
-        if ($questionType === \App\Enums\QuestionTypeEnum::MULTIPLE_CHOICE) {
-            // Multiple Choice (Single Answer)
-            // key_answer might be ["A"] or "A" or similar.
-            // If key_answer is array, take first? 
-            // Usually single choice key is a single value, but stored as array for consistency?
-            // Let's assume standard comparison.
-
-            // Normalize both to JSON string or compare arrays?
-            // $request->answer for single choice usually string "option_uuid" or "A".
-
-            // If key_answer is array: ["option_uuid"]
-            // Answer: "option_uuid"
-
-            $key = is_array($keyAnswer) ? ($keyAnswer[0] ?? null) : $keyAnswer;
-            // Ensure strict comparison
-            if ((string)$answer === (string)$key) {
-                $isCorrect = true;
-            }
-        } elseif ($questionType === \App\Enums\QuestionTypeEnum::MULTIPLE_SELECTION) {
-            // Multiple Selection (Multiple Answers)
-            // key_answer: ["A", "C"]
-            // answer: ["C", "A"] (order might differ)
-            if (is_array($answer) && is_array($keyAnswer)) {
-                // sort and compare
-                sort($answer);
-                sort($keyAnswer);
-                if ($answer == $keyAnswer) {
-                    $isCorrect = true;
-                }
-            }
-        }
-        // Essay/Short Answer -> Manual correction usually, or exact string match for Short Answer.
-        // For now we default to false/0 for Essay.
-
-        if ($isCorrect) {
-            $scoreEarned = $examQuestion->score_value;
-        }
+        // Use ExamScoringService for auto-grading
+        $scoringService = new \App\Services\ExamScoringService();
+        $result = $scoringService->calculateDetailScore($detail->fill(['student_answer' => $answer]));
 
         $detail->student_answer = $answer;
-        $detail->is_correct = $isCorrect;
-        $detail->score_earned = $scoreEarned;
+        $detail->is_correct = $result['is_correct'];
+        $detail->score_earned = $result['score'];
         $detail->is_flagged = $request->boolean('is_flagged', $detail->is_flagged);
         $detail->answered_at = now();
         $detail->save();
@@ -424,7 +385,7 @@ class ExamController extends ApiController
             [
                 'question_id' => $detail->id,
                 'is_answered' => true,
-                'detail' => new ExamResultDetailResource($detail),
+                'detail' => new \App\Http\Resources\Student\ExamResultDetailResource($detail),
             ],
             'Answer saved.'
         );
@@ -447,58 +408,20 @@ class ExamController extends ApiController
         }
 
         return DB::transaction(function () use ($session, $user, $id) {
-            // 1. Calculate Score
-            $totalScore = ExamResultDetail::where('exam_session_id', $session->id)
-                ->sum('score_earned');
-
-            // 2. Update Session
+            // 1. Update Session Status
             $session->update([
                 'finish_time' => now(),
                 'is_finished' => true,
-                'total_score' => $totalScore,
             ]);
 
-            // 3. Update/Create ExamResult (Best Score Strategy)
-            $exam = $session->exam; // Load exam relation
-
-            // Calculate percentage
-            $maxScore = $session->total_max_score > 0 ? $session->total_max_score : 1;
-            $percentage = ($totalScore / $maxScore) * 100;
-            $passed = $percentage >= $exam->passing_score;
-
-            // Check existing result
-            $existingResult = \App\Models\ExamResult::where('exam_id', $id)
-                ->where('user_id', $user->id)
-                ->first();
-
-            if (! $existingResult) {
-                // Create new
-                \App\Models\ExamResult::create([
-                    'exam_id' => $id,
-                    'user_id' => $user->id,
-                    'exam_session_id' => $session->id,
-                    'total_score' => $totalScore,
-                    'score_percent' => $percentage,
-                    'is_passed' => $passed,
-                    'result_type' => \App\Enums\ExamResultTypeEnum::OFFICIAL, // Use enum value
-                ]);
-            } else {
-                // Update if better
-                if ($percentage > $existingResult->score_percent) {
-                    $existingResult->update([
-                        'exam_session_id' => $session->id, // Point to this best session
-                        'total_score' => $totalScore,
-                        'score_percent' => $percentage,
-                        'is_passed' => $passed,
-                    ]);
-                }
-            }
+            // 2. Dispatch Scoring Job (Calculate final score asynchronously)
+            \App\Jobs\CalculateExamScoreJob::dispatch($session);
 
             return $this->success(
                 [
                     'exam_session_id' => $session->id,
-                    'session' => new ExamSessionResource($session),
-                    'total_score' => $totalScore,
+                    'session' => new \App\Http\Resources\Student\ExamSessionResource($session),
+                    'message' => 'Exam finished. Scoring is in progress.',
                     'finished_at' => $session->finish_time,
                 ],
                 'Exam finished successfully.'
