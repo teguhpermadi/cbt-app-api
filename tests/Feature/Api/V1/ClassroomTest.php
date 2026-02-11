@@ -164,3 +164,49 @@ describe('Classroom Management', function () {
         }
     });
 });
+
+describe('My Classrooms', function () {
+    it('can list classrooms managed by the teacher', function () {
+        $teacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+        $classrooms = Classroom::factory()->count(2)->create(['user_id' => $teacher->id]);
+        Classroom::factory()->count(3)->create(); // Other classrooms
+
+        $this->actingAs($teacher, 'sanctum');
+
+        $response = $this->getJson('/api/v1/classrooms/mine');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    });
+
+    it('can list classrooms where the student is enrolled', function () {
+        $student = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
+        $academicYear = AcademicYear::factory()->create();
+        $classrooms = Classroom::factory()->count(2)->create();
+
+        foreach ($classrooms as $classroom) {
+            $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+        }
+
+        Classroom::factory()->count(3)->create(); // Other classrooms
+
+        $this->actingAs($student, 'sanctum');
+
+        $response = $this->getJson('/api/v1/classrooms/mine');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    });
+
+    it('returns empty list if user is not associated with any classroom', function () {
+        $user = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
+        Classroom::factory()->count(3)->create();
+
+        $this->actingAs($user, 'sanctum');
+
+        $response = $this->getJson('/api/v1/classrooms/mine');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
+    });
+});

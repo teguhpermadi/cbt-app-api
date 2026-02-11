@@ -44,6 +44,21 @@ class Classroom extends Model
     }
 
     /**
+     * Scope a query to only include classrooms of the authenticated user.
+     */
+    public function scopeMine($query)
+    {
+        $userId = auth()->id();
+
+        return $query->where(function ($q) use ($userId) {
+            $q->where('user_id', $userId)
+                ->orWhereHas('students', function ($sq) use ($userId) {
+                    $sq->where('users.id', $userId);
+                });
+        });
+    }
+
+    /**
      * Synchronize students for a specific academic year.
      */
     public function syncStudents(array $studentIds, string $academicYearId): void

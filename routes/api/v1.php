@@ -95,6 +95,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{classroom}/force-delete', [ClassroomController::class, 'forceDelete'])->name('api.v1.classrooms.force-delete');
         Route::post('bulk-delete', [ClassroomController::class, 'bulkDelete'])->name('api.v1.classrooms.bulk-delete');
         Route::post('bulk-update', [ClassroomController::class, 'bulkUpdate'])->name('api.v1.classrooms.bulk-update');
+        Route::get('mine', [ClassroomController::class, 'mine'])->name('api.v1.classrooms.mine');
         Route::post('{classroom}/sync', [ClassroomController::class, 'syncStudents'])->name('api.v1.classrooms.sync');
     });
     Route::apiResource('classrooms', ClassroomController::class)->names('api.v1.classrooms');

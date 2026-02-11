@@ -210,6 +210,26 @@ final class ClassroomController extends ApiController
     }
 
     /**
+     * Display a listing of the authenticated user's classrooms.
+     */
+    public function mine(Request $request): JsonResponse
+    {
+        $perPage = $request->integer('per_page', 15);
+
+        $classrooms = Classroom::query()
+            ->mine()
+            ->with(['user', 'academicYear'])
+            ->withCount('students')
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            ClassroomResource::collection($classrooms)->response()->getData(true),
+            'My classrooms retrieved successfully'
+        );
+    }
+
+    /**
      * Synchronize students for a specific academic year.
      */
     public function syncStudents(SyncStudentsRequest $request, Classroom $classroom): JsonResponse
