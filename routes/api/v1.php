@@ -55,6 +55,16 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{student}/force-delete', [StudentController::class, 'forceDelete'])->name('api.v1.students.force-delete');
         Route::post('bulk-delete', [StudentController::class, 'bulkDelete'])->name('api.v1.students.bulk-delete');
         Route::post('bulk-update', [StudentController::class, 'bulkUpdate'])->name('api.v1.students.bulk-update');
+
+        // Student Exams
+        Route::prefix('exams')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'index'])->name('api.v1.student.exams.index');
+            Route::get('{exam}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'show'])->name('api.v1.student.exams.show');
+            Route::post('{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->name('api.v1.student.exams.start');
+            Route::get('{exam}/take', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'take'])->name('api.v1.student.exams.take');
+            Route::post('{exam}/answer', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])->name('api.v1.student.exams.answer');
+            Route::post('{exam}/finish', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])->name('api.v1.student.exams.finish');
+        });
     });
     Route::apiResource('students', StudentController::class)->names('api.v1.students');
 

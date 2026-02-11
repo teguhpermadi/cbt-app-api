@@ -4,9 +4,9 @@ namespace App\Enums;
 
 enum ExamResultTypeEnum: string
 {
-    const OFFICIAL = 'official';
-    const BEST_ATTEMPT = 'best_attempt';
-    const LATEST_ATTEMPT = 'latest_attempt';
+    case OFFICIAL = 'official';
+    case BEST_ATTEMPT = 'best_attempt';
+    case LATEST_ATTEMPT = 'latest_attempt';
 
     public function label(): string
     {
