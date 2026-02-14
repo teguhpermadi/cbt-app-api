@@ -165,4 +165,49 @@ final class QuestionBankController extends ApiController
             message: 'Question bank permanently deleted'
         );
     }
+
+    /**
+     * Import questions from Word document.
+     */
+    public function import(
+        \App\Http\Requests\Api\V1\QuestionBank\ImportQuestionRequest $request,
+        string $id,
+        \App\Services\QuestionImportService $importService
+    ): JsonResponse {
+        $questionBank = QuestionBank::find($id);
+
+        if (!$questionBank) {
+            return $this->notFound('Question bank not found');
+        }
+
+        $file = $request->file('file');
+        $path = $file->path(); // Get temporary path
+
+        try {
+            $result = $importService->parseWordDocument(
+                filePath: $path,
+                questionBankId: $questionBank->id,
+                authorId: Auth::id()
+            );
+
+            if ($result['success']) {
+                return $this->success(
+                    $result,
+                    "Berhasil mengimport {$result['total']} soal."
+                );
+            }
+
+            return $this->error(
+                'Gagal mengimport soal.',
+                422,
+                $result['errors']
+            );
+        } catch (\Exception $e) {
+            return $this->error(
+                'Terjadi kesalahan saat memproses file.',
+                500,
+                ['error' => $e->getMessage()]
+            );
+        }
+    }
 }
