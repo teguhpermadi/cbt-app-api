@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use App\Http\Controllers\Api\V1\ExamController;
 use App\Http\Controllers\Api\V1\ExamQuestionController;
+use App\Http\Controllers\Api\V1\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -182,6 +183,10 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     Route::post('email/resend', [AuthController::class, 'resendVerificationEmail'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
+
+    // Activity Logs
+    Route::get('activity-logs/mine', [ActivityLogController::class, 'mine'])->name('api.v1.activity-logs.mine');
+    Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('api.v1.activity-logs.index');
 });
 
 // Password reset routes (public with rate limiting)
