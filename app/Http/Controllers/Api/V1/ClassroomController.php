@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Classroom\SyncStudentsRequest;
 use App\Http\Requests\Api\V1\Classroom\UpdateClassroomRequest;
 use App\Http\Resources\ClassroomResource;
 use App\Models\Classroom;
+use App\Models\AcademicYear;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -215,9 +216,16 @@ final class ClassroomController extends ApiController
     public function mine(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $academicYearId = $request->input('academic_year_id');
+
+        if (! $academicYearId) {
+            $latestAcademicYear = AcademicYear::latest()->first();
+            $academicYearId = $latestAcademicYear?->id;
+        }
 
         $classrooms = Classroom::query()
             ->mine()
+            ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->with(['user', 'academicYear'])
             ->withCount('students')
             ->latest()

@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Subject\StoreSubjectRequest;
 use App\Http\Requests\Api\V1\Subject\UpdateSubjectRequest;
 use App\Http\Resources\SubjectResource;
 use App\Models\Subject;
+use App\Models\AcademicYear;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -204,5 +205,30 @@ final class SubjectController extends ApiController
         });
 
         return $this->success(message: 'Subjects updated successfully');
+    }
+    /**
+     * Display a listing of the authenticated user's subjects.
+     */
+    public function mine(Request $request): JsonResponse
+    {
+        $perPage = $request->integer('per_page', 15);
+        $academicYearId = $request->input('academic_year_id');
+
+        if (! $academicYearId) {
+            $latestAcademicYear = AcademicYear::latest()->first();
+            $academicYearId = $latestAcademicYear?->id;
+        }
+
+        $subjects = Subject::query()
+            ->where('user_id', auth()->id())
+            ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
+            ->with(['user', 'academicYear', 'classroom'])
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            SubjectResource::collection($subjects)->response()->getData(true),
+            'My subjects retrieved successfully'
+        );
     }
 }

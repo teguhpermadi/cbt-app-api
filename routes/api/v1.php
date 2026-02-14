@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{subject}/force-delete', [SubjectController::class, 'forceDelete'])->name('api.v1.subjects.force-delete');
         Route::post('bulk-delete', [SubjectController::class, 'bulkDelete'])->name('api.v1.subjects.bulk-delete');
         Route::post('bulk-update', [SubjectController::class, 'bulkUpdate'])->name('api.v1.subjects.bulk-update');
+        Route::get('mine', [SubjectController::class, 'mine'])->name('api.v1.subjects.mine');
     });
     Route::apiResource('subjects', SubjectController::class)->names('api.v1.subjects');
 
