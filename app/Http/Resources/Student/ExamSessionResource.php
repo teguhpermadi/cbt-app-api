@@ -34,6 +34,7 @@ final class ExamSessionResource extends JsonResource
             'duration_taken' => $this->duration_taken,
             'ip_address' => $this->ip_address,
             'exam' => new ExamResource($this->whenLoaded('exam')),
+            'student' => new \App\Http\Resources\UserResource($this->whenLoaded('user')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

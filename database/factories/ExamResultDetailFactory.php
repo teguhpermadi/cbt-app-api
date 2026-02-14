@@ -17,7 +17,14 @@ class ExamResultDetailFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'exam_session_id' => \App\Models\ExamSession::factory(),
+            'exam_question_id' => \App\Models\ExamQuestion::factory(),
+            'student_answer' => ['answer' => fake()->sentence()],
+            'is_correct' => fake()->boolean(),
+            'score_earned' => fake()->randomFloat(2, 0, 10),
+            'question_number' => fake()->numberBetween(1, 50),
+            'correction_notes' => fake()->sentence(),
+            'answered_at' => now(),
         ];
     }
 }

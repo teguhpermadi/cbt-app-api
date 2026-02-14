@@ -174,6 +174,14 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     });
     Route::apiResource('exams', ExamController::class)->names('api.v1.exams');
 
+    // Exam Correction
+    Route::prefix('exams')->group(function () {
+        Route::get('{exam}/sessions', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'index'])->name('api.v1.exams.correction.index');
+        Route::get('{exam}/sessions/{examSession}/correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'show'])->name('api.v1.exams.correction.show');
+        Route::put('sessions/{examSession}/details/{examResultDetail}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
+        Route::post('sessions/{examSession}/finish-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
+    });
+
     // Exam Questions
     Route::prefix('exam-questions')->group(function () {
         Route::post('bulk-delete', [ExamQuestionController::class, 'bulkDelete'])->name('api.v1.exam-questions.bulk-delete');
