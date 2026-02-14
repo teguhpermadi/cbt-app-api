@@ -159,6 +159,11 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{exam}/restore', [ExamController::class, 'restore'])->name('api.v1.exams.restore');
         Route::delete('{exam}/force-delete', [ExamController::class, 'forceDelete'])->name('api.v1.exams.force-delete');
         Route::post('bulk-delete', [ExamController::class, 'bulkDelete'])->name('api.v1.exams.bulk-delete');
+        Route::get('{exam}/live-score', [ExamController::class, 'liveScore'])->name('api.v1.exams.live-score');
+        Route::post('{exam}/reset', [ExamController::class, 'resetExam'])->name('api.v1.exams.reset');
+        Route::post('{exam}/add-time', [ExamController::class, 'addTime'])->name('api.v1.exams.add-time');
+        Route::post('{exam}/force-finish', [ExamController::class, 'forceFinish'])->name('api.v1.exams.force-finish');
+        Route::post('{exam}/regenerate-token', [ExamController::class, 'regenerateToken'])->name('api.v1.exams.regenerate-token');
         Route::post('bulk-update', [ExamController::class, 'bulkUpdate'])->name('api.v1.exams.bulk-update');
     });
     Route::apiResource('exams', ExamController::class)->names('api.v1.exams');

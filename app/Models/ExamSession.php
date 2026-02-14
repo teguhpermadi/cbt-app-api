@@ -24,6 +24,7 @@ class ExamSession extends Model
         'finish_time',         // Waktu selesai pengerjaan
         'duration_taken',      // Durasi pengerjaan dalam menit
         'ip_address',
+        'extra_time',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class ExamSession extends Model
         'finish_time' => 'datetime',
         'duration_taken' => 'integer',
         'attempt_number' => 'integer',
+        'extra_time' => 'integer',
     ];
 
     protected $appends = ['final_score'];
