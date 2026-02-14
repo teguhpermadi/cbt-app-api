@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserTypeEnum;
 use App\Http\Controllers\Api\ApiController;
+use App\Exports\StudentTemplateExport;
 use App\Http\Requests\Api\V1\Student\BulkDeleteStudentRequest;
 use App\Http\Requests\Api\V1\Student\BulkUpdateStudentRequest;
+use App\Http\Requests\Api\V1\Student\ImportStudentRequest;
 use App\Http\Requests\Api\V1\Student\StoreStudentRequest;
 use App\Http\Requests\Api\V1\Student\UpdateStudentRequest;
+use App\Imports\StudentsImport;
 use App\Http\Resources\StudentResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Maatwebsite\Excel\Facades\Excel;
 
 final class StudentController extends ApiController
 {
@@ -253,5 +257,23 @@ final class StudentController extends ApiController
             StudentResource::collection($students)->response()->getData(true),
             'Available students retrieved successfully'
         );
+    }
+
+    /**
+     * Import students from Excel file.
+     */
+    public function import(ImportStudentRequest $request): JsonResponse
+    {
+        Excel::import(new StudentsImport, $request->file('file'));
+
+        return $this->success(message: 'Students imported successfully');
+    }
+
+    /**
+     * Download student import template.
+     */
+    public function template()
+    {
+        return Excel::download(new StudentTemplateExport, 'students_template.xlsx');
     }
 }

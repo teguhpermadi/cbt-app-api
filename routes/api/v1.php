@@ -40,6 +40,8 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Teachers
     Route::prefix('teachers')->group(function () {
+        Route::post('import', [TeacherController::class, 'import'])->name('api.v1.teachers.import');
+        Route::get('export/template', [TeacherController::class, 'template'])->name('api.v1.teachers.template');
         Route::get('trashed', [TeacherController::class, 'trashed'])->name('api.v1.teachers.trashed');
         Route::post('{teacher}/restore', [TeacherController::class, 'restore'])->name('api.v1.teachers.restore');
         Route::delete('{teacher}/force-delete', [TeacherController::class, 'forceDelete'])->name('api.v1.teachers.force-delete');
@@ -50,6 +52,8 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Students
     Route::prefix('students')->group(function () {
+        Route::post('import', [StudentController::class, 'import'])->name('api.v1.students.import');
+        Route::get('export/template', [StudentController::class, 'template'])->name('api.v1.students.template');
         Route::get('available', [StudentController::class, 'available'])->name('api.v1.students.available');
         Route::get('trashed', [StudentController::class, 'trashed'])->name('api.v1.students.trashed');
         Route::post('{student}/restore', [StudentController::class, 'restore'])->name('api.v1.students.restore');

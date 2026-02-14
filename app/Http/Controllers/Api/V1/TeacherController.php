@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserTypeEnum;
 use App\Http\Controllers\Api\ApiController;
+use App\Exports\TeacherTemplateExport;
 use App\Http\Requests\Api\V1\Teacher\BulkDeleteTeacherRequest;
 use App\Http\Requests\Api\V1\Teacher\BulkUpdateTeacherRequest;
+use App\Http\Requests\Api\V1\Teacher\ImportTeacherRequest;
 use App\Http\Requests\Api\V1\Teacher\StoreTeacherRequest;
 use App\Http\Requests\Api\V1\Teacher\UpdateTeacherRequest;
+use App\Imports\TeachersImport;
 use App\Http\Resources\TeacherResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Maatwebsite\Excel\Facades\Excel;
 
 final class TeacherController extends ApiController
 {
@@ -232,5 +236,23 @@ final class TeacherController extends ApiController
         });
 
         return $this->success(message: 'Teachers updated successfully');
+    }
+
+    /**
+     * Import teachers from Excel file.
+     */
+    public function import(ImportTeacherRequest $request): JsonResponse
+    {
+        Excel::import(new TeachersImport, $request->file('file'));
+
+        return $this->success(message: 'Teachers imported successfully');
+    }
+
+    /**
+     * Download teacher import template.
+     */
+    public function template()
+    {
+        return Excel::download(new TeacherTemplateExport, 'teachers_template.xlsx');
     }
 }
