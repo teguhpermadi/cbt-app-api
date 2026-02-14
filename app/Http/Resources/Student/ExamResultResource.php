@@ -20,6 +20,8 @@ final class ExamResultResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'exam' => new \App\Http\Resources\ExamResource($this->whenLoaded('exam')),
+            'user' => new \App\Http\Resources\UserResource($this->whenLoaded('user')),
             'exam_id' => $this->exam_id,
             'user_id' => $this->user_id,
             'exam_session_id' => $this->exam_session_id,

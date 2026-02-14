@@ -17,7 +17,13 @@ class ExamResultFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'exam_id' => \App\Models\Exam::factory(),
+            'user_id' => \App\Models\User::factory(),
+            'exam_session_id' => \App\Models\ExamSession::factory(),
+            'total_score' => $this->faker->numberBetween(0, 100),
+            'score_percent' => $this->faker->randomFloat(2, 0, 100),
+            'is_passed' => $this->faker->boolean,
+            'result_type' => \App\Enums\ExamResultTypeEnum::OFFICIAL,
         ];
     }
 }

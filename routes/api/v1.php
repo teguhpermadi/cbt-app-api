@@ -65,6 +65,12 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
             Route::post('{exam}/answer', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])->name('api.v1.student.exams.answer');
             Route::post('{exam}/finish', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])->name('api.v1.student.exams.finish');
         });
+
+        // Student Exam Results
+        Route::prefix('exam-results')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'index'])->name('api.v1.student.exam-results.index');
+            Route::get('leaderboard', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'leaderboard'])->name('api.v1.student.exam-results.leaderboard');
+        });
     });
     Route::apiResource('students', StudentController::class)->names('api.v1.students');
 

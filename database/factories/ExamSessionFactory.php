@@ -19,8 +19,8 @@ class ExamSessionFactory extends Factory
     public function definition(): array
     {
         return [
-            'exam_id' => Exam::get()->random()->id,
-            'user_id' => User::where('role', 'student')->get()->random()->id,
+            'exam_id' => Exam::factory(),
+            'user_id' => User::factory(),
             'attempt_number' => fake()->numberBetween(1, 10),
             'total_score' => fake()->numberBetween(0, 100),
             'total_max_score' => fake()->numberBetween(0, 100),
@@ -29,7 +29,7 @@ class ExamSessionFactory extends Factory
             'start_time' => fake()->dateTimeBetween('-1 year', '+1 year'),
             'finish_time' => fake()->dateTimeBetween('-1 year', '+1 year'),
             'duration_taken' => fake()->numberBetween(0, 100),
-            'ip_address' => fake()->ipv4Address(),
+            'ip_address' => fake()->ipv4(),
         ];
     }
 }
