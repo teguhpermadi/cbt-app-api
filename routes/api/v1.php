@@ -159,6 +159,14 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     });
     Route::apiResource('question-banks', QuestionBankController::class)->names('api.v1.question-banks');
 
+    // Question Suggestions
+    Route::prefix('question-suggestions')->group(function () {
+        Route::get('mine', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'mine'])->name('api.v1.question-suggestions.mine');
+        Route::post('{questionSuggestion}/approve', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'approve'])->name('api.v1.question-suggestions.approve');
+        Route::post('{questionSuggestion}/reject', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'reject'])->name('api.v1.question-suggestions.reject');
+    });
+    Route::apiResource('question-suggestions', \App\Http\Controllers\Api\V1\QuestionSuggestionController::class)->names('api.v1.question-suggestions');
+
     // Exams
     Route::prefix('exams')->group(function () {
         Route::get('trashed', [ExamController::class, 'trashed'])->name('api.v1.exams.trashed');

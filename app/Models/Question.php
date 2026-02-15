@@ -58,6 +58,11 @@ class Question extends Model implements HasMedia
         return $this->hasMany(Option::class)->orderBy('order');
     }
 
+    public function suggestions(): HasMany
+    {
+        return $this->hasMany(QuestionSuggestion::class);
+    }
+
     public function readingMaterial()
     {
         return $this->belongsTo(ReadingMaterial::class);

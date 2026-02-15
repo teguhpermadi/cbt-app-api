@@ -110,6 +110,16 @@ final class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ExamSession::class, 'user_id');
     }
 
+    public function questionSuggestions()
+    {
+        return $this->hasMany(QuestionSuggestion::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->user_type === UserTypeEnum::ADMIN;
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
