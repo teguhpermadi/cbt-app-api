@@ -26,6 +26,7 @@ final class DatabaseSeeder extends Seeder
             // QuestionSeeder::class,
             QuestionBankSeeder::class,
             ExamSeeder::class,
+            QuestionSuggestionSeeder::class,
         ]);
     }
 }
