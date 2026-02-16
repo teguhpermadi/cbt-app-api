@@ -243,9 +243,26 @@ final class TeacherController extends ApiController
      */
     public function import(ImportTeacherRequest $request): JsonResponse
     {
-        Excel::import(new TeachersImport, $request->file('file'));
-
-        return $this->success(message: 'Teachers imported successfully');
+        try {
+            Excel::import(new TeachersImport, $request->file('file'));
+            return $this->success(message: 'Teachers imported successfully');
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $messages = [];
+            foreach ($failures as $failure) {
+                $messages[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Import Validation Failed',
+                'errors' => $messages,
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Import Failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
