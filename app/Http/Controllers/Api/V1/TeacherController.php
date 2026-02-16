@@ -239,6 +239,36 @@ final class TeacherController extends ApiController
     }
 
     /**
+     * Search teachers by name, username, or email.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => ['required', 'string', 'min:1'],
+            'per_page' => ['integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = $request->string('query');
+        $perPage = $request->integer('per_page', 15);
+
+        $teachers = User::query()
+            ->with('subjects')
+            ->where('user_type', UserTypeEnum::TEACHER)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('username', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            TeacherResource::collection($teachers)->response()->getData(true),
+            'Teachers search results retrieved successfully'
+        );
+    }
+
+    /**
      * Import teachers from Excel file.
      */
     public function import(ImportTeacherRequest $request): JsonResponse

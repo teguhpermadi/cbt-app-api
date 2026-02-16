@@ -29,6 +29,7 @@ final class StudentController extends ApiController
         $perPage = $request->integer('per_page', 15);
 
         $students = User::query()
+            ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
             ->latest()
             ->paginate($perPage);
@@ -64,6 +65,7 @@ final class StudentController extends ApiController
     public function show(string $id): JsonResponse
     {
         $student = User::query()
+            ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
             ->where('id', $id)
             ->first();
@@ -84,6 +86,7 @@ final class StudentController extends ApiController
     public function update(UpdateStudentRequest $request, string $id): JsonResponse
     {
         $student = User::query()
+            ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
             ->where('id', $id)
             ->first();
@@ -134,6 +137,7 @@ final class StudentController extends ApiController
         $perPage = $request->integer('per_page', 15);
 
         $students = User::onlyTrashed()
+            ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
             ->latest()
             ->paginate($perPage);
@@ -150,6 +154,7 @@ final class StudentController extends ApiController
     public function restore(string $id): JsonResponse
     {
         $student = User::onlyTrashed()
+            ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
             ->where('id', $id)
             ->first();
@@ -260,13 +265,60 @@ final class StudentController extends ApiController
     }
 
     /**
+     * Search students by name, username, or email.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => ['required', 'string', 'min:1'],
+            'per_page' => ['integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = $request->string('query');
+        $perPage = $request->integer('per_page', 15);
+
+        $students = User::query()
+            ->with('classrooms')
+            ->where('user_type', UserTypeEnum::STUDENT)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('username', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            StudentResource::collection($students)->response()->getData(true),
+            'Students search results retrieved successfully'
+        );
+    }
+
+    /**
      * Import students from Excel file.
      */
     public function import(ImportStudentRequest $request): JsonResponse
     {
-        Excel::import(new StudentsImport, $request->file('file'));
-
-        return $this->success(message: 'Students imported successfully');
+        try {
+            Excel::import(new StudentsImport, $request->file('file'));
+            return $this->success(message: 'Students imported successfully');
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            $messages = [];
+            foreach ($failures as $failure) {
+                $messages[] = 'Row ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Import Validation Failed',
+                'errors' => $messages,
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Import Failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

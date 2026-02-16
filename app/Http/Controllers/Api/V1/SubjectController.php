@@ -207,6 +207,36 @@ final class SubjectController extends ApiController
         return $this->success(message: 'Subjects updated successfully');
     }
     /**
+     * Search subjects by name, code, description, or class_name.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => ['required', 'string', 'min:1'],
+            'per_page' => ['integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = $request->string('query');
+        $perPage = $request->integer('per_page', 15);
+
+        $subjects = Subject::query()
+            ->with(['user', 'academicYear', 'classroom'])
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('code', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%")
+                    ->orWhere('class_name', 'like', "%{$query}%");
+            })
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            SubjectResource::collection($subjects)->response()->getData(true),
+            'Subjects search results retrieved successfully'
+        );
+    }
+
+    /**
      * Display a listing of the authenticated user's subjects.
      */
     public function mine(Request $request): JsonResponse
