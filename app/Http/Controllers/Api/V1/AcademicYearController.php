@@ -29,9 +29,7 @@ final class AcademicYearController extends ApiController
             ->with(['user'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('year', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
+                    $q->Where('year', 'like', "%{$search}%");
                 });
             })
             ->orderBy($sortBy, $order)
