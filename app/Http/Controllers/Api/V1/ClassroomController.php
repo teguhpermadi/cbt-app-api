@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 final class ClassroomController extends ApiController
 {
     /**
-     * Display a listing of classrooms with pagination, search, and sorting.
+     * Display a listing of classrooms with pagination, search, sorting and filter by academic year.
      */
     public function index(Request $request): JsonResponse
     {
@@ -26,10 +26,12 @@ final class ClassroomController extends ApiController
         $search = $request->string('search')->trim();
         $sortBy = $request->string('sort_by', 'created_at');
         $order = $request->string('order', 'desc');
+        $academicYearId = $request->input('academic_year_id');
 
         $classrooms = Classroom::query()
             ->with(['user', 'academicYear'])
             ->withCount('students')
+            ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
