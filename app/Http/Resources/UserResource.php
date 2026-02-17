@@ -22,6 +22,7 @@ final class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'username' => $this->username,
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
             'user_type' => $this->user_type?->value,
             'created_at' => $this->created_at?->toIso8601String(),

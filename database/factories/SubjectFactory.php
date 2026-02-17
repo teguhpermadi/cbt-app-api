@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\AcademicYear;
+use App\Models\Classroom;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,17 +19,20 @@ class SubjectFactory extends Factory
      */
     public function definition(): array
     {
+        $faker = \Faker\Factory::create();
+        $faker->addProvider(new \Smknstd\FakerPicsumImages\FakerPicsumImagesProvider($faker));
+
         return [
             'name' => fake()->name(),
             'code' => fake()->word(),
             'description' => fake()->text(),
-            'image_url' => fake()->imageUrl(),
-            'logo_url' => fake()->imageUrl(),
+            'image_url' => $faker->imageUrl(width: 400, height: 400),
+            'logo_url' => $faker->imageUrl(width: 400, height: 400),
             'user_id' => User::factory(),
             'color' => fake()->colorName(),
             'class_name' => fake()->word(),
             'academic_year_id' => fn() => AcademicYear::inRandomOrder()->first()?->id ?? AcademicYear::factory(),
-            'classroom_id' => fn() => \App\Models\Classroom::inRandomOrder()->first()?->id ?? \App\Models\Classroom::factory(),
+            'classroom_id' => fn() => Classroom::inRandomOrder()->first()?->id ?? \App\Models\Classroom::factory(),
         ];
     }
 }

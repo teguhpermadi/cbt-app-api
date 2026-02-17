@@ -13092,8 +13092,7 @@
                 "type": "object",
                 "properties": {
                     "email": {
-                        "type": "string",
-                        "format": "email"
+                        "type": "string"
                     },
                     "password": {
                         "type": "string"
@@ -14999,6 +14998,12 @@
                     "email": {
                         "type": "string"
                     },
+                    "username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "email_verified_at": {
                         "type": "string"
                     },
@@ -15016,6 +15021,7 @@
                     "id",
                     "name",
                     "email",
+                    "username",
                     "email_verified_at",
                     "user_type",
                     "created_at",

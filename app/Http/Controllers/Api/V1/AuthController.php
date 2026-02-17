@@ -42,7 +42,9 @@ final class AuthController extends ApiController
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->email)->first();
+        $fieldType = filter_var($request->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $user = User::query()->where($fieldType, $request->email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return $this->unauthorized('Invalid credentials');

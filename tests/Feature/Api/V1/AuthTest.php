@@ -85,6 +85,25 @@ describe('Login', function (): void {
             ]);
     });
 
+    it('logs in with username', function (): void {
+        $username = 'testuser';
+        $user = User::factory()->create([
+            'username' => $username,
+            'password' => bcrypt('password123'),
+        ]);
+
+        $response = $this->postJson('/api/v1/login', [
+            'email' => $username,
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Login successful',
+            ]);
+    });
+
     it('fails login with invalid credentials', function (): void {
         $user = User::factory()->create([
             'password' => bcrypt('password123'),

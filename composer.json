@@ -31,7 +31,8 @@
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0",
-        "rector/rector": "^2.2"
+        "rector/rector": "^2.2",
+        "smknstd/fakerphp-picsum-images": "^1.0"
     },
     "suggest": {
         "grazulex/laravel-api-idempotency": "RFC-compliant API idempotency with response caching and multiple storage drivers",
