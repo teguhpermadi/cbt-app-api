@@ -258,10 +258,18 @@ final class StudentController extends ApiController
         ]);
 
         $academicYearId = $request->string('academic_year_id');
+        $search = $request->string('search')->trim();
         $perPage = $request->integer('per_page', 15);
 
         $students = User::query()
             ->where('user_type', UserTypeEnum::STUDENT)
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
             ->whereDoesntHave('classrooms', function ($query) use ($academicYearId) {
                 $query->where('classroom_users.academic_year_id', $academicYearId);
             })
