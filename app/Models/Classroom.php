@@ -70,8 +70,7 @@ class Classroom extends Model
             $syncData[$id] = ['academic_year_id' => $academicYearId];
         }
 
-        $this->students()->wherePivot('academic_year_id', $academicYearId)->detach();
-        $this->students()->attach($syncData);
+        $this->students()->sync($syncData);
     }
 
     public function getActivitylogOptions(): LogOptions

@@ -253,7 +253,7 @@ final class ClassroomController extends ApiController
      */
     public function syncStudents(SyncStudentsRequest $request, Classroom $classroom): JsonResponse
     {
-        $classroom->syncStudents($request->student_ids, $request->academic_year_id);
+        $classroom->syncStudents($request->student_ids ?? [], $request->academic_year_id);
 
         return $this->success(
             message: 'Students synchronized successfully'

@@ -24,7 +24,7 @@ class SyncStudentsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'student_ids' => ['required', 'array'],
+            'student_ids' => ['nullable', 'array'],
             'student_ids.*' => [
                 'required',
                 'ulid',
