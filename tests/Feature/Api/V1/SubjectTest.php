@@ -143,4 +143,75 @@ describe('Subject Management', function () {
         $this->assertDatabaseHas('subjects', ['id' => $subjects[0]->id, 'name' => 'Bulk Update 1']);
         $this->assertDatabaseHas('subjects', ['id' => $subjects[1]->id, 'name' => 'Bulk Update 2']);
     });
+
+    it('can search subjects by name', function () {
+        Subject::factory()->create(['name' => 'Mathematics']);
+        Subject::factory()->create(['name' => 'Physics']);
+        Subject::factory()->create(['name' => 'Chemistry']);
+
+        $response = $this->getJson('/api/v1/subjects?search=Physics');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.name', 'Physics');
+    });
+
+    it('can search subjects by code', function () {
+        Subject::factory()->create(['code' => 'MATH101']);
+        Subject::factory()->create(['code' => 'PHYS201']);
+        Subject::factory()->create(['code' => 'CHEM301']);
+
+        $response = $this->getJson('/api/v1/subjects?search=PHYS');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.code', 'PHYS201');
+    });
+
+    it('can search subjects by description', function () {
+        Subject::factory()->create(['description' => 'Introduction to Algebra']);
+        Subject::factory()->create(['description' => 'Advanced Calculus']);
+        Subject::factory()->create(['description' => 'Basic Geometry']);
+
+        $response = $this->getJson('/api/v1/subjects?search=Calculus');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.description', 'Advanced Calculus');
+    });
+
+    it('can sort subjects by name ascending', function () {
+        Subject::factory()->create(['name' => 'Zoology']);
+        Subject::factory()->create(['name' => 'Anatomy']);
+        Subject::factory()->create(['name' => 'Microbiology']);
+
+        $response = $this->getJson('/api/v1/subjects?sort_by=name&order=asc');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.data.0.name', 'Anatomy')
+            ->assertJsonPath('data.data.1.name', 'Microbiology')
+            ->assertJsonPath('data.data.2.name', 'Zoology');
+    });
+
+    it('can sort subjects by name descending', function () {
+        Subject::factory()->create(['name' => 'Zoology']);
+        Subject::factory()->create(['name' => 'Anatomy']);
+        Subject::factory()->create(['name' => 'Microbiology']);
+
+        $response = $this->getJson('/api/v1/subjects?sort_by=name&order=desc');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.data.0.name', 'Zoology')
+            ->assertJsonPath('data.data.1.name', 'Microbiology')
+            ->assertJsonPath('data.data.2.name', 'Anatomy');
+    });
+
+    it('can paginate subjects with custom per_page', function () {
+        Subject::factory()->count(15)->create();
+
+        $response = $this->getJson('/api/v1/subjects?per_page=5');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(5, 'data.data');
+    });
 });

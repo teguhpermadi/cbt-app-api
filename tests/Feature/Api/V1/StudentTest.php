@@ -147,4 +147,75 @@ describe('Student Management', function () {
         $this->assertDatabaseHas('users', ['id' => $students[0]->id, 'name' => 'Bulk Update 1']);
         $this->assertDatabaseHas('users', ['id' => $students[1]->id, 'name' => 'Bulk Update 2']);
     });
+
+    it('can search students by name', function () {
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Alice Johnson']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Bob Anderson']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Charlie Brown']);
+
+        $response = $this->getJson('/api/v1/students?search=Bob');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.name', 'Bob Anderson');
+    });
+
+    it('can search students by email', function () {
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'email' => 'alice@school.com']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'email' => 'bob@university.com']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'email' => 'charlie@school.com']);
+
+        $response = $this->getJson('/api/v1/students?search=university');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.email', 'bob@university.com');
+    });
+
+    it('can search students by username', function () {
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'username' => 'alice123']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'username' => 'bob456']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'username' => 'charlie789']);
+
+        $response = $this->getJson('/api/v1/students?search=bob');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.username', 'bob456');
+    });
+
+    it('can sort students by name ascending', function () {
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Zara']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Adam']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Michael']);
+
+        $response = $this->getJson('/api/v1/students?sort_by=name&order=asc');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.data.0.name', 'Adam')
+            ->assertJsonPath('data.data.1.name', 'Michael')
+            ->assertJsonPath('data.data.2.name', 'Zara');
+    });
+
+    it('can sort students by name descending', function () {
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Zara']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Adam']);
+        User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Michael']);
+
+        $response = $this->getJson('/api/v1/students?sort_by=name&order=desc');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.data.0.name', 'Zara')
+            ->assertJsonPath('data.data.1.name', 'Michael')
+            ->assertJsonPath('data.data.2.name', 'Adam');
+    });
+
+    it('can paginate students with custom per_page', function () {
+        User::factory()->count(25)->create(['user_type' => UserTypeEnum::STUDENT]);
+
+        $response = $this->getJson('/api/v1/students?per_page=10');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(10, 'data.data');
+    });
 });

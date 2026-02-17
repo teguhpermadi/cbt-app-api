@@ -22,16 +22,26 @@ use Maatwebsite\Excel\Facades\Excel;
 final class TeacherController extends ApiController
 {
     /**
-     * Display a listing of teachers with pagination.
+     * Display a listing of teachers with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $teachers = User::query()
             ->with('subjects')
             ->where('user_type', UserTypeEnum::TEACHER)
-            ->latest()
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
         return $this->success(
@@ -236,36 +246,6 @@ final class TeacherController extends ApiController
         });
 
         return $this->success(message: 'Teachers updated successfully');
-    }
-
-    /**
-     * Search teachers by name, username, or email.
-     */
-    public function search(Request $request): JsonResponse
-    {
-        $request->validate([
-            'query' => ['required', 'string', 'min:1'],
-            'per_page' => ['integer', 'min:1', 'max:100'],
-        ]);
-
-        $query = $request->string('query');
-        $perPage = $request->integer('per_page', 15);
-
-        $teachers = User::query()
-            ->with('subjects')
-            ->where('user_type', UserTypeEnum::TEACHER)
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('username', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%");
-            })
-            ->latest()
-            ->paginate($perPage);
-
-        return $this->success(
-            TeacherResource::collection($teachers)->response()->getData(true),
-            'Teachers search results retrieved successfully'
-        );
     }
 
     /**

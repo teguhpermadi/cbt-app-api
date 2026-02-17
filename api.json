@@ -347,7 +347,7 @@
         "/v1/academic-years": {
             "get": {
                 "operationId": "v1.academic-years.index",
-                "summary": "Display a listing of academic years with pagination",
+                "summary": "Display a listing of academic years with pagination, search, and sorting",
                 "tags": [
                     "AcademicYear"
                 ],
@@ -358,6 +358,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -2089,7 +2105,7 @@
         "/v1/classrooms": {
             "get": {
                 "operationId": "v1.classrooms.index",
-                "summary": "Display a listing of classrooms with pagination",
+                "summary": "Display a listing of classrooms with pagination, search, and sorting",
                 "tags": [
                     "Classroom"
                 ],
@@ -2100,6 +2116,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -3920,7 +3952,7 @@
         "/v1/exams": {
             "get": {
                 "operationId": "v1.exams.index",
-                "summary": "Display a listing of exams with pagination",
+                "summary": "Display a listing of exams with pagination, search, and sorting",
                 "tags": [
                     "Exam"
                 ],
@@ -3931,6 +3963,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -4643,7 +4691,7 @@
         "/v1/exam-questions": {
             "get": {
                 "operationId": "v1.exam-questions.index",
-                "summary": "Display a listing of exam questions with pagination",
+                "summary": "Display a listing of exam questions with pagination, search, and sorting",
                 "tags": [
                     "ExamQuestion"
                 ],
@@ -4654,6 +4702,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -5499,7 +5563,7 @@
         "/v1/options": {
             "get": {
                 "operationId": "v1.options.index",
-                "summary": "Display a listing of options",
+                "summary": "Display a listing of options with pagination, search, and sorting",
                 "tags": [
                     "Option"
                 ],
@@ -5510,6 +5574,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     },
                     {
@@ -6456,7 +6536,7 @@
         "/v1/questions": {
             "get": {
                 "operationId": "v1.questions.index",
-                "summary": "Display a listing of questions with pagination",
+                "summary": "Display a listing of questions with pagination, search, and sorting",
                 "tags": [
                     "Question"
                 ],
@@ -6467,6 +6547,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -7227,7 +7323,7 @@
         "/v1/question-banks": {
             "get": {
                 "operationId": "v1.question-banks.index",
-                "summary": "Display a listing of question banks",
+                "summary": "Display a listing of question banks with pagination, search, and sorting",
                 "tags": [
                     "QuestionBank"
                 ],
@@ -7238,6 +7334,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -7863,7 +7975,7 @@
         "/v1/question-suggestions": {
             "get": {
                 "operationId": "v1.question-suggestions.index",
-                "summary": "Display a listing of the resource",
+                "summary": "Display a listing of the resource with pagination, search, and sorting",
                 "tags": [
                     "QuestionSuggestion"
                 ],
@@ -7888,6 +8000,22 @@
                         "in": "query",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -8800,7 +8928,7 @@
         "/v1/reading-materials": {
             "get": {
                 "operationId": "v1.reading-materials.index",
-                "summary": "Display a listing of reading materials",
+                "summary": "Display a listing of reading materials with pagination, search, and sorting",
                 "tags": [
                     "ReadingMaterial"
                 ],
@@ -8811,6 +8939,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -9151,72 +9295,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/v1/students/search": {
-            "get": {
-                "operationId": "v1.students.search",
-                "summary": "Search students by name, username, or email",
-                "tags": [
-                    "Student"
-                ],
-                "parameters": [
-                    {
-                        "name": "query",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Students search results retrieved successfully"
-                                            ]
-                                        },
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -9722,7 +9800,7 @@
         "/v1/students": {
             "get": {
                 "operationId": "v1.students.index",
-                "summary": "Display a listing of students with pagination",
+                "summary": "Display a listing of students with pagination, search, and sorting",
                 "tags": [
                     "Student"
                 ],
@@ -9733,6 +9811,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -10073,72 +10167,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/v1/subjects/search": {
-            "get": {
-                "operationId": "v1.subjects.search",
-                "summary": "Search subjects by name, code, description, or class_name",
-                "tags": [
-                    "Subject"
-                ],
-                "parameters": [
-                    {
-                        "name": "query",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Subjects search results retrieved successfully"
-                                            ]
-                                        },
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -10538,7 +10566,7 @@
         "/v1/subjects": {
             "get": {
                 "operationId": "v1.subjects.index",
-                "summary": "Display a listing of subjects with pagination",
+                "summary": "Display a listing of subjects with pagination, search, and sorting",
                 "tags": [
                     "Subject"
                 ],
@@ -10549,6 +10577,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],
@@ -10889,72 +10933,6 @@
                                 }
                             }
                         }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/v1/teachers/search": {
-            "get": {
-                "operationId": "v1.teachers.search",
-                "summary": "Search teachers by name, username, or email",
-                "tags": [
-                    "Teacher"
-                ],
-                "parameters": [
-                    {
-                        "name": "query",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    },
-                    {
-                        "name": "per_page",
-                        "in": "query",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 100
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Teachers search results retrieved successfully"
-                                            ]
-                                        },
-                                        "data": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -11396,7 +11374,7 @@
         "/v1/teachers": {
             "get": {
                 "operationId": "v1.teachers.index",
-                "summary": "Display a listing of teachers with pagination",
+                "summary": "Display a listing of teachers with pagination, search, and sorting",
                 "tags": [
                     "Teacher"
                 ],
@@ -11407,6 +11385,22 @@
                         "schema": {
                             "type": "integer",
                             "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
                         }
                     }
                 ],

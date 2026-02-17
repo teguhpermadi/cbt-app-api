@@ -17,15 +17,26 @@ use Illuminate\Support\Facades\DB;
 final class SubjectController extends ApiController
 {
     /**
-     * Display a listing of subjects with pagination.
+     * Display a listing of subjects with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $subjects = Subject::query()
             ->with(['user', 'academicYear', 'classroom'])
-            ->latest()
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('class_name', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
         return $this->success(
@@ -205,35 +216,6 @@ final class SubjectController extends ApiController
         });
 
         return $this->success(message: 'Subjects updated successfully');
-    }
-    /**
-     * Search subjects by name, code, description, or class_name.
-     */
-    public function search(Request $request): JsonResponse
-    {
-        $request->validate([
-            'query' => ['required', 'string', 'min:1'],
-            'per_page' => ['integer', 'min:1', 'max:100'],
-        ]);
-
-        $query = $request->string('query');
-        $perPage = $request->integer('per_page', 15);
-
-        $subjects = Subject::query()
-            ->with(['user', 'academicYear', 'classroom'])
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('code', 'like', "%{$query}%")
-                    ->orWhere('description', 'like', "%{$query}%")
-                    ->orWhere('class_name', 'like', "%{$query}%");
-            })
-            ->latest()
-            ->paginate($perPage);
-
-        return $this->success(
-            SubjectResource::collection($subjects)->response()->getData(true),
-            'Subjects search results retrieved successfully'
-        );
     }
 
     /**

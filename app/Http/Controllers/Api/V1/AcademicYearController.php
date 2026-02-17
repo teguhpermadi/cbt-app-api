@@ -16,15 +16,25 @@ use Illuminate\Support\Facades\DB;
 final class AcademicYearController extends ApiController
 {
     /**
-     * Display a listing of academic years with pagination.
+     * Display a listing of academic years with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $academicYears = AcademicYear::query()
             ->with(['user'])
-            ->latest()
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('year', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
         return $this->success(

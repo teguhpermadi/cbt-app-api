@@ -17,16 +17,25 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 final class ReadingMaterialController extends ApiController
 {
     /**
-     * Display a listing of reading materials.
+     * Display a listing of reading materials with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $materials = ReadingMaterial::query()
             ->with(['user'])
             ->withCount('questions')
-            ->latest()
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('content', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
         return $this->success(

@@ -16,13 +16,16 @@ use Illuminate\Support\Facades\Auth;
 class QuestionSuggestionController extends ApiController
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
         $state = $request->input('state');
         $questionId = $request->input('question_id');
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $query = QuestionSuggestion::query()
             ->with(['user', 'question']);
@@ -35,7 +38,14 @@ class QuestionSuggestionController extends ApiController
             $query->where('question_id', $questionId);
         }
 
-        $suggestions = $query->latest()->paginate($perPage);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('suggestion_text', 'like', "%{$search}%")
+                    ->orWhere('new_text', 'like', "%{$search}%");
+            });
+        }
+
+        $suggestions = $query->orderBy($sortBy, $order)->paginate($perPage);
 
         return $this->success(
             QuestionSuggestionResource::collection($suggestions)->response()->getData(true),

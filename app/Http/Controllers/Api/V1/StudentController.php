@@ -22,16 +22,26 @@ use Maatwebsite\Excel\Facades\Excel;
 final class StudentController extends ApiController
 {
     /**
-     * Display a listing of students with pagination.
+     * Display a listing of students with pagination, search, and sorting.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
         $students = User::query()
             ->with('classrooms')
             ->where('user_type', UserTypeEnum::STUDENT)
-            ->latest()
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
         return $this->success(
@@ -261,36 +271,6 @@ final class StudentController extends ApiController
         return $this->success(
             StudentResource::collection($students)->response()->getData(true),
             'Available students retrieved successfully'
-        );
-    }
-
-    /**
-     * Search students by name, username, or email.
-     */
-    public function search(Request $request): JsonResponse
-    {
-        $request->validate([
-            'query' => ['required', 'string', 'min:1'],
-            'per_page' => ['integer', 'min:1', 'max:100'],
-        ]);
-
-        $query = $request->string('query');
-        $perPage = $request->integer('per_page', 15);
-
-        $students = User::query()
-            ->with('classrooms')
-            ->where('user_type', UserTypeEnum::STUDENT)
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('username', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%");
-            })
-            ->latest()
-            ->paginate($perPage);
-
-        return $this->success(
-            StudentResource::collection($students)->response()->getData(true),
-            'Students search results retrieved successfully'
         );
     }
 

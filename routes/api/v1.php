@@ -40,7 +40,6 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Teachers
     Route::prefix('teachers')->group(function () {
-        Route::get('search', [TeacherController::class, 'search'])->name('api.v1.teachers.search');
         Route::post('import', [TeacherController::class, 'import'])->name('api.v1.teachers.import');
         Route::get('export/template', [TeacherController::class, 'template'])->name('api.v1.teachers.template');
         Route::get('trashed', [TeacherController::class, 'trashed'])->name('api.v1.teachers.trashed');
@@ -53,7 +52,6 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Students
     Route::prefix('students')->group(function () {
-        Route::get('search', [StudentController::class, 'search'])->name('api.v1.students.search');
         Route::post('import', [StudentController::class, 'import'])->name('api.v1.students.import');
         Route::get('export/template', [StudentController::class, 'template'])->name('api.v1.students.template');
         Route::get('available', [StudentController::class, 'available'])->name('api.v1.students.available');
@@ -83,7 +81,6 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Subjects
     Route::prefix('subjects')->group(function () {
-        Route::get('search', [SubjectController::class, 'search'])->name('api.v1.subjects.search');
         Route::get('mine', [SubjectController::class, 'mine'])->name('api.v1.subjects.mine');
         Route::get('trashed', [SubjectController::class, 'trashed'])->name('api.v1.subjects.trashed');
         Route::post('{subject}/restore', [SubjectController::class, 'restore'])->name('api.v1.subjects.restore');
