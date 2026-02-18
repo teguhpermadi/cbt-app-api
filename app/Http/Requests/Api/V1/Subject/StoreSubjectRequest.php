@@ -23,7 +23,7 @@ class StoreSubjectRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:50', 'unique:subjects,code'],
+            'code' => ['nullable', 'string', 'max:50', 'unique:subjects,code'],
             'description' => ['nullable', 'string'],
             'image_url' => ['nullable', 'string', 'url'],
             'logo_url' => ['nullable', 'string', 'url'],

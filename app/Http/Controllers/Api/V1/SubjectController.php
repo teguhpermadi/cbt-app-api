@@ -17,17 +17,19 @@ use Illuminate\Support\Facades\DB;
 final class SubjectController extends ApiController
 {
     /**
-     * Display a listing of subjects with pagination, search, and sorting.
+     * Display a listing of subjects with pagination, search, sorting, and filter by Academic Year.
      */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
         $search = $request->string('search')->trim();
         $sortBy = $request->string('sort_by', 'created_at');
+        $academicYearId = $request->input('academic_year_id');
         $order = $request->string('order', 'desc');
 
         $subjects = Subject::query()
             ->with(['user', 'academicYear', 'classroom'])
+            ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -50,7 +52,18 @@ final class SubjectController extends ApiController
      */
     public function store(StoreSubjectRequest $request): JsonResponse
     {
-        $subject = Subject::query()->create($request->validated());
+        $data = $request->validated();
+
+        // Generate auto 6-digit code if not present
+        if (empty($data['code'])) {
+            do {
+                $code = str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+            } while (Subject::where('code', $code)->exists());
+
+            $data['code'] = $code;
+        }
+
+        $subject = Subject::query()->create($data);
 
         return $this->created(
             new SubjectResource($subject->load(['user', 'academicYear', 'classroom'])),
