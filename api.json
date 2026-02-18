@@ -2105,7 +2105,7 @@
         "/v1/classrooms": {
             "get": {
                 "operationId": "v1.classrooms.index",
-                "summary": "Display a listing of classrooms with pagination, search, and sorting",
+                "summary": "Display a listing of classrooms with pagination, search, sorting and filter by academic year",
                 "tags": [
                     "Classroom"
                 ],
@@ -2132,6 +2132,13 @@
                         "schema": {
                             "type": "string",
                             "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -10566,7 +10573,7 @@
         "/v1/subjects": {
             "get": {
                 "operationId": "v1.subjects.index",
-                "summary": "Display a listing of subjects with pagination, search, and sorting",
+                "summary": "Display a listing of subjects with pagination, search, sorting, and filter by Academic Year",
                 "tags": [
                     "Subject"
                 ],
@@ -10585,6 +10592,13 @@
                         "schema": {
                             "type": "string",
                             "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     {
@@ -14209,7 +14223,10 @@
                         "maxLength": 255
                     },
                     "code": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 50
                     },
                     "description": {
@@ -14258,7 +14275,6 @@
                 },
                 "required": [
                     "name",
-                    "code",
                     "user_id",
                     "academic_year_id",
                     "classroom_id"
@@ -14377,6 +14393,15 @@
                             "null"
                         ]
                     },
+                    "user_id": {
+                        "type": "string"
+                    },
+                    "academic_year_id": {
+                        "type": "string"
+                    },
+                    "classroom_id": {
+                        "type": "string"
+                    },
                     "user": {
                         "$ref": "#/components/schemas/UserResource"
                     },
@@ -14402,6 +14427,9 @@
                     "logo_url",
                     "color",
                     "class_name",
+                    "user_id",
+                    "academic_year_id",
+                    "classroom_id",
                     "created_at",
                     "updated_at"
                 ],
@@ -14414,15 +14442,17 @@
                         "type": "integer"
                     },
                     "student_ids": {
-                        "type": "array",
+                        "type": [
+                            "array",
+                            "null"
+                        ],
                         "items": {
                             "type": "integer"
                         }
                     }
                 },
                 "required": [
-                    "academic_year_id",
-                    "student_ids"
+                    "academic_year_id"
                 ],
                 "title": "SyncStudentsRequest"
             },
