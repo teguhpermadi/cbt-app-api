@@ -13774,7 +13774,10 @@
                         "maxLength": 255
                     },
                     "code": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 50
                     },
                     "level": {
@@ -13793,7 +13796,6 @@
                 },
                 "required": [
                     "name",
-                    "code",
                     "level",
                     "academic_year_id"
                 ],
