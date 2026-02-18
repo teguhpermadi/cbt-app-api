@@ -52,7 +52,18 @@ final class ClassroomController extends ApiController
      */
     public function store(StoreClassroomRequest $request): JsonResponse
     {
-        $classroom = Classroom::query()->create($request->validated());
+        $data = $request->validated();
+
+        // Generate auto 6-digit code if not present
+        if (empty($data['code'])) {
+            do {
+                $code = str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+            } while (Classroom::where('code', $code)->exists());
+
+            $data['code'] = $code;
+        }
+
+        $classroom = Classroom::query()->create($data);
 
         return $this->created(
             new ClassroomResource($classroom->load(['user', 'academicYear'])),

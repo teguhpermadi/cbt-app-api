@@ -23,7 +23,7 @@ class StoreClassroomRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:50', 'unique:classrooms,code'],
+            'code' => ['nullable', 'string', 'max:50', 'unique:classrooms,code'],
             'level' => ['required', 'string', 'max:50'],
             'user_id' => ['nullable', 'ulid', 'exists:users,id'],
             'academic_year_id' => ['required', 'ulid', 'exists:academic_years,id'],
