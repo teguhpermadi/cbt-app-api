@@ -22,6 +22,7 @@ class StoreQuestionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'question_bank_id' => ['nullable', 'string', 'exists:question_banks,id'],
             'reading_material_id' => ['nullable', 'string', 'exists:reading_materials,id'],
             'type' => ['required', 'string', \Illuminate\Validation\Rule::enum(\App\Enums\QuestionTypeEnum::class)],
             'difficulty' => ['required', 'string', \Illuminate\Validation\Rule::enum(\App\Enums\QuestionDifficultyLevelEnum::class)],

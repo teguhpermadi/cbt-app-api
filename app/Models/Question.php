@@ -9,6 +9,7 @@ use App\Enums\QuestionTypeEnum;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
@@ -68,7 +69,7 @@ class Question extends Model implements HasMedia
         return $this->belongsTo(ReadingMaterial::class);
     }
 
-    public function questionBanks(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function questionBanks(): BelongsToMany
     {
         return $this->belongsToMany(QuestionBank::class, 'list_question_of_question_bank', 'question_id', 'question_bank_id');
     }

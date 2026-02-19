@@ -56,7 +56,9 @@ final class QuestionController extends ApiController
     {
         $data = $request->validated();
         $tags = $data['tags'] ?? [];
+        $questionBankId = $data['question_bank_id'] ?? null;
         unset($data['tags']);
+        unset($data['question_bank_id']);
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
 
@@ -64,6 +66,10 @@ final class QuestionController extends ApiController
 
         if (!empty($tags)) {
             $question->attachTags($tags);
+        }
+
+        if ($questionBankId) {
+            $question->questionBanks()->attach($questionBankId);
         }
 
         return $this->created(
