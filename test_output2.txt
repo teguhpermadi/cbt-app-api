@@ -1,0 +1,54 @@
+﻿
+   FAIL  Tests\Feature\Api\V1\QuestionTest
+  Γ£ô Question ManageΓÇª 1.65s  
+  Γ£ô Question ManageΓÇª 0.16s  
+  Γ£ô Question ManageΓÇª 0.20s  
+  Γ£ô Question ManageΓÇª 0.61s  
+  Γ£ô Question ManageΓÇª 0.15s  
+  Γ£ô Question ManageΓÇª 0.25s  
+  Γ£ô Question ManageΓÇª 0.13s  
+  Γ£ô Question ManageΓÇª 0.16s  
+  Γ£ô Question ManageΓÇª 0.19s  
+  Γ£ô Question ManageΓÇª 0.19s  
+  Γ£ô Question ManageΓÇª 0.05s  
+  Γ¿» Question ManageΓÇª 0.17s  
+  Γ£ô Question MediaΓÇª  0.10s  
+  Γ£ô Question MediaΓÇª  0.08s  
+  Γ£ô Question MediaΓÇª  0.24s  
+  ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ  
+   FAILED  Tests\FeatureΓÇª   
+  Failed asserting that a row in the table [options] does not match the attributes {
+    "question_id": "01khtcp41swj6esp108ggrgdpk",
+    "content": "Old A"
+}.
+
+Found similar results: [
+    {
+        "question_id": "01khtcp41swj6esp108ggrgdpk",
+        "content": "Quos id adipisci."
+    },
+    {
+        "question_id": "01khtcp41swj6esp108ggrgdpk",
+        "content": "Assumenda ex quia fugit."
+    },
+    {
+        "question_id": "01khtcp41swj6esp108ggrgdpk",
+        "content": "Corporis earum animi delectus numquam."
+    }
+] and 6 others.
+
+  at tests\Feature\Api\V1\QuestionTest.php:212
+    208Γûò         $response->assertStatus(200);
+    209Γûò 
+    210Γûò         $this->assertCount(3, $question->fresh()->options);
+    211Γûò         $this->assertDatabaseHas('options', ['question_id' => $question->id, 'content' => 'New A']);
+  Γ₧£ 212Γûò         $this->assertDatabaseMissing('options', ['question_id' => $question->id, 'content' => 'Old A']);
+    213Γûò     });
+    214Γûò });
+    215Γûò 
+    216Γûò describe('Question Media Management', function () {
+
+
+  Tests:    1 failed, 14 passed (44 assertions)
+  Duration: 4.76s
+

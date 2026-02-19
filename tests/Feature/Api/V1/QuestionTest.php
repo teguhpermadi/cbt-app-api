@@ -162,6 +162,58 @@ describe('Question Management', function () {
         $this->assertDatabaseHas('questions', ['id' => $questions[0]->id, 'order' => 10]);
         $this->assertDatabaseHas('questions', ['id' => $questions[1]->id, 'order' => 20]);
     });
+
+    it('can create a question with options', function () {
+        $data = [
+            'type' => QuestionTypeEnum::MULTIPLE_CHOICE->value,
+            'difficulty' => QuestionDifficultyLevelEnum::Medium->value,
+            'timer' => QuestionTimeEnum::TEN_SECONDS->value,
+            'content' => 'Question with options?',
+            'score' => QuestionScoreEnum::FIVE->value,
+            'options' => [
+                ['option_key' => 'A', 'content' => 'Option A', 'is_correct' => true],
+                ['option_key' => 'B', 'content' => 'Option B', 'is_correct' => false],
+            ],
+        ];
+
+        $response = $this->postJson('/api/v1/questions', $data);
+
+        $response->assertStatus(201);
+
+        $question = Question::where('content', 'Question with options?')->first();
+        $this->assertNotNull($question);
+        $this->assertCount(2, $question->options);
+        $this->assertDatabaseHas('options', ['question_id' => $question->id, 'option_key' => 'A', 'is_correct' => true]);
+    });
+
+    it('can update a question with options', function () {
+        $question = Question::factory()->withoutOptions()->create(['type' => QuestionTypeEnum::MULTIPLE_CHOICE->value]);
+
+        // Create initial options
+        \App\Models\Option::createMultipleChoiceOptions($question->id, [
+            ['key' => 'A', 'content' => 'Old A', 'is_correct' => true],
+            ['key' => 'B', 'content' => 'Old B', 'is_correct' => false],
+        ]);
+
+        $data = [
+            'content' => 'Updated Content',
+            'options' => [
+                ['option_key' => 'A', 'content' => 'New A', 'is_correct' => false],
+                ['option_key' => 'B', 'content' => 'New B', 'is_correct' => true],
+                ['option_key' => 'C', 'content' => 'New C', 'is_correct' => false],
+            ],
+        ];
+
+        $response = $this->putJson("/api/v1/questions/{$question->id}", $data);
+
+        $response->assertStatus(200);
+
+        $this->assertCount(3, $question->fresh()->options);
+        $this->assertDatabaseHas('options', ['question_id' => $question->id, 'content' => 'New A']);
+
+        // Check that Old A is soft deleted
+        $this->assertSoftDeleted('options', ['question_id' => $question->id, 'content' => 'Old A']);
+    });
 });
 
 describe('Question Media Management', function () {

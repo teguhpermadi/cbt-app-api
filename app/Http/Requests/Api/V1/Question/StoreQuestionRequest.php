@@ -34,6 +34,25 @@ class StoreQuestionRequest extends FormRequest
             'is_approved' => ['nullable', 'boolean'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string'],
+
+            // Options Validation
+            'options' => ['nullable', 'array'],
+            'options.*.option_key' => ['required_with:options', 'string'],
+            'options.*.content' => ['required_with:options', 'string'],
+            'options.*.is_correct' => ['boolean'],
+
+            // Matching Pairs
+            'matching_pairs' => ['nullable', 'array'],
+            'matching_pairs.*.left' => ['required_with:matching_pairs', 'string'],
+            'matching_pairs.*.right' => ['required_with:matching_pairs', 'string'],
+
+            // Sequence Items
+            'sequence_items' => ['nullable', 'array'],
+            'sequence_items.*.content' => ['required_with:sequence_items', 'string'],
+            'sequence_items.*.order' => ['required_with:sequence_items', 'integer'],
+
+            // Essay
+            'keywords' => ['nullable', 'string'],
         ];
     }
 }

@@ -130,7 +130,7 @@ class Option extends Model implements HasMedia
             return $media->getUrl();
         }
 
-            return null;
+        return null;
     }
 
     // --- SPATIE MEDIA LIBRARY ---
@@ -161,7 +161,7 @@ class Option extends Model implements HasMedia
         foreach ($options as $index => $option) {
             $createdOptions->push(self::create([
                 'question_id' => $questionId,
-                'option_key' => $option['key'] ?? chr(65 + $index), // A, B, C, D...
+                'option_key' => $option['option_key'] ?? $option['key'] ?? chr(65 + $index), // A, B, C, D...
                 'content' => $option['content'] ?? '',
                 'order' => $option['order'] ?? $index,
                 'is_correct' => $option['is_correct'] ?? false,
@@ -307,6 +307,30 @@ class Option extends Model implements HasMedia
             ],
         ]);
     }
+    /**
+     * Create options untuk Short Answer
+     * 
+     * @param string $questionId
+     * @param array $answers Format: [['content' => '...'], ...] atau ['jawaban1', 'jawaban2', ...]
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public static function createShortAnswerOptions(string $questionId, array $answers)
+    {
+        $createdOptions = collect();
+
+        foreach ($answers as $index => $answer) {
+            $createdOptions->push(self::create([
+                'question_id' => $questionId,
+                'option_key'  => 'SA' . ($index + 1),
+                'content'     => is_array($answer) ? ($answer['content'] ?? '') : $answer,
+                'order'       => $index,
+                'is_correct'  => true,
+            ]));
+        }
+
+        return $createdOptions;
+    }
+
     /**
      * Create option untuk Essay (Rubrik)
      *

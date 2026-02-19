@@ -57,8 +57,20 @@ final class QuestionController extends ApiController
         $data = $request->validated();
         $tags = $data['tags'] ?? [];
         $questionBankId = $data['question_bank_id'] ?? null;
+
+        // Extract option-related data
+        $optionsData = $data['options'] ?? [];
+        $matchingPairs = $data['matching_pairs'] ?? [];
+        $sequenceItems = $data['sequence_items'] ?? [];
+        $keywords = $data['keywords'] ?? '';
+
+        // Clean up data for Question model
         unset($data['tags']);
         unset($data['question_bank_id']);
+        unset($data['options']);
+        unset($data['matching_pairs']);
+        unset($data['sequence_items']);
+        unset($data['keywords']);
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
 
@@ -74,18 +86,24 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = Question::create($data);
+        $question = DB::transaction(function () use ($data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+            $question = Question::create($data);
 
-        if (!empty($tags)) {
-            $question->attachTags($tags);
-        }
+            if (!empty($tags)) {
+                $question->attachTags($tags);
+            }
 
-        if ($questionBankId) {
-            $question->questionBanks()->attach($questionBankId);
-        }
+            if ($questionBankId) {
+                $question->questionBanks()->attach($questionBankId);
+            }
+
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
+
+            return $question;
+        });
 
         return $this->created(
-            new QuestionResource($question->load(['user', 'readingMaterial', 'tags'])),
+            new QuestionResource($question->load(['user', 'readingMaterial', 'tags', 'options'])),
             'Question created successfully'
         );
     }
@@ -122,18 +140,120 @@ final class QuestionController extends ApiController
 
         $data = $request->validated();
         $tags = $data['tags'] ?? null;
+
+        // Extract option-related data
+        $optionsData = $data['options'] ?? [];
+        $matchingPairs = $data['matching_pairs'] ?? [];
+        $sequenceItems = $data['sequence_items'] ?? [];
+        $keywords = $data['keywords'] ?? '';
+
         unset($data['tags']);
+        unset($data['options']);
+        unset($data['matching_pairs']);
+        unset($data['sequence_items']);
+        unset($data['keywords']);
 
-        $question->update($data);
+        $question = DB::transaction(function () use ($question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+            $question->update($data);
 
-        if ($tags !== null) {
-            $question->syncTags($tags);
-        }
+            if ($tags !== null) {
+                $question->syncTags($tags);
+            }
+
+            // Re-create options
+            // Hard delete old options or soft delete? 
+            // Since we are replacing structure, might be cleaner to soft-delete all and create new.
+            // But if we want to keep IDs for some reason? 
+            // In the plan, we decided to delete and recreate.
+            $question->options()->delete(); // Soft delete
+
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
+
+            return $question;
+        });
 
         return $this->success(
-            new QuestionResource($question->load(['user', 'readingMaterial', 'tags'])),
+            new QuestionResource($question->load(['user', 'readingMaterial', 'tags', 'options'])),
             'Question updated successfully'
         );
+    }
+
+    /**
+     * Helper to save options based on question type
+     */
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords): void
+    {
+        switch ($question->type) {
+            case \App\Enums\QuestionTypeEnum::MULTIPLE_CHOICE:
+            case \App\Enums\QuestionTypeEnum::MULTIPLE_SELECTION:
+                \App\Models\Option::createMultipleChoiceOptions($question->id, $optionsData);
+                break;
+
+            case \App\Enums\QuestionTypeEnum::TRUE_FALSE:
+                // For True/False, we receive options with is_correct flag.
+                // Helper createTrueFalseOptions expects a boolean for correct answer.
+                // We check which option is marked correct.
+                $correctOption = collect($optionsData)->firstWhere('is_correct', true);
+                if ($correctOption) {
+                    // Assuming content is "True" or "False", or just checking logical true
+                    // The helper takes `bool $correctAnswer`. 
+                    // If the user selected "True" as correct, we pass true.
+                    // If "False" is correct, we pass false.
+                    // We need to know which one is the "True" option.
+                    // Standard: A=True, B=False usually.
+                    // Or we just check: if content=True/Benar and is_correct=true -> true.
+
+                    // Actually, the helper creates generic True/False options. 
+                    // Let's look at `createTrueFalseOptions` implementation again.
+                    // It creates 2 options: T (Correct if $correct=true) and F (Correct if $correct=false).
+                    // So we just need to pass true/false.
+
+                    $isTrueCorrect = false;
+                    if (strtolower($correctOption['content']) === 'true' || strtolower($correctOption['content']) === 'benar') {
+                        $isTrueCorrect = true;
+                    }
+                    // What if the user changed the text? 
+                    // Maybe better to rely on Key if standard?
+                    // Let's rely on the fact that if the FIRST option (usually T) is correct, then true.
+                    // Or simply: check if the option with content 'True'/'Benar' is correct.
+
+                    // Allow simple override: if $optionsData has content, maybe we should use `createMultipleChoiceOptions` instead?
+                    // If we use T/F helper, it hardcodes content to 'Benar'/'Salah'. 
+                    // If frontend sends 'True'/'False', we might want that.
+
+                    // Let's stick to using the helper for consistency if that's what it entails.
+                    // But if frontend sends customized text, better use general create.
+                    // Given `CreateQuestionPage` sets T=True, F=False.
+
+                    // Let's use generic creation to support custom text if needed, 
+                    // but `createTrueFalseOptions` is handy. 
+                    // Let's use `createMultipleChoiceOptions` because it is flexible enough for T/F too if we pass them as standard options!
+                    // T/F is just a 2-option MC.
+                    \App\Models\Option::createMultipleChoiceOptions($question->id, $optionsData);
+                }
+                break;
+
+            case \App\Enums\QuestionTypeEnum::MATCHING:
+                \App\Models\Option::createMatchingOptions($question->id, $matchingPairs);
+                break;
+
+            case \App\Enums\QuestionTypeEnum::SEQUENCE:
+                // Extract content list for helper
+                $items = collect($sequenceItems)->pluck('content')->toArray();
+                \App\Models\Option::createOrderingOptions($question->id, $items);
+                break;
+
+            case \App\Enums\QuestionTypeEnum::SHORT_ANSWER:
+                \App\Models\Option::createShortAnswerOptions($question->id, $optionsData);
+                break;
+
+            case \App\Enums\QuestionTypeEnum::ESSAY:
+                // Essay might accept a rubric or keywords
+                \App\Models\Option::createEssayOption($question->id, $keywords);
+                break;
+
+                // Add other types if needed (Math, Strings, etc.)
+        }
     }
 
     /**

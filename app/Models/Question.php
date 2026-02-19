@@ -172,6 +172,11 @@ class Question extends Model implements HasMedia
                 'unit' => $this->options->first()?->getMetadata('unit'),
             ],
 
+            QuestionTypeEnum::SHORT_ANSWER => [
+                'answers' => $this->options->where('is_correct', true)
+                    ->pluck('content')->values()->toArray()
+            ],
+
             QuestionTypeEnum::ESSAY => [
                 // Essay mungkin punya rubrik di metadata opsi atau null
                 'rubric' => $this->options->first()?->metadata
