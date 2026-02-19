@@ -62,6 +62,18 @@ final class QuestionController extends ApiController
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
 
+        // Auto-calculate order if not provided or to ensure it's last
+        if ($questionBankId) {
+            $maxOrder = Question::whereHas('questionBanks', function ($q) use ($questionBankId) {
+                $q->where('question_bank_id', $questionBankId);
+            })->max('order');
+
+            $data['order'] = $maxOrder ? $maxOrder + 1 : 1;
+        } else {
+            // Fallback if no bank context, default to 1 or existing logic
+            $data['order'] = $data['order'] ?? 1;
+        }
+
         $question = Question::create($data);
 
         if (!empty($tags)) {
