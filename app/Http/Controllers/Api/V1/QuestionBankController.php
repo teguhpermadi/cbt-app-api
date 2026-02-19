@@ -28,8 +28,12 @@ final class QuestionBankController extends ApiController
             ->withCount('questions')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
+                    $q->where('name', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('academic_year_id'), function ($query) use ($request) {
+                $query->whereHas('subject', function ($q) use ($request) {
+                    $q->where('academic_year_id', $request->academic_year_id);
                 });
             })
             ->orderBy($sortBy, $order)

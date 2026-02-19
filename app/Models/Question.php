@@ -68,6 +68,11 @@ class Question extends Model implements HasMedia
         return $this->belongsTo(ReadingMaterial::class);
     }
 
+    public function questionBanks(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(QuestionBank::class, 'list_question_of_question_bank', 'question_id', 'question_bank_id');
+    }
+
     /**
      * Konfigurasi untuk Media Library (Media di Soal)
      */

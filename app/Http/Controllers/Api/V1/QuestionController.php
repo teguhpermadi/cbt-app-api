@@ -31,8 +31,13 @@ final class QuestionController extends ApiController
             ->with(['user', 'readingMaterial', 'tags'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('question_text', 'like', "%{$search}%")
-                        ->orWhere('explanation', 'like', "%{$search}%");
+                    $q->where('content', 'like', "%{$search}%")
+                        ->orWhere('hint', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('question_bank_id'), function ($query) use ($request) {
+                $query->whereHas('questionBanks', function ($q) use ($request) {
+                    $q->where('question_bank_id', $request->question_bank_id);
                 });
             })
             ->orderBy($sortBy, $order)
