@@ -36,6 +36,7 @@ class UpdateQuestionRequest extends FormRequest
 
             // Options Validation
             'options' => ['nullable', 'array'],
+            'options.*.id' => ['nullable', 'string', 'exists:options,id'],
             'options.*.option_key' => ['required_with:options', 'string'],
             'options.*.content' => ['required_with:options', 'string'],
             'options.*.is_correct' => ['boolean'],
@@ -51,6 +52,8 @@ class UpdateQuestionRequest extends FormRequest
             'sequence_items.*.order' => ['required_with:sequence_items', 'integer'],
 
             // Essay
+            'question_image' => ['nullable', 'image', 'max:5120'],
+            'options.*.image' => ['nullable', 'image', 'max:2048'],
             'keywords' => ['nullable', 'string'],
         ];
     }

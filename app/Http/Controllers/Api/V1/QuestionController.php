@@ -86,7 +86,7 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
             $question = Question::create($data);
 
             if (!empty($tags)) {
@@ -95,6 +95,11 @@ final class QuestionController extends ApiController
 
             if ($questionBankId) {
                 $question->questionBanks()->attach($questionBankId);
+            }
+
+            // Handle Question Image
+            if ($request->hasFile('question_image')) {
+                $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
             $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
@@ -153,20 +158,19 @@ final class QuestionController extends ApiController
         unset($data['sequence_items']);
         unset($data['keywords']);
 
-        $question = DB::transaction(function () use ($question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
             $question->update($data);
 
             if ($tags !== null) {
                 $question->syncTags($tags);
             }
 
-            // Re-create options
-            // Hard delete old options or soft delete? 
-            // Since we are replacing structure, might be cleaner to soft-delete all and create new.
-            // But if we want to keep IDs for some reason? 
-            // In the plan, we decided to delete and recreate.
-            $question->options()->delete(); // Soft delete
+            // Handle Question Image
+            if ($request->hasFile('question_image')) {
+                $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
+            }
 
+            // Sync options instead of delete/re-create
             $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
 
             return $question;
@@ -186,69 +190,60 @@ final class QuestionController extends ApiController
         switch ($question->type) {
             case \App\Enums\QuestionTypeEnum::MULTIPLE_CHOICE:
             case \App\Enums\QuestionTypeEnum::MULTIPLE_SELECTION:
-                \App\Models\Option::createMultipleChoiceOptions($question->id, $optionsData);
-                break;
+                $existingIds = collect($optionsData)->pluck('id')->filter()->toArray();
 
-            case \App\Enums\QuestionTypeEnum::TRUE_FALSE:
-                // For True/False, we receive options with is_correct flag.
-                // Helper createTrueFalseOptions expects a boolean for correct answer.
-                // We check which option is marked correct.
-                $correctOption = collect($optionsData)->firstWhere('is_correct', true);
-                if ($correctOption) {
-                    // Assuming content is "True" or "False", or just checking logical true
-                    // The helper takes `bool $correctAnswer`. 
-                    // If the user selected "True" as correct, we pass true.
-                    // If "False" is correct, we pass false.
-                    // We need to know which one is the "True" option.
-                    // Standard: A=True, B=False usually.
-                    // Or we just check: if content=True/Benar and is_correct=true -> true.
+                // Delete options not in the new list
+                $question->options()->whereNotIn('id', $existingIds)->delete();
 
-                    // Actually, the helper creates generic True/False options. 
-                    // Let's look at `createTrueFalseOptions` implementation again.
-                    // It creates 2 options: T (Correct if $correct=true) and F (Correct if $correct=false).
-                    // So we just need to pass true/false.
+                foreach ($optionsData as $index => $data) {
+                    $optionData = [
+                        'question_id' => $question->id,
+                        'option_key' => $data['option_key'] ?? $data['key'] ?? chr(65 + $index),
+                        'content' => $data['content'] ?? '',
+                        'order' => $data['order'] ?? $index,
+                        'is_correct' => $data['is_correct'] ?? false,
+                    ];
 
-                    $isTrueCorrect = false;
-                    if (strtolower($correctOption['content']) === 'true' || strtolower($correctOption['content']) === 'benar') {
-                        $isTrueCorrect = true;
+                    if (!empty($data['id'])) {
+                        $option = \App\Models\Option::find($data['id']);
+                        if ($option) {
+                            $option->update($optionData);
+                        }
+                    } else {
+                        $option = \App\Models\Option::create($optionData);
                     }
-                    // What if the user changed the text? 
-                    // Maybe better to rely on Key if standard?
-                    // Let's rely on the fact that if the FIRST option (usually T) is correct, then true.
-                    // Or simply: check if the option with content 'True'/'Benar' is correct.
 
-                    // Allow simple override: if $optionsData has content, maybe we should use `createMultipleChoiceOptions` instead?
-                    // If we use T/F helper, it hardcodes content to 'Benar'/'Salah'. 
-                    // If frontend sends 'True'/'False', we might want that.
-
-                    // Let's stick to using the helper for consistency if that's what it entails.
-                    // But if frontend sends customized text, better use general create.
-                    // Given `CreateQuestionPage` sets T=True, F=False.
-
-                    // Let's use generic creation to support custom text if needed, 
-                    // but `createTrueFalseOptions` is handy. 
-                    // Let's use `createMultipleChoiceOptions` because it is flexible enough for T/F too if we pass them as standard options!
-                    // T/F is just a 2-option MC.
-                    \App\Models\Option::createMultipleChoiceOptions($question->id, $optionsData);
+                    // Handle Option Images
+                    if ($option && isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
+                        $option->addMedia($data['image'])->toMediaCollection('option_media');
+                    }
                 }
                 break;
 
+            case \App\Enums\QuestionTypeEnum::TRUE_FALSE:
+                // For True/False, we still re-create or sync simply as they don't have media yet
+                $question->options()->delete();
+                \App\Models\Option::createMultipleChoiceOptions($question->id, $optionsData);
+                break;
+
             case \App\Enums\QuestionTypeEnum::MATCHING:
+                $question->options()->delete();
                 \App\Models\Option::createMatchingOptions($question->id, $matchingPairs);
                 break;
 
             case \App\Enums\QuestionTypeEnum::SEQUENCE:
-                // Extract content list for helper
+                $question->options()->delete();
                 $items = collect($sequenceItems)->pluck('content')->toArray();
                 \App\Models\Option::createOrderingOptions($question->id, $items);
                 break;
 
             case \App\Enums\QuestionTypeEnum::SHORT_ANSWER:
+                $question->options()->delete();
                 \App\Models\Option::createShortAnswerOptions($question->id, $optionsData);
                 break;
 
             case \App\Enums\QuestionTypeEnum::ESSAY:
-                // Essay might accept a rubric or keywords
+                $question->options()->delete();
                 \App\Models\Option::createEssayOption($question->id, $keywords);
                 break;
 
@@ -384,7 +379,7 @@ final class QuestionController extends ApiController
             ->toMediaCollection($collection);
 
         return $this->success([
-            'id' => $media->ulid ?? $media->id,
+            'id' => $media->uuid ?? $media->id,
             'url' => $media->getFullUrl(),
             'name' => $media->name,
         ], 'Media uploaded successfully');
@@ -402,7 +397,7 @@ final class QuestionController extends ApiController
         $oldMedia = Media::where('model_id', $id)
             ->where('model_type', Question::class)
             ->where(function ($query) use ($mediaId) {
-                $query->where('id', $mediaId)->orWhere('ulid', $mediaId);
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
             })
             ->first();
 
@@ -415,7 +410,7 @@ final class QuestionController extends ApiController
             ->toMediaCollection($collection);
 
         return $this->success([
-            'id' => $media->ulid ?? $media->id,
+            'id' => $media->uuid ?? $media->id,
             'url' => $media->getFullUrl(),
             'name' => $media->name,
         ], 'Media replaced successfully');
@@ -429,7 +424,7 @@ final class QuestionController extends ApiController
         $media = Media::where('model_id', $id)
             ->where('model_type', Question::class)
             ->where(function ($query) use ($mediaId) {
-                $query->where('id', $mediaId)->orWhere('ulid', $mediaId);
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
             })
             ->first();
 

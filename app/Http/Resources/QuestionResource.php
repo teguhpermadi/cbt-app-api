@@ -37,7 +37,7 @@ class QuestionResource extends JsonResource
                     'size' => $media->size,
                 ]),
             ],
-            'options' => $this->whenLoaded('options'), // Usually we would use OptionResource if it exists
+            'options' => OptionResource::collection($this->whenLoaded('options')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

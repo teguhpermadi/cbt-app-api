@@ -52,6 +52,8 @@ class StoreQuestionRequest extends FormRequest
             'sequence_items.*.order' => ['required_with:sequence_items', 'integer'],
 
             // Essay
+            'question_image' => ['nullable', 'image', 'max:5120'], // 5MB max
+            'options.*.image' => ['nullable', 'image', 'max:2048'], // 2MB max
             'keywords' => ['nullable', 'string'],
         ];
     }

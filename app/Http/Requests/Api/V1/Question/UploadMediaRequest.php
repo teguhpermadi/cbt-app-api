@@ -23,7 +23,7 @@ class UploadMediaRequest extends FormRequest
     {
         return [
             'media' => ['required', 'file', 'mimes:jpg,jpeg,png,mp3,wav,mp4,mov,avi', 'max:10240'], // 10MB max
-            'collection' => ['nullable', 'string', 'in:question_content'],
+            'collection' => ['nullable', 'string', 'in:question_content,option_media,reading_materials'],
         ];
     }
 }

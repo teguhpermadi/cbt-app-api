@@ -15,7 +15,7 @@ class UploadMediaRequest extends FormRequest
     {
         return [
             'media' => ['required', 'file', 'mimes:jpg,jpeg,png,mp3,wav,mp4,mov,avi,pdf', 'max:10240'], // Added pdf
-            'collection' => ['nullable', 'string', 'in:reading_materials'],
+            'collection' => ['nullable', 'string', 'in:reading_materials,question_content,option_media'],
         ];
     }
 }

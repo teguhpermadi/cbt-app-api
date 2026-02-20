@@ -124,7 +124,7 @@ final class OptionController extends ApiController
             ->toMediaCollection($collection);
 
         return $this->success([
-            'id' => $media->ulid ?? $media->id,
+            'id' => $media->uuid ?? $media->id,
             'url' => $media->getFullUrl(),
             'name' => $media->name,
         ], 'Media uploaded successfully');
@@ -142,7 +142,7 @@ final class OptionController extends ApiController
         $oldMedia = Media::where('model_id', $id)
             ->where('model_type', Option::class)
             ->where(function ($query) use ($mediaId) {
-                $query->where('id', $mediaId)->orWhere('ulid', $mediaId);
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
             })
             ->first();
 
@@ -155,7 +155,7 @@ final class OptionController extends ApiController
             ->toMediaCollection($collection);
 
         return $this->success([
-            'id' => $media->ulid ?? $media->id,
+            'id' => $media->uuid ?? $media->id,
             'url' => $media->getFullUrl(),
             'name' => $media->name,
         ], 'Media replaced successfully');
@@ -169,7 +169,7 @@ final class OptionController extends ApiController
         $media = Media::where('model_id', $id)
             ->where('model_type', Option::class)
             ->where(function ($query) use ($mediaId) {
-                $query->where('id', $mediaId)->orWhere('ulid', $mediaId);
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
             })
             ->first();
 
