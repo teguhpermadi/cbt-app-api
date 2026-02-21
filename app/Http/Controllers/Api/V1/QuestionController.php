@@ -63,6 +63,7 @@ final class QuestionController extends ApiController
         $matchingPairs = $data['matching_pairs'] ?? [];
         $sequenceItems = $data['sequence_items'] ?? [];
         $keywords = $data['keywords'] ?? '';
+        $mathContent = $data['math_content'] ?? '';
 
         // Clean up data for Question model
         unset($data['tags']);
@@ -71,6 +72,7 @@ final class QuestionController extends ApiController
         unset($data['matching_pairs']);
         unset($data['sequence_items']);
         unset($data['keywords']);
+        unset($data['math_content']);
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
 
@@ -86,7 +88,7 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent) {
             $question = Question::create($data);
 
             if (!empty($tags)) {
@@ -102,7 +104,7 @@ final class QuestionController extends ApiController
                 $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent);
 
             return $question;
         });
@@ -151,14 +153,16 @@ final class QuestionController extends ApiController
         $matchingPairs = $data['matching_pairs'] ?? [];
         $sequenceItems = $data['sequence_items'] ?? [];
         $keywords = $data['keywords'] ?? '';
+        $mathContent = $data['math_content'] ?? '';
 
         unset($data['tags']);
         unset($data['options']);
         unset($data['matching_pairs']);
         unset($data['sequence_items']);
         unset($data['keywords']);
+        unset($data['math_content']);
 
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords) {
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent) {
             $question->update($data);
 
             if ($tags !== null) {
@@ -171,7 +175,7 @@ final class QuestionController extends ApiController
             }
 
             // Sync options instead of delete/re-create
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent);
 
             return $question;
         });
@@ -185,7 +189,7 @@ final class QuestionController extends ApiController
     /**
      * Helper to save options based on question type
      */
-    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords): void
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent): void
     {
         switch ($question->type) {
             case \App\Enums\QuestionTypeEnum::MULTIPLE_CHOICE:
@@ -245,6 +249,11 @@ final class QuestionController extends ApiController
             case \App\Enums\QuestionTypeEnum::ESSAY:
                 $question->options()->delete();
                 \App\Models\Option::createEssayOption($question->id, $keywords);
+                break;
+
+            case \App\Enums\QuestionTypeEnum::MATH_INPUT:
+                $question->options()->delete();
+                \App\Models\Option::createMathInputOption($question->id, $mathContent);
                 break;
 
                 // Add other types if needed (Math, Strings, etc.)

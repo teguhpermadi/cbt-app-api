@@ -55,6 +55,7 @@ class UpdateQuestionRequest extends FormRequest
             'question_image' => ['nullable', 'image', 'max:5120'],
             'options.*.image' => ['nullable', 'image', 'max:2048'],
             'keywords' => ['nullable', 'string'],
+            'math_content' => ['nullable', 'string'],
         ];
     }
 }

@@ -351,4 +351,24 @@ class Option extends Model implements HasMedia
             ],
         ]);
     }
+    /**
+     * Create option untuk Math Input
+     *
+     * @param string $questionId
+     * @param string $latex Jawaban dalam format LaTeX
+     * @return Option
+     */
+    public static function createMathInputOption(string $questionId, string $latex)
+    {
+        return self::create([
+            'question_id' => $questionId,
+            'option_key' => 'MATH',
+            'content' => $latex,
+            'order' => 0,
+            'is_correct' => true,
+            'metadata' => [
+                'correct_answer' => $latex,
+            ],
+        ]);
+    }
 }
