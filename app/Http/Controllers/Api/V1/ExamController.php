@@ -33,8 +33,7 @@ final class ExamController extends ApiController
             ->with(['academicYear', 'subject', 'questionBank', 'user'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
+                    $q->where('title', 'like', "%{$search}%");
                 });
             })
             ->orderBy($sortBy, $order)
