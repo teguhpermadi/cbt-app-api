@@ -19,6 +19,8 @@ class UpdateExamRequest extends FormRequest
         return [
             'academic_year_id' => ['sometimes', 'ulid', 'exists:academic_years,id'],
             'subject_id' => ['sometimes', 'ulid', 'exists:subjects,id'],
+            'classroom_ids' => ['sometimes', 'array', 'min:1'],
+            'classroom_ids.*' => ['required', 'ulid', 'exists:classrooms,id'],
             'user_id' => ['sometimes', 'ulid', 'exists:users,id'],
             'question_bank_id' => ['sometimes', 'nullable', 'ulid', 'exists:question_banks,id'],
             'title' => ['sometimes', 'string', 'max:255'],

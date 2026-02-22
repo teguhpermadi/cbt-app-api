@@ -29,8 +29,6 @@ class QuestionBankFactory extends Factory
 
     public function configure(): static
     {
-        return $this->afterCreating(function (QuestionBank $questionBank) {
-            $questionBank->questions()->attach(Question::factory()->count(10)->create());
-        });
+        return $this;
     }
 }

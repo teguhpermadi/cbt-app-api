@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Exam;
 use App\Models\AcademicYear;
 use App\Models\Subject;
+use App\Models\Classroom;
 use App\Models\QuestionBank;
 use App\Enums\UserTypeEnum;
 use App\Enums\ExamTypeEnum;
@@ -54,6 +55,7 @@ describe('Exam Management', function () {
         $data = [
             'academic_year_id' => $academicYear->id,
             'subject_id' => $subject->id,
+            'classroom_ids' => [Classroom::factory()->create()->id],
             'user_id' => $teacher->id,
             'question_bank_id' => $questionBank->id,
             'title' => 'Mathematics Final Exam',
@@ -84,7 +86,11 @@ describe('Exam Management', function () {
 
     it('can update an exam', function () {
         $exam = Exam::factory()->create();
-        $data = ['title' => 'Updated Exam Title'];
+        $classroom = Classroom::factory()->create();
+        $data = [
+            'title' => 'Updated Exam Title',
+            'classroom_ids' => [$classroom->id]
+        ];
 
         $response = $this->putJson("/api/v1/exams/{$exam->id}", $data);
 

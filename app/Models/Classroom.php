@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Facades\Auth;
 
 class Classroom extends Model
 {
@@ -50,7 +51,7 @@ class Classroom extends Model
      */
     public function scopeMine($query)
     {
-        $userId = auth()->id();
+        $userId = Auth::id();
 
         return $query->where(function ($q) use ($userId) {
             $q->where('user_id', $userId)
@@ -71,6 +72,11 @@ class Classroom extends Model
         }
 
         $this->students()->sync($syncData);
+    }
+
+    public function exams()
+    {
+        return $this->belongsToMany(Exam::class);
     }
 
     public function getActivitylogOptions(): LogOptions

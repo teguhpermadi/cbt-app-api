@@ -83,6 +83,11 @@ class Exam extends Model
         return $this->hasMany(ExamSession::class);
     }
 
+    public function classrooms()
+    {
+        return $this->belongsToMany(Classroom::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

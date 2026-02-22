@@ -19,6 +19,8 @@ class StoreExamRequest extends FormRequest
         return [
             'academic_year_id' => ['required', 'ulid', 'exists:academic_years,id'],
             'subject_id' => ['required', 'ulid', 'exists:subjects,id'],
+            'classroom_ids' => ['required', 'array', 'min:1'],
+            'classroom_ids.*' => ['required', 'ulid', 'exists:classrooms,id'],
             'user_id' => ['required', 'ulid', 'exists:users,id'],
             'question_bank_id' => ['nullable', 'ulid', 'exists:question_banks,id'],
             'title' => ['required', 'string', 'max:255'],

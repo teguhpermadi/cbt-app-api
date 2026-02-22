@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\Exam\BulkUpdateExamRequest;
 use App\Http\Requests\Api\V1\Exam\StoreExamRequest;
 use App\Http\Requests\Api\V1\Exam\UpdateExamRequest;
 use App\Http\Resources\ExamResource;
+use App\Http\Resources\ClassroomResource;
 use App\Models\Classroom;
 use App\Models\Exam;
 use App\Models\ExamResult;
@@ -61,10 +62,18 @@ final class ExamController extends ApiController
             $data['token'] = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         }
 
-        $exam = Exam::query()->create($data);
+        $classroomIds = $data['classroom_ids'] ?? [];
+        unset($data['classroom_ids']);
+
+        $exam = DB::transaction(function () use ($data, $classroomIds) {
+            $exam = Exam::query()->create($data);
+            $exam->classrooms()->sync($classroomIds);
+
+            return $exam;
+        });
 
         return $this->created(
-            new ExamResource($exam->load(['academicYear', 'subject', 'questionBank', 'user'])),
+            new ExamResource($exam->load(['academicYear', 'subject', 'questionBank', 'user', 'classrooms'])),
             'Exam created successfully'
         );
     }
@@ -75,7 +84,7 @@ final class ExamController extends ApiController
     public function show(string $id): JsonResponse
     {
         $exam = Exam::query()
-            ->with(['academicYear', 'subject', 'questionBank', 'user'])
+            ->with(['academicYear', 'subject', 'questionBank', 'user', 'classrooms'])
             ->where('id', $id)
             ->first();
 
@@ -102,10 +111,20 @@ final class ExamController extends ApiController
             return $this->notFound('Exam not found');
         }
 
-        $exam->update($request->validated());
+        $data = $request->validated();
+        $classroomIds = $data['classroom_ids'] ?? null;
+        unset($data['classroom_ids']);
+
+        DB::transaction(function () use ($exam, $data, $classroomIds) {
+            $exam->update($data);
+
+            if ($classroomIds !== null) {
+                $exam->classrooms()->sync($classroomIds);
+            }
+        });
 
         return $this->success(
-            new ExamResource($exam->load(['academicYear', 'subject', 'questionBank', 'user'])),
+            new ExamResource($exam->load(['academicYear', 'subject', 'questionBank', 'user', 'classrooms'])),
             'Exam updated successfully'
         );
     }
@@ -233,17 +252,16 @@ final class ExamController extends ApiController
      */
     public function liveScore(Request $request, Exam $exam): JsonResponse
     {
-        // Exam belongs to a Subject, which belongs to a Classroom.
-        // So an Exam is specific to one Classroom.
-        $exam->load(['subject.classroom.students']);
+        // Load classrooms and their students
+        $exam->load(['classrooms.students', 'subject']);
 
-        $classroom = $exam->subject->classroom;
+        $classrooms = $exam->classrooms;
 
-        if (! $classroom) {
-            return $this->error('Classroom not found for this exam', 404);
+        if ($classrooms->isEmpty()) {
+            return $this->error('No classrooms assigned to this exam', 404);
         }
 
-        $students = $classroom->students;
+        $students = $classrooms->flatMap->students->unique('id');
 
         // 2. Ambil sesi ujian yang aktif/selesai untuk ujian ini
         $examSessions = ExamSession::where('exam_id', $exam->id)
@@ -252,7 +270,7 @@ final class ExamController extends ApiController
             ->keyBy('user_id');
 
         // 3. Format data response
-        $data = $students->map(function ($student) use ($examSessions, $exam) {
+        $data = $students->map(function ($student) use ($examSessions, $exam, $classrooms) {
             $session = $examSessions->get($student->id);
 
             $status = 'idle'; // 'not_started' mapped to 'idle'
@@ -284,6 +302,7 @@ final class ExamController extends ApiController
                     'name' => $student->name,
                     'email' => $student->email,
                     'avatar' => $student->avatar,
+                    'classroom' => $classrooms->first(fn($c) => $c->students->contains('id', $student->id))?->name ?? 'N/A',
                 ],
                 'status' => $status,
                 'start_time' => $startTime,
@@ -299,7 +318,10 @@ final class ExamController extends ApiController
                 'title' => $exam->title,
                 'duration' => $exam->duration,
                 'token' => $exam->token,
-                'classroom' => $classroom->name,
+                'classrooms' => $classrooms->map(fn($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                ]),
                 'subject' => [
                     'name' => $exam->subject->name,
                 ],

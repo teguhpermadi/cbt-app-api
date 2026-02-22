@@ -31,8 +31,8 @@ class SubjectFactory extends Factory
             'user_id' => User::factory(),
             'color' => fake()->colorName(),
             'class_name' => fake()->word(),
-            'academic_year_id' => fn() => AcademicYear::inRandomOrder()->first()?->id ?? AcademicYear::factory(),
-            'classroom_id' => fn() => Classroom::inRandomOrder()->first()?->id ?? \App\Models\Classroom::factory(),
+            'academic_year_id' => AcademicYear::first()?->id ?? AcademicYear::factory(),
+            'classroom_id' => Classroom::first()?->id ?? Classroom::factory(),
         ];
     }
 }

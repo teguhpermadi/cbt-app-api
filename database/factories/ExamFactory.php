@@ -44,4 +44,15 @@ class ExamFactory extends Factory
             'end_time' => $this->faker->dateTimeBetween('+1 week', '+2 weeks'),
         ];
     }
+
+    /**
+     * Configure the model factory.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (\App\Models\Exam $exam) {
+            $classroom = \App\Models\Classroom::factory()->create();
+            $exam->classrooms()->attach($classroom);
+        });
+    }
 }

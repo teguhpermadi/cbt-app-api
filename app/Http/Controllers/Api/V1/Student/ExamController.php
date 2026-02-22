@@ -39,7 +39,7 @@ class ExamController extends ApiController
 
         $exams = Exam::query()
             ->where('is_published', true)
-            ->whereHas('subject.classroom.students', function ($query) use ($user) {
+            ->whereHas('classrooms.students', function ($query) use ($user) {
                 $query->where('users.id', $user->id);
             })
             // Optional: Filter by start_time / end_time validity
@@ -92,7 +92,7 @@ class ExamController extends ApiController
         $exam = Exam::query()
             ->where('is_published', true)
             ->where('id', $id)
-            ->whereHas('subject.classroom.students', function ($query) use ($user) {
+            ->whereHas('classrooms.students', function ($query) use ($user) {
                 $query->where('users.id', $user->id);
             })
             ->with(['subject', 'academicYear', 'questionBank'])
@@ -130,7 +130,7 @@ class ExamController extends ApiController
         $exam = Exam::query()
             ->where('is_published', true)
             ->where('id', $id)
-            ->whereHas('subject.classroom.students', function ($query) use ($user) {
+            ->whereHas('classrooms.students', function ($query) use ($user) {
                 $query->where('users.id', $user->id);
             })
             ->first();

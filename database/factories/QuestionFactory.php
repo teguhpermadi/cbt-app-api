@@ -29,7 +29,7 @@ class QuestionFactory extends Factory
         $type = $this->faker->randomElement(QuestionTypeEnum::cases());
 
         return [
-            'user_id' => User::inRandomOrder()->first() ?? User::factory(),
+            'user_id' => User::factory(),
             'type' => $type,
             'difficulty' => $this->faker->randomElement(QuestionDifficultyLevelEnum::cases()),
             'timer' => $this->faker->randomElement(QuestionTimeEnum::cases()),
