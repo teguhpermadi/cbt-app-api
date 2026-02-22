@@ -19,21 +19,23 @@ use Illuminate\Support\Facades\DB;
 
 final class ExamController extends ApiController
 {
-    /**
-     * Display a listing of exams with pagination, search, and sorting.
-     */
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
         $search = $request->string('search')->trim();
         $sortBy = $request->string('sort_by', 'created_at');
         $order = $request->string('order', 'desc');
+        $academicYearId = $request->input('academic_year_id');
 
         $exams = Exam::query()
             ->with(['academicYear', 'subject', 'questionBank', 'user'])
+            ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%");
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhereHas('subject', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
             ->orderBy($sortBy, $order)
@@ -253,37 +255,40 @@ final class ExamController extends ApiController
         $data = $students->map(function ($student) use ($examSessions, $exam) {
             $session = $examSessions->get($student->id);
 
-            $status = 'not_started';
+            $status = 'idle'; // 'not_started' mapped to 'idle'
             $startTime = null;
-            $remainingTime = null;
+            $remainingTime = 0;
             $currentScore = 0;
             $extraTime = 0;
 
             if ($session) {
-                $status = $session->is_finished ? 'done' : 'doing';
+                // Map backend statuses to frontend: doing -> in_progress, done -> finished
+                $status = $session->is_finished ? 'finished' : 'in_progress';
                 $startTime = $session->start_time;
-                $currentScore = $session->current_score ?? 0; // Asumsi ada field atau hitungan score sementara
+                $currentScore = $session->current_score ?? 0;
                 $extraTime = $session->extra_time ?? 0;
 
-                if ($status === 'doing') {
+                if ($status === 'in_progress') {
                     $remainingTime = $this->calculateRemainingTime($session, $exam);
                 }
 
-                // Jika session finished, gunakan nilai final/total score
                 if ($session->is_finished) {
                     $currentScore = $session->total_score;
                 }
             }
 
             return [
-                'student_id' => $student->id,
-                'name' => $student->name,
-                'email' => $student->email,
-                'avatar' => $student->avatar, // Jika ada
+                'id' => $student->id, // Using student ID as session ID for unique keys
+                'student' => [
+                    'id' => $student->id,
+                    'name' => $student->name,
+                    'email' => $student->email,
+                    'avatar' => $student->avatar,
+                ],
                 'status' => $status,
                 'start_time' => $startTime,
                 'remaining_time' => $remainingTime,
-                'current_score' => $currentScore,
+                'score' => $currentScore, // mapped from current_score/total_score
                 'extra_time' => $extraTime,
             ];
         });
@@ -293,9 +298,16 @@ final class ExamController extends ApiController
                 'id' => $exam->id,
                 'title' => $exam->title,
                 'duration' => $exam->duration,
+                'token' => $exam->token,
                 'classroom' => $classroom->name,
+                'subject' => [
+                    'name' => $exam->subject->name,
+                ],
+                'academic_year' => [
+                    'year' => $exam->academicYear?->year,
+                ],
             ],
-            'students' => $data->values(),
+            'sessions' => $data->values(),
         ]);
     }
 

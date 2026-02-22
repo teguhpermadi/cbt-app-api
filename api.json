@@ -6,7 +6,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost/api"
+            "url": "http://localhost:8000/api"
         }
     ],
     "security": [
@@ -6617,7 +6617,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/StoreQuestionRequest"
                             }
@@ -6762,7 +6762,7 @@
                 ],
                 "requestBody": {
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "$ref": "#/components/schemas/UpdateQuestionRequest"
                             }
@@ -11876,7 +11876,9 @@
                         ],
                         "description": "Added pdf",
                         "enum": [
-                            "reading_materials"
+                            "reading_materials",
+                            "question_content",
+                            "option_media"
                         ]
                     }
                 },
@@ -13118,76 +13120,6 @@
                 ],
                 "title": "LoginRequest"
             },
-            "Option": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "question_id": {
-                        "type": "string"
-                    },
-                    "option_key": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "content": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "order": {
-                        "type": "integer"
-                    },
-                    "is_correct": {
-                        "type": "boolean"
-                    },
-                    "metadata": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {}
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "deleted_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    }
-                },
-                "required": [
-                    "id",
-                    "question_id",
-                    "option_key",
-                    "content",
-                    "order",
-                    "is_correct",
-                    "metadata",
-                    "created_at",
-                    "updated_at",
-                    "deleted_at"
-                ],
-                "title": "Option"
-            },
             "OptionResource": {
                 "type": "object",
                 "properties": {
@@ -13286,10 +13218,24 @@
                         "type": "string"
                     },
                     "user": {
-                        "$ref": "#/components/schemas/UserResource"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "subject": {
-                        "$ref": "#/components/schemas/SubjectResource"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SubjectResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "questions_count": {
                         "type": "integer"
@@ -13327,6 +13273,8 @@
                     "name",
                     "user_id",
                     "subject_id",
+                    "user",
+                    "subject",
                     "created_at",
                     "updated_at",
                     "deleted_at"
@@ -13349,12 +13297,27 @@
                         "type": "string"
                     },
                     "user": {
-                        "$ref": "#/components/schemas/UserResource"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "reading_material": {
-                        "$ref": "#/components/schemas/ReadingMaterial"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReadingMaterial"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "type": {
+                        "description": "Assuming ReadingMaterialResource doesn't exist or isn't needed yet",
                         "$ref": "#/components/schemas/QuestionTypeEnum"
                     },
                     "difficulty": {
@@ -13398,7 +13361,7 @@
                     "options": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Option"
+                            "$ref": "#/components/schemas/OptionResource"
                         }
                     },
                     "created_at": {
@@ -13406,8 +13369,7 @@
                             "string",
                             "null"
                         ],
-                        "format": "date-time",
-                        "description": "Usually we would use OptionResource if it exists"
+                        "format": "date-time"
                     },
                     "updated_at": {
                         "type": [
@@ -13426,6 +13388,8 @@
                 },
                 "required": [
                     "id",
+                    "user",
+                    "reading_material",
                     "type",
                     "difficulty",
                     "timer",
@@ -14051,6 +14015,12 @@
             "StoreQuestionRequest": {
                 "type": "object",
                 "properties": {
+                    "question_bank_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "reading_material_id": {
                         "type": [
                             "string",
@@ -14126,6 +14096,29 @@
                             "null"
                         ]
                     },
+                    "question_image": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Essay",
+                        "maxLength": 5120
+                    },
+                    "keywords": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "2MB max"
+                    },
+                    "math_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "tags": {
                         "type": [
                             "array",
@@ -14133,6 +14126,73 @@
                         ],
                         "items": {
                             "type": "string"
+                        }
+                    },
+                    "options": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Options Validation",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "option_key": {
+                                    "type": "string"
+                                },
+                                "content": {
+                                    "type": "string"
+                                },
+                                "is_correct": {
+                                    "type": "boolean"
+                                },
+                                "image": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "binary",
+                                    "contentMediaType": "application/octet-stream",
+                                    "description": "5MB max",
+                                    "maxLength": 2048
+                                }
+                            }
+                        }
+                    },
+                    "matching_pairs": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Matching Pairs",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "left": {
+                                    "type": "string"
+                                },
+                                "right": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "sequence_items": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Sequence Items",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "content": {
+                                    "type": "string"
+                                },
+                                "order": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -14846,6 +14906,28 @@
                             "null"
                         ]
                     },
+                    "question_image": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "description": "Essay",
+                        "maxLength": 5120
+                    },
+                    "keywords": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "math_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "tags": {
                         "type": [
                             "array",
@@ -14853,6 +14935,78 @@
                         ],
                         "items": {
                             "type": "string"
+                        }
+                    },
+                    "options": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Options Validation",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "option_key": {
+                                    "type": "string"
+                                },
+                                "content": {
+                                    "type": "string"
+                                },
+                                "is_correct": {
+                                    "type": "boolean"
+                                },
+                                "image": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "format": "binary",
+                                    "contentMediaType": "application/octet-stream",
+                                    "maxLength": 2048
+                                }
+                            }
+                        }
+                    },
+                    "matching_pairs": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Matching Pairs",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "left": {
+                                    "type": "string"
+                                },
+                                "right": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "sequence_items": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Sequence Items",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "content": {
+                                    "type": "string"
+                                },
+                                "order": {
+                                    "type": "integer"
+                                }
+                            }
                         }
                     }
                 },
@@ -15009,7 +15163,9 @@
                         ],
                         "description": "10MB max",
                         "enum": [
-                            "question_content"
+                            "question_content",
+                            "option_media",
+                            "reading_materials"
                         ]
                     }
                 },
