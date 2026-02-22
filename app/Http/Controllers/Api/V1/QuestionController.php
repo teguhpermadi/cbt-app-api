@@ -65,6 +65,7 @@ final class QuestionController extends ApiController
         $keywords = $data['keywords'] ?? '';
         $mathContent = $data['math_content'] ?? '';
         $arabicContent = $data['arabic_content'] ?? '';
+        $javaneseContent = $data['javanese_content'] ?? '';
 
 
         // Clean up data for Question model
@@ -76,6 +77,7 @@ final class QuestionController extends ApiController
         unset($data['keywords']);
         unset($data['math_content']);
         unset($data['arabic_content']);
+        unset($data['javanese_content']);
 
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
@@ -92,7 +94,7 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent) {
 
             $question = Question::create($data);
 
@@ -109,7 +111,7 @@ final class QuestionController extends ApiController
                 $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent);
 
 
             return $question;
@@ -161,6 +163,7 @@ final class QuestionController extends ApiController
         $keywords = $data['keywords'] ?? '';
         $mathContent = $data['math_content'] ?? '';
         $arabicContent = $data['arabic_content'] ?? '';
+        $javaneseContent = $data['javanese_content'] ?? '';
 
 
         unset($data['tags']);
@@ -170,9 +173,10 @@ final class QuestionController extends ApiController
         unset($data['keywords']);
         unset($data['math_content']);
         unset($data['arabic_content']);
+        unset($data['javanese_content']);
 
 
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent) {
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent) {
 
             $question->update($data);
 
@@ -186,7 +190,7 @@ final class QuestionController extends ApiController
             }
 
             // Sync options instead of delete/re-create
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent);
 
 
             return $question;
@@ -201,7 +205,7 @@ final class QuestionController extends ApiController
     /**
      * Helper to save options based on question type
      */
-    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent): void
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent, string $javaneseContent): void
 
     {
         switch ($question->type) {
@@ -272,6 +276,10 @@ final class QuestionController extends ApiController
             case \App\Enums\QuestionTypeEnum::ARABIC_RESPONSE:
                 $question->options()->delete();
                 \App\Models\Option::createArabicOption($question->id, $arabicContent);
+                break;
+            case \App\Enums\QuestionTypeEnum::JAVANESE_RESPONSE:
+                $question->options()->delete();
+                \App\Models\Option::createJavaneseOption($question->id, $javaneseContent);
                 break;
 
 

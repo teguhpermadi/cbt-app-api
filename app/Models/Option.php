@@ -391,4 +391,25 @@ class Option extends Model implements HasMedia
             ],
         ]);
     }
+
+    /**
+     * Create option untuk Javanese Input
+     *
+     * @param string $questionId
+     * @param string $javanese Jawaban dalam aksara Jawa
+     * @return Option
+     */
+    public static function createJavaneseOption(string $questionId, string $javanese)
+    {
+        return self::create([
+            'question_id' => $questionId,
+            'option_key' => 'JAVANESE',
+            'content' => $javanese,
+            'order' => 0,
+            'is_correct' => true,
+            'metadata' => [
+                'correct_answer' => $javanese,
+            ],
+        ]);
+    }
 }

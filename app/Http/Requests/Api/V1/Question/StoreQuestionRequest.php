@@ -57,6 +57,7 @@ class StoreQuestionRequest extends FormRequest
             'keywords' => ['nullable', 'string'],
             'math_content' => ['nullable', 'string'],
             'arabic_content' => ['nullable', 'string'],
+            'javanese_content' => ['nullable', 'string'],
         ];
     }
 }
