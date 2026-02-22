@@ -371,4 +371,24 @@ class Option extends Model implements HasMedia
             ],
         ]);
     }
+    /**
+     * Create option untuk Arabic Input
+     *
+     * @param string $questionId
+     * @param string $arabic Jawaban dalam bahasa Arab
+     * @return Option
+     */
+    public static function createArabicOption(string $questionId, string $arabic)
+    {
+        return self::create([
+            'question_id' => $questionId,
+            'option_key' => 'ARABIC',
+            'content' => $arabic,
+            'order' => 0,
+            'is_correct' => true,
+            'metadata' => [
+                'correct_answer' => $arabic,
+            ],
+        ]);
+    }
 }

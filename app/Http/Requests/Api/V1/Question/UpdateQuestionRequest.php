@@ -56,6 +56,7 @@ class UpdateQuestionRequest extends FormRequest
             'options.*.image' => ['nullable', 'image', 'max:2048'],
             'keywords' => ['nullable', 'string'],
             'math_content' => ['nullable', 'string'],
+            'arabic_content' => ['nullable', 'string'],
         ];
     }
 }

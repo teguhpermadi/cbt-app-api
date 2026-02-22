@@ -64,6 +64,8 @@ final class QuestionController extends ApiController
         $sequenceItems = $data['sequence_items'] ?? [];
         $keywords = $data['keywords'] ?? '';
         $mathContent = $data['math_content'] ?? '';
+        $arabicContent = $data['arabic_content'] ?? '';
+
 
         // Clean up data for Question model
         unset($data['tags']);
@@ -73,6 +75,8 @@ final class QuestionController extends ApiController
         unset($data['sequence_items']);
         unset($data['keywords']);
         unset($data['math_content']);
+        unset($data['arabic_content']);
+
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
 
@@ -88,7 +92,8 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent) {
+
             $question = Question::create($data);
 
             if (!empty($tags)) {
@@ -104,7 +109,8 @@ final class QuestionController extends ApiController
                 $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent);
+
 
             return $question;
         });
@@ -154,6 +160,8 @@ final class QuestionController extends ApiController
         $sequenceItems = $data['sequence_items'] ?? [];
         $keywords = $data['keywords'] ?? '';
         $mathContent = $data['math_content'] ?? '';
+        $arabicContent = $data['arabic_content'] ?? '';
+
 
         unset($data['tags']);
         unset($data['options']);
@@ -161,8 +169,11 @@ final class QuestionController extends ApiController
         unset($data['sequence_items']);
         unset($data['keywords']);
         unset($data['math_content']);
+        unset($data['arabic_content']);
 
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent) {
+
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent) {
+
             $question->update($data);
 
             if ($tags !== null) {
@@ -175,7 +186,8 @@ final class QuestionController extends ApiController
             }
 
             // Sync options instead of delete/re-create
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent);
+
 
             return $question;
         });
@@ -189,7 +201,8 @@ final class QuestionController extends ApiController
     /**
      * Helper to save options based on question type
      */
-    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent): void
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent): void
+
     {
         switch ($question->type) {
             case \App\Enums\QuestionTypeEnum::MULTIPLE_CHOICE:
@@ -255,6 +268,12 @@ final class QuestionController extends ApiController
                 $question->options()->delete();
                 \App\Models\Option::createMathInputOption($question->id, $mathContent);
                 break;
+
+            case \App\Enums\QuestionTypeEnum::ARABIC_RESPONSE:
+                $question->options()->delete();
+                \App\Models\Option::createArabicOption($question->id, $arabicContent);
+                break;
+
 
                 // Add other types if needed (Math, Strings, etc.)
         }

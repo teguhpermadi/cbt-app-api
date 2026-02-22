@@ -20,8 +20,8 @@ enum QuestionTypeEnum: string
     // case IMAGE_RESPONSE = 'image_response';
     // case VIDEO_RESPONSE = 'video_response';
     // case CATEGORIZATION = 'categorization';
-    // case ARABIC_RESPONSE = 'arabic_response';
-    // case JAVANESE_RESPONSE = 'javanese_response';
+    case ARABIC_RESPONSE = 'arabic_response';
+    case JAVANESE_RESPONSE = 'javanese_response';
 
     public function description(): string
     {
@@ -42,8 +42,8 @@ enum QuestionTypeEnum: string
             // self::IMAGE_RESPONSE => 'Jawaban berupa unggahan gambar',
             // self::VIDEO_RESPONSE => 'Jawaban berupa unggahan video',
             // self::CATEGORIZATION => 'Mengelompokkan item ke dalam kategori',
-            // self::ARABIC_RESPONSE => 'Jawaban berupa teks dalam bahasa Arab',
-            // self::JAVANESE_RESPONSE => 'Jawaban berupa teks dalam bahasa Jawa',
+            self::ARABIC_RESPONSE => 'Jawaban berupa teks dalam bahasa Arab',
+            self::JAVANESE_RESPONSE => 'Jawaban berupa teks dalam bahasa Jawa',
         };
     }
 
@@ -66,8 +66,8 @@ enum QuestionTypeEnum: string
             // self::IMAGE_RESPONSE => 'Image Response',
             // self::VIDEO_RESPONSE => 'Video Response',
             // self::CATEGORIZATION => 'Categorization',
-            // self::ARABIC_RESPONSE => 'Arabic Response',
-            // self::JAVANESE_RESPONSE => 'Javanese Response',
+            self::ARABIC_RESPONSE => 'Arabic Response',
+            self::JAVANESE_RESPONSE => 'Javanese Response',
         };
     }
 }

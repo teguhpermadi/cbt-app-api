@@ -56,6 +56,7 @@ class StoreQuestionRequest extends FormRequest
             'options.*.image' => ['nullable', 'image', 'max:2048'], // 2MB max
             'keywords' => ['nullable', 'string'],
             'math_content' => ['nullable', 'string'],
+            'arabic_content' => ['nullable', 'string'],
         ];
     }
 }
