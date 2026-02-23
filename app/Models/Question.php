@@ -92,39 +92,45 @@ class Question extends Model implements HasMedia
      */
     public function getOptionsForExam(): array
     {
-        $options = [];
+        $optionsArray = [];
 
-        // Eager load options jika belum di-load
+        // Eager load options if not loaded
         if (!$this->relationLoaded('options')) {
             $this->load('options');
         }
 
         foreach ($this->options as $option) {
-            $mediaUrl = $option->getFirstMediaUrl('option_media');
+            $optionMedia = [];
+            // Assuming Spatie Media Library is used for options too (check Option model)
+            // If the Option model doesn't have media, we'll just send an empty array
+            if (method_exists($option, 'getMedia')) {
+                $media = $option->getMedia('option_media');
+                foreach ($media as $m) {
+                    $optionMedia[] = [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                        'file_name' => $m->file_name,
+                        'url' => $m->getUrl(),
+                        'mime_type' => $m->mime_type,
+                        'size' => $m->size,
+                    ];
+                }
+            }
 
-            $optionData = [
-                'id' => $option->id, // Sertakan ID asli untuk referensi
-                'key' => $option->option_key,
+            $optionsArray[] = [
+                'id' => $option->id,
+                'question_id' => $this->id,
+                'option_key' => $option->option_key,
                 'content' => $option->content,
-                'type' => $option->getMetadata('type'), // Untuk matching (left/right)
+                'order' => $option->order ?? 0,
+                'metadata' => $option->metadata,
+                'media' => [
+                    'option_media' => $optionMedia
+                ],
             ];
-
-            // Tambahkan metadata khusus jika ada
-            if ($option->metadata) {
-                $optionData = array_merge($optionData, $option->metadata);
-            }
-
-            // Format khusus berdasarkan tipe soal
-            if ($this->question_type === QuestionTypeEnum::MATCHING) {
-                // Untuk matching, kita butuh struktur yang jelas antara left dan right
-                // Tapi untuk snapshot, kita simpan flat array dengan key L1, R1, dst.
-                // Nanti di frontend yang akan memisahkan
-            }
-
-            $options[$option->option_key] = $optionData;
         }
 
-        return $options;
+        return $optionsArray;
     }
 
     /**
@@ -172,7 +178,9 @@ class Question extends Model implements HasMedia
                 'unit' => $this->options->first()?->getMetadata('unit'),
             ],
 
-            QuestionTypeEnum::SHORT_ANSWER => [
+            QuestionTypeEnum::SHORT_ANSWER,
+            QuestionTypeEnum::ARABIC_RESPONSE,
+            QuestionTypeEnum::JAVANESE_RESPONSE => [
                 'answers' => $this->options->where('is_correct', true)
                     ->pluck('content')->values()->toArray()
             ],

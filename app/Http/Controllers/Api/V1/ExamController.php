@@ -69,6 +69,30 @@ final class ExamController extends ApiController
             $exam = Exam::query()->create($data);
             $exam->classrooms()->sync($classroomIds);
 
+            // Snapshot questions from QuestionBank
+            if ($exam->question_bank_id) {
+                $bank = \App\Models\QuestionBank::find($exam->question_bank_id);
+                if ($bank) {
+                    $questions = $bank->questions;
+                    $order = 1;
+                    foreach ($questions as $question) {
+                        \App\Models\ExamQuestion::create([
+                            'exam_id' => $exam->id,
+                            'question_id' => $question->id,
+                            'question_number' => $order++,
+                            'content' => $question->content,
+                            'options' => $question->getOptionsForExam(),
+                            'key_answer' => $question->getKeyAnswerForExam(),
+                            'score_value' => $question->score?->value ?? 1,
+                            'question_type' => $question->type,
+                            'difficulty_level' => $question->difficulty,
+                            'media_path' => $question->getFirstMediaUrl('question_content'),
+                            'hint' => $question->hint,
+                        ]);
+                    }
+                }
+            }
+
             return $exam;
         });
 
@@ -266,6 +290,13 @@ final class ExamController extends ApiController
         // 2. Ambil sesi ujian yang aktif/selesai untuk ujian ini
         $examSessions = ExamSession::where('exam_id', $exam->id)
             ->whereIn('user_id', $students->pluck('id'))
+            ->withCount([
+                'examResultDetails as total_questions',
+                'examResultDetails as answered_count' => function ($query) {
+                    $query->whereNotNull('student_answer');
+                }
+            ])
+            ->withSum('examResultDetails as current_score', 'score_earned')
             ->get()
             ->keyBy('user_id');
 
@@ -278,15 +309,36 @@ final class ExamController extends ApiController
             $remainingTime = 0;
             $currentScore = 0;
             $extraTime = 0;
+            $progress = [
+                'answered' => 0,
+                'total' => 0,
+            ];
 
             if ($session) {
-                // Map backend statuses to frontend: doing -> in_progress, done -> finished
-                $status = $session->is_finished ? 'finished' : 'in_progress';
+                // Detect logical statuses
+                $isTimedOut = $this->calculateRemainingTime($session, $exam) <= 0;
+                $isAllAnswered = ($session->total_questions > 0) && ($session->answered_count >= $session->total_questions);
+
+                if ($session->is_finished) {
+                    $status = 'finished';
+                } elseif ($isTimedOut) {
+                    $status = 'timed_out';
+                } elseif ($isAllAnswered) {
+                    $status = 'completed';
+                } else {
+                    $status = 'in_progress';
+                }
+
                 $startTime = $session->start_time;
                 $currentScore = $session->current_score ?? 0;
                 $extraTime = $session->extra_time ?? 0;
 
-                if ($status === 'in_progress') {
+                $progress = [
+                    'answered' => (int) $session->answered_count,
+                    'total' => (int) $session->total_questions,
+                ];
+
+                if ($status === 'in_progress' || $status === 'completed' || $status === 'timed_out') {
                     $remainingTime = $this->calculateRemainingTime($session, $exam);
                 }
 
@@ -307,8 +359,9 @@ final class ExamController extends ApiController
                 'status' => $status,
                 'start_time' => $startTime,
                 'remaining_time' => $remainingTime,
-                'score' => $currentScore, // mapped from current_score/total_score
+                'score' => (float) $currentScore, // mapped from current_score/total_score
                 'extra_time' => $extraTime,
+                'progress' => $progress,
             ];
         });
 
@@ -389,24 +442,20 @@ final class ExamController extends ApiController
     /**
      * Force finish exam for a specific student.
      */
-    public function forceFinish(Request $request, Exam $exam): JsonResponse
+    public function forceFinish(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'user_id' => ['required', 'exists:users,id'],
+            'user_id' => 'required',
         ]);
 
-        $session = ExamSession::where('exam_id', $exam->id)
+        $session = ExamSession::where('exam_id', $id)
             ->where('user_id', $request->user_id)
             ->where('is_finished', false)
             ->first();
 
         if (! $session) {
-            return $this->error('Active exam session not found for this student', 404);
+            return $this->error('No active session found for this student.', 404);
         }
-
-        // Logic untuk menyelesaikan ujian
-        // Ini mungkin perlu memanggil service atau logic yang sama dengan ketika siswa klik "Selesai"
-        // Untuk penyederhanaan di sini, kita set status manual dan mungkin perlu trigger calculation score
 
         DB::transaction(function () use ($session) {
             $session->update([
@@ -414,11 +463,39 @@ final class ExamController extends ApiController
                 'finish_time' => now(),
             ]);
 
-            // TODO: Trigger score calculation here if logic is separate
-            // $examService->calculateScore($session);
+            // Dispatch Scoring Job (Calculate final score asynchronously)
+            \App\Jobs\CalculateExamScoreJob::dispatch($session);
         });
 
         return $this->success(message: 'Exam force finished successfully');
+    }
+
+    /**
+     * Reopen a finished exam session.
+     */
+    public function reopen(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'user_id' => 'required',
+            'minutes' => 'nullable|integer|min:0',
+        ]);
+
+        $session = ExamSession::where('exam_id', $id)
+            ->where('user_id', $request->user_id)
+            ->where('is_finished', true)
+            ->first();
+
+        if (! $session) {
+            return $this->error('No finished session found for this student.', 404);
+        }
+
+        $session->update([
+            'is_finished' => false,
+            'finish_time' => null,
+            'extra_time' => $session->extra_time + ($request->minutes ?? 0),
+        ]);
+
+        return $this->success(message: 'Exam session reopened successfully.');
     }
     /**
      * Regenerate exam token.

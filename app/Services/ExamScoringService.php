@@ -49,6 +49,12 @@ class ExamScoringService
             case QuestionTypeEnum::SHORT_ANSWER:
                 return $this->scoreShortAnswer($examQuestion, $studentAnswer, $keyAnswer, $maxScore);
 
+            case QuestionTypeEnum::ARABIC_RESPONSE:
+                return $this->scoreArabicResponse($examQuestion, $studentAnswer, $keyAnswer, $maxScore);
+
+            case QuestionTypeEnum::JAVANESE_RESPONSE:
+                return $this->scoreJavaneseResponse($examQuestion, $studentAnswer, $keyAnswer, $maxScore);
+
             case QuestionTypeEnum::ESSAY:
                 return ['score' => $detail->score_earned ?? 0, 'is_correct' => $detail->is_correct]; // Maintain existing
 
@@ -187,14 +193,37 @@ class ExamScoringService
 
     private function scoreShortAnswer($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
-        $keyVal = trim(strtolower((string)($keyAnswer['answer'] ?? '')));
-        $studentVal = trim(strtolower((string)$studentAnswer));
+        $correctAnswers = $keyAnswer['answers'] ?? [];
+        // Support legacy single answer format just in case
+        if (isset($keyAnswer['answer']) && !in_array($keyAnswer['answer'], $correctAnswers)) {
+            $correctAnswers[] = $keyAnswer['answer'];
+        }
 
-        $isCorrect = ($studentVal === $keyVal);
+        $studentVal = trim(strtolower((string)$studentAnswer));
+        $isCorrect = false;
+
+        foreach ($correctAnswers as $answer) {
+            if ($studentVal === trim(strtolower((string)$answer))) {
+                $isCorrect = true;
+                break;
+            }
+        }
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
             'is_correct' => $isCorrect
         ];
+    }
+
+    private function scoreArabicResponse($question, $studentAnswer, $keyAnswer, $maxScore): array
+    {
+        // For now, same as short answer but could include normalization later
+        return $this->scoreShortAnswer($question, $studentAnswer, $keyAnswer, $maxScore);
+    }
+
+    private function scoreJavaneseResponse($question, $studentAnswer, $keyAnswer, $maxScore): array
+    {
+        // For now, same as short answer but could include normalization later
+        return $this->scoreShortAnswer($question, $studentAnswer, $keyAnswer, $maxScore);
     }
 }

@@ -178,6 +178,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{exam}/reset', [ExamController::class, 'resetExam'])->name('api.v1.exams.reset');
         Route::post('{exam}/add-time', [ExamController::class, 'addTime'])->name('api.v1.exams.add-time');
         Route::post('{exam}/force-finish', [ExamController::class, 'forceFinish'])->name('api.v1.exams.force-finish');
+        Route::post('{exam}/reopen', [ExamController::class, 'reopen'])->name('api.v1.exams.reopen');
         Route::post('{exam}/regenerate-token', [ExamController::class, 'regenerateToken'])->name('api.v1.exams.regenerate-token');
         Route::post('bulk-update', [ExamController::class, 'bulkUpdate'])->name('api.v1.exams.bulk-update');
     });

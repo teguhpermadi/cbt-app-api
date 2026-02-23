@@ -202,8 +202,34 @@ class ExamController extends ApiController
                     'total_score' => 0,
                 ]);
 
-                // Get Questions
+                // Get Questions (Look for snapshots)
                 $questions = ExamQuestion::where('exam_id', $exam->id)->get();
+
+                // FALLBACK: If ExamQuestion is empty but exam has a bank, snapshot them now
+                if ($questions->isEmpty() && $exam->question_bank_id) {
+                    $bank = \App\Models\QuestionBank::find($exam->question_bank_id);
+                    if ($bank) {
+                        $bankQuestions = $bank->questions;
+                        $qOrder = 1;
+                        foreach ($bankQuestions as $bq) {
+                            ExamQuestion::create([
+                                'exam_id' => $exam->id,
+                                'question_id' => $bq->id,
+                                'question_number' => $qOrder++,
+                                'content' => $bq->content,
+                                'options' => $bq->getOptionsForExam(),
+                                'key_answer' => $bq->getKeyAnswerForExam(),
+                                'score_value' => $bq->score?->value ?? 1,
+                                'question_type' => $bq->type,
+                                'difficulty_level' => $bq->difficulty,
+                                'media_path' => $bq->getFirstMediaUrl('question_content'),
+                                'hint' => $bq->hint,
+                            ]);
+                        }
+                        // Refresh questions list after snapshotting
+                        $questions = ExamQuestion::where('exam_id', $exam->id)->get();
+                    }
+                }
 
                 if ($exam->is_randomized_question) {
                     $questions = $questions->shuffle();
@@ -305,17 +331,94 @@ class ExamController extends ApiController
             ->orderBy('question_number')
             ->get();
 
+        // HEALING: If session has no questions, try to populate them now
+        // OR if the first question has options as an object (associative array with non-numeric keys)
+        $needsHealing = $questions->isEmpty();
+        if (!$needsHealing && $questions->first()->examQuestion) {
+            $firstOptions = $questions->first()->examQuestion->options;
+            // Check if it's an associative array (old format)
+            if (is_array($firstOptions) && !empty($firstOptions) && !array_is_list($firstOptions)) {
+                $needsHealing = true;
+                // Delete old ExamQuestions and ResultDetails to force re-snapshot
+                ExamResultDetail::where('exam_session_id', $session->id)->delete();
+                ExamQuestion::where('exam_id', $exam->id)->delete();
+                $questions = collect(); // Reset to trigger populate logic below
+            }
+        }
+
+        if ($needsHealing) {
+            // Check if ExamQuestions exist for this exam
+            $examQuestions = ExamQuestion::where('exam_id', $exam->id)->get();
+
+            // If ExamQuestions are missing, snapshot them from bank first
+            if ($examQuestions->isEmpty() && $exam->question_bank_id) {
+                $bank = \App\Models\QuestionBank::find($exam->question_bank_id);
+                if ($bank) {
+                    $bankQuestions = $bank->questions;
+                    $qOrder = 1;
+                    foreach ($bankQuestions as $bq) {
+                        ExamQuestion::create([
+                            'id' => (string) Str::ulid(),
+                            'exam_id' => $exam->id,
+                            'question_id' => $bq->id,
+                            'question_number' => $qOrder++,
+                            'content' => $bq->content,
+                            'options' => $bq->getOptionsForExam(),
+                            'key_answer' => $bq->getKeyAnswerForExam(),
+                            'score_value' => $bq->score?->value ?? 1,
+                            'question_type' => $bq->type,
+                            'difficulty_level' => $bq->difficulty,
+                            'media_path' => $bq->getFirstMediaUrl('question_content'),
+                            'hint' => $bq->hint,
+                        ]);
+                    }
+                    $examQuestions = ExamQuestion::where('exam_id', $exam->id)->get();
+                }
+            }
+
+            // Create Result Details for this session from ExamQuestions
+            if (!$examQuestions->isEmpty()) {
+                $detailsData = [];
+                $qNum = 1;
+                foreach ($examQuestions as $eq) {
+                    $detailsData[] = [
+                        'id' => (string) Str::ulid(),
+                        'exam_session_id' => $session->id,
+                        'exam_question_id' => $eq->id,
+                        'question_number' => $qNum++,
+                        'score_earned' => 0,
+                        'is_flagged' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                ExamResultDetail::insert($detailsData);
+
+                // Reload questions
+                $questions = ExamResultDetail::query()
+                    ->where('exam_session_id', $session->id)
+                    ->with(['examQuestion'])
+                    ->orderBy('question_number')
+                    ->get();
+            }
+        }
+
         // Transform if needed to hide key_answer etc if they were in ExamQuestion (Model `ExamQuestion` already defines hidden? No, we should ensure we don't send key answers if they are in the model)
         // Check `ExamQuestion` model. `key_answer` is in fillable/casts. It is NOT hidden by default.
         // We MUST hide `key_answer` from the response.
 
-        $questions->transform(function ($detail) {
+        $questions->transform(function ($detail) use ($exam) {
             if ($detail->examQuestion) {
                 $detail->examQuestion->makeHidden(['key_answer']);
 
-                // If randomized answers, we might need to shuffle options here or if they were shuffled at snapshot time?
-                // `ExamQuestion` stores `options`. If `is_randomized_answer` is on Exam, we should shuffle them here or in snapshot.
-                // Ideally shuffle here for display.
+                // Handle Randomized Answers
+                if ($exam->is_randomized_answer) {
+                    $options = $detail->examQuestion->options;
+                    if (is_array($options)) {
+                        shuffle($options);
+                        $detail->examQuestion->options = $options;
+                    }
+                }
             }
             return $detail;
         });
