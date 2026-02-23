@@ -13,19 +13,19 @@ enum QuestionTypeEnum: string
     case MATCHING = 'matching';
     case SEQUENCE = 'sequence';
     case ARRANGE_WORDS = 'arrange_words';
-    // case DRAWING = 'drawing';
-    // case GRAPH = 'graph';
-    // case HOTSPOT = 'hotspot';
-    // case VOICE_RESPONSE = 'voice_response';
-    // case IMAGE_RESPONSE = 'image_response';
-    // case VIDEO_RESPONSE = 'video_response';
-    // case CATEGORIZATION = 'categorization';
+        // case DRAWING = 'drawing';
+        // case GRAPH = 'graph';
+        // case HOTSPOT = 'hotspot';
+        // case VOICE_RESPONSE = 'voice_response';
+        // case IMAGE_RESPONSE = 'image_response';
+        // case VIDEO_RESPONSE = 'video_response';
+    case CATEGORIZATION = 'categorization';
     case ARABIC_RESPONSE = 'arabic_response';
     case JAVANESE_RESPONSE = 'javanese_response';
 
     public function description(): string
     {
-        return match($this) {
+        return match ($this) {
             self::MULTIPLE_CHOICE => 'Pilihan ganda dengan satu jawaban benar',
             self::MULTIPLE_SELECTION => 'Pilihan ganda dengan beberapa jawaban benar',
             self::TRUE_FALSE => 'Pertanyaan benar/salah',
@@ -41,7 +41,7 @@ enum QuestionTypeEnum: string
             // self::VOICE_RESPONSE => 'Jawaban berupa rekaman suara',
             // self::IMAGE_RESPONSE => 'Jawaban berupa unggahan gambar',
             // self::VIDEO_RESPONSE => 'Jawaban berupa unggahan video',
-            // self::CATEGORIZATION => 'Mengelompokkan item ke dalam kategori',
+            self::CATEGORIZATION => 'Mengelompokkan item ke dalam kategori',
             self::ARABIC_RESPONSE => 'Jawaban berupa teks dalam bahasa Arab',
             self::JAVANESE_RESPONSE => 'Jawaban berupa teks dalam bahasa Jawa',
         };
@@ -49,7 +49,7 @@ enum QuestionTypeEnum: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::MULTIPLE_CHOICE => 'Multiple Choice',
             self::MULTIPLE_SELECTION => 'Multiple Selection',
             self::TRUE_FALSE => 'True/False',
@@ -65,7 +65,7 @@ enum QuestionTypeEnum: string
             // self::VOICE_RESPONSE => 'Voice Response',
             // self::IMAGE_RESPONSE => 'Image Response',
             // self::VIDEO_RESPONSE => 'Video Response',
-            // self::CATEGORIZATION => 'Categorization',
+            self::CATEGORIZATION => 'Categorization',
             self::ARABIC_RESPONSE => 'Arabic Response',
             self::JAVANESE_RESPONSE => 'Javanese Response',
         };

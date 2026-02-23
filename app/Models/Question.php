@@ -196,6 +196,17 @@ class Question extends Model implements HasMedia
                     : []
             ],
 
+            QuestionTypeEnum::CATEGORIZATION => [
+                'groups' => $this->options->groupBy(function ($option) {
+                    return $option->getMetadata('category_title');
+                })->map(function ($items, $title) {
+                    return [
+                        'title' => $title,
+                        'items' => $items->pluck('option_key')->values()->toArray()
+                    ];
+                })->values()->toArray()
+            ],
+
             default => []
         };
     }

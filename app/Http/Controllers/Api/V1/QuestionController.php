@@ -66,6 +66,7 @@ final class QuestionController extends ApiController
         $mathContent = $data['math_content'] ?? '';
         $arabicContent = $data['arabic_content'] ?? '';
         $javaneseContent = $data['javanese_content'] ?? '';
+        $categorizationGroups = $data['categorization_groups'] ?? [];
 
 
         // Clean up data for Question model
@@ -78,6 +79,7 @@ final class QuestionController extends ApiController
         unset($data['math_content']);
         unset($data['arabic_content']);
         unset($data['javanese_content']);
+        unset($data['categorization_groups']);
 
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
@@ -94,7 +96,7 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups) {
 
             $question = Question::create($data);
 
@@ -111,7 +113,7 @@ final class QuestionController extends ApiController
                 $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups);
 
 
             return $question;
@@ -164,6 +166,7 @@ final class QuestionController extends ApiController
         $mathContent = $data['math_content'] ?? '';
         $arabicContent = $data['arabic_content'] ?? '';
         $javaneseContent = $data['javanese_content'] ?? '';
+        $categorizationGroups = $data['categorization_groups'] ?? [];
 
 
         unset($data['tags']);
@@ -174,9 +177,10 @@ final class QuestionController extends ApiController
         unset($data['math_content']);
         unset($data['arabic_content']);
         unset($data['javanese_content']);
+        unset($data['categorization_groups']);
 
 
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent) {
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups) {
 
             $question->update($data);
 
@@ -190,7 +194,7 @@ final class QuestionController extends ApiController
             }
 
             // Sync options instead of delete/re-create
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups);
 
 
             return $question;
@@ -205,7 +209,7 @@ final class QuestionController extends ApiController
     /**
      * Helper to save options based on question type
      */
-    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent, string $javaneseContent): void
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent, string $javaneseContent, array $categorizationGroups): void
 
     {
         switch ($question->type) {
@@ -283,7 +287,25 @@ final class QuestionController extends ApiController
                 break;
 
 
-                // Add other types if needed (Math, Strings, etc.)
+            case \App\Enums\QuestionTypeEnum::CATEGORIZATION:
+                $question->options()->delete();
+                $createdOptions = \App\Models\Option::createCategorizationOptions($question->id, $categorizationGroups);
+
+                // Handle images for categorization items
+                // The structure of categorizationGroups is expected to match what Option::createCategorizationOptions expects
+                // but we need to match the created options back to the input to find images.
+                $optionIndex = 0;
+                foreach ($categorizationGroups as $groupIndex => $group) {
+                    $items = $group['items'] ?? [];
+                    foreach ($items as $itemIndex => $item) {
+                        $option = $createdOptions[$optionIndex] ?? null;
+                        if ($option && isset($item['image']) && $item['image'] instanceof \Illuminate\Http\UploadedFile) {
+                            $option->addMedia($item['image'])->toMediaCollection('option_media');
+                        }
+                        $optionIndex++;
+                    }
+                }
+                break;
         }
     }
 

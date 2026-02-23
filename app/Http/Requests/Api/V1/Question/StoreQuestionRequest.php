@@ -58,6 +58,13 @@ class StoreQuestionRequest extends FormRequest
             'math_content' => ['nullable', 'string'],
             'arabic_content' => ['nullable', 'string'],
             'javanese_content' => ['nullable', 'string'],
+
+            // Categorization
+            'categorization_groups' => ['nullable', 'array'],
+            'categorization_groups.*.title' => ['required_with:categorization_groups', 'string'],
+            'categorization_groups.*.items' => ['required_with:categorization_groups', 'array'],
+            'categorization_groups.*.items.*.content' => ['required_with:categorization_groups', 'string'],
+            'categorization_groups.*.items.*.image' => ['nullable', 'image', 'max:2048'],
         ];
     }
 }

@@ -412,4 +412,39 @@ class Option extends Model implements HasMedia
             ],
         ]);
     }
+
+    /**
+     * Create options untuk Categorization
+     *
+     * @param string $questionId
+     * @param array $groups Format: [['title' => 'Category 1', 'items' => [['content' => 'Item 1'], ...]], ...]
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public static function createCategorizationOptions(string $questionId, array $groups)
+    {
+        $createdOptions = collect();
+        $optionIndex = 0;
+
+        foreach ($groups as $groupIndex => $group) {
+            $categoryTitle = $group['title'] ?? "Category " . ($groupIndex + 1);
+            $groupUuid = $group['uuid'] ?? (string) \Illuminate\Support\Str::uuid();
+            $items = $group['items'] ?? [];
+
+            foreach ($items as $itemIndex => $item) {
+                $createdOptions->push(self::create([
+                    'question_id' => $questionId,
+                    'option_key' => 'C' . ($groupIndex + 1) . 'I' . ($itemIndex + 1),
+                    'content' => is_array($item) ? ($item['content'] ?? '') : $item,
+                    'order' => $optionIndex++,
+                    'is_correct' => true,
+                    'metadata' => [
+                        'group_uuid' => $groupUuid,
+                        'group_title' => $categoryTitle,
+                    ],
+                ]));
+            }
+        }
+
+        return $createdOptions;
+    }
 }
