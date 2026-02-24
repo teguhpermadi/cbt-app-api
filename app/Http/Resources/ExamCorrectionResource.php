@@ -28,6 +28,17 @@ class ExamCorrectionResource extends JsonResource
             'correction_notes' => $this->correction_notes,
             'answered_at' => $this->answered_at,
             'options' => $this->examQuestion->options, // Context for MC/Multiple Answer
+            'session' => $this->whenLoaded('examSession', function () {
+                return [
+                    'id' => $this->examSession->id,
+                    'is_corrected' => $this->examSession->is_corrected,
+                    'student' => [
+                        'id' => $this->examSession->user->id,
+                        'name' => $this->examSession->user->name,
+                        'email' => $this->examSession->user->email,
+                    ],
+                ];
+            }),
         ];
     }
 }

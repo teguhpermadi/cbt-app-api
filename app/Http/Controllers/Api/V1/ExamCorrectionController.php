@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\ExamCorrectionResource;
 use App\Models\Exam;
+use App\Models\ExamQuestion;
 use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ExamCorrectionController extends Controller
+class ExamCorrectionController extends ApiController
 {
     /**
      * Get all sessions for a specific exam.
@@ -20,10 +21,18 @@ class ExamCorrectionController extends Controller
         $sessions = ExamSession::query()
             ->where('exam_id', $exam->id)
             ->with(['user'])
-            ->latest()
+            ->get(); // Removed latest() to keep order more stable if preferred, but usually name is better for stability
+
+        $questions = ExamQuestion::query()
+            ->where('exam_id', $exam->id)
+            ->orderBy('question_number', 'asc')
             ->get();
 
-        return \App\Http\Resources\Student\ExamSessionResource::collection($sessions);
+        return $this->success([
+            'exam' => $exam,
+            'sessions' => \App\Http\Resources\Student\ExamSessionResource::collection($sessions),
+            'questions' => $questions
+        ]);
     }
 
     /**
@@ -43,9 +52,10 @@ class ExamCorrectionController extends Controller
             ->orderBy('question_number')
             ->get();
 
-        return response()->json([
-            'session' => (new \App\Http\Resources\Student\ExamSessionResource($examSession))->resolve(),
-            'answers' => ExamCorrectionResource::collection($details)->resolve(),
+        return $this->success([
+            'session' => new \App\Http\Resources\Student\ExamSessionResource($examSession),
+            'exam' => new \App\Http\Resources\ExamResource($examSession->exam),
+            'answers' => ExamCorrectionResource::collection($details),
         ]);
     }
 
@@ -68,9 +78,7 @@ class ExamCorrectionController extends Controller
         $maxScore = $examResultDetail->examQuestion->score_value;
 
         if ($validated['score_earned'] > $maxScore) {
-            return response()->json([
-                'message' => "Score cannot exceed maximum score of {$maxScore}",
-            ], 422);
+            return $this->error("Score cannot exceed maximum score of {$maxScore}", 422);
         }
 
         $examResultDetail->update([
@@ -79,7 +87,10 @@ class ExamCorrectionController extends Controller
             'is_correct' => $validated['is_correct'] ?? ($validated['score_earned'] == $maxScore),
         ]);
 
-        return new ExamCorrectionResource($examResultDetail);
+        return $this->success(
+            new ExamCorrectionResource($examResultDetail),
+            'Correction updated successfully'
+        );
     }
 
     /**
@@ -113,9 +124,9 @@ class ExamCorrectionController extends Controller
             }
         });
 
-        return response()->json([
-            'message' => 'Correction finished and scores updated.',
-            'data' => $examSession->fresh(),
-        ]);
+        return $this->success(
+            $examSession->fresh(),
+            'Correction finished and scores updated.'
+        );
     }
 }
