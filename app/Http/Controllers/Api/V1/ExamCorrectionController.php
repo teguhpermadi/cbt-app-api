@@ -60,6 +60,27 @@ class ExamCorrectionController extends ApiController
     }
 
     /**
+     * Get all student answers for a specific exam question.
+     */
+    public function byQuestion(Exam $exam, ExamQuestion $examQuestion)
+    {
+        // Ensure question belongs to exam
+        if ($examQuestion->exam_id !== $exam->id) {
+            abort(404, 'Question not found for this exam.');
+        }
+
+        $details = ExamResultDetail::query()
+            ->where('exam_question_id', $examQuestion->id)
+            ->with(['examSession.user', 'examQuestion'])
+            ->get();
+
+        return $this->success([
+            'question' => $examQuestion,
+            'answers' => ExamCorrectionResource::collection($details),
+        ]);
+    }
+
+    /**
      * Update score and notes for a specific answer.
      */
     public function update(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)

@@ -188,6 +188,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     Route::prefix('exams')->group(function () {
         Route::get('{exam}/sessions', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'index'])->name('api.v1.exams.correction.index');
         Route::get('{exam}/sessions/{examSession}/correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'show'])->name('api.v1.exams.correction.show');
+        Route::get('{exam}/questions/{examQuestion}/correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'byQuestion'])->name('api.v1.exams.correction.by-question');
         Route::put('sessions/{examSession}/details/{examResultDetail}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
         Route::post('sessions/{examSession}/finish-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
     });
