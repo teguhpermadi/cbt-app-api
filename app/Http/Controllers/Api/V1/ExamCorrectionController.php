@@ -213,4 +213,35 @@ class ExamCorrectionController extends ApiController
             'Correction finished and scores updated.'
         );
     }
+
+    /**
+     * Recalculate all scores for a specific session.
+     */
+    public function recalculate(ExamSession $examSession)
+    {
+        // Use the existing CalculateExamScoreJob to recalculate all scores
+        \App\Jobs\CalculateExamScoreJob::dispatchSync($examSession, 'all');
+
+        return $this->success(
+            $examSession->fresh(['examResult']),
+            'Scores recalculated successfully.'
+        );
+    }
+
+    /**
+     * Recalculate all scores for all sessions in an exam.
+     */
+    public function recalculateAll(Exam $exam)
+    {
+        $sessions = ExamSession::where('exam_id', $exam->id)->get();
+
+        foreach ($sessions as $session) {
+            \App\Jobs\CalculateExamScoreJob::dispatchSync($session, 'all');
+        }
+
+        return $this->success(
+            null,
+            "Successfully recalculated scores for {$sessions->count()} sessions."
+        );
+    }
 }
