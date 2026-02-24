@@ -91,27 +91,90 @@ class ExamCorrectionController extends ApiController
         }
 
         $validated = $request->validate([
-            'score_earned' => 'required|numeric|min:0',
+            'score_earned' => 'nullable|numeric|min:0',
+            'marking_status' => 'nullable|string|in:full,partial,no',
             'correction_notes' => 'nullable|string',
             'is_correct' => 'nullable|boolean',
         ]);
 
         $maxScore = $examResultDetail->examQuestion->score_value;
+        $scoreEarned = $validated['score_earned'] ?? $examResultDetail->score_earned;
+        $isCorrect = $validated['is_correct'] ?? $examResultDetail->is_correct;
 
-        if ($validated['score_earned'] > $maxScore) {
+        // Handle marking status shortcuts
+        if (isset($validated['marking_status'])) {
+            if ($validated['marking_status'] === 'full') {
+                $scoreEarned = $maxScore;
+                $isCorrect = true;
+            } elseif ($validated['marking_status'] === 'no') {
+                $scoreEarned = 0;
+                $isCorrect = false;
+            }
+        }
+
+        if ($scoreEarned > $maxScore) {
             return $this->error("Score cannot exceed maximum score of {$maxScore}", 422);
         }
 
         $examResultDetail->update([
-            'score_earned' => $validated['score_earned'],
-            'correction_notes' => $validated['correction_notes'],
-            'is_correct' => $validated['is_correct'] ?? ($validated['score_earned'] == $maxScore),
+            'score_earned' => $scoreEarned,
+            'correction_notes' => $validated['correction_notes'] ?? $examResultDetail->correction_notes,
+            'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
         ]);
 
         return $this->success(
             new ExamCorrectionResource($examResultDetail),
             'Correction updated successfully'
         );
+    }
+
+    /**
+     * Bulk update scores for multiple answers.
+     */
+    public function bulkUpdate(Request $request, Exam $exam)
+    {
+        $validated = $request->validate([
+            'updates' => 'required|array',
+            'updates.*.id' => 'required|exists:exam_result_details,id',
+            'updates.*.score_earned' => 'nullable|numeric|min:0',
+            'updates.*.marking_status' => 'nullable|string|in:full,partial,no',
+            'updates.*.correction_notes' => 'nullable|string',
+            'updates.*.is_correct' => 'nullable|boolean',
+        ]);
+
+        $updatedCount = 0;
+
+        DB::transaction(function () use ($validated, &$updatedCount) {
+            foreach ($validated['updates'] as $updateData) {
+                $detail = ExamResultDetail::with('examQuestion')->find($updateData['id']);
+
+                if (!$detail) continue;
+
+                $maxScore = $detail->examQuestion->score_value;
+                $scoreEarned = $updateData['score_earned'] ?? $detail->score_earned;
+                $isCorrect = $updateData['is_correct'] ?? $detail->is_correct;
+
+                if (isset($updateData['marking_status'])) {
+                    if ($updateData['marking_status'] === 'full') {
+                        $scoreEarned = $maxScore;
+                        $isCorrect = true;
+                    } elseif ($updateData['marking_status'] === 'no') {
+                        $scoreEarned = 0;
+                        $isCorrect = false;
+                    }
+                }
+
+                $detail->update([
+                    'score_earned' => min($scoreEarned, $maxScore),
+                    'correction_notes' => $updateData['correction_notes'] ?? $detail->correction_notes,
+                    'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
+                ]);
+
+                $updatedCount++;
+            }
+        });
+
+        return $this->success(null, "Successfully updated {$updatedCount} answers.");
     }
 
     /**
