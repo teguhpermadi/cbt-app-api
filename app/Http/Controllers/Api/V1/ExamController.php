@@ -434,7 +434,20 @@ final class ExamController extends ApiController
             return $this->error('Active exam session not found for this student', 404);
         }
 
-        $session->increment('extra_time', $request->minutes);
+        // Smart Time Addition:
+        // Calculate how much time is needed to ensure the student has X minutes from NOW.
+        $now = now();
+        $startTime = Carbon::parse($session->start_time);
+        $minutesSinceStart = $now->diffInMinutes($startTime);
+        $neededExtraTime = ($minutesSinceStart + $request->minutes) - $exam->duration;
+
+        // If the calculated extra_time is more than current, update it.
+        // This handles both adding time to active session and extending expired ones.
+        if ($neededExtraTime > ($session->extra_time ?? 0)) {
+            $session->update(['extra_time' => (int) $neededExtraTime]);
+        } else {
+            $session->increment('extra_time', $request->minutes);
+        }
 
         return $this->success(message: 'Extra time added successfully');
     }
@@ -489,10 +502,20 @@ final class ExamController extends ApiController
             return $this->error('No finished session found for this student.', 404);
         }
 
+        // Smart Reopen:
+        // Ensure the student has at least $request->minutes starting from NOW.
+        $now = now();
+        $startTime = Carbon::parse($session->start_time);
+        $minutesSinceStart = $now->diffInMinutes($startTime);
+        $requestedMinutes = $request->minutes ?? 0;
+        $neededExtraTime = ($minutesSinceStart + $requestedMinutes) - \App\Models\Exam::find($id)->duration;
+
+        $newExtraTime = max($session->extra_time ?? 0, (int) $neededExtraTime);
+
         $session->update([
             'is_finished' => false,
             'finish_time' => null,
-            'extra_time' => $session->extra_time + ($request->minutes ?? 0),
+            'extra_time' => $newExtraTime,
         ]);
 
         return $this->success(message: 'Exam session reopened successfully.');

@@ -303,17 +303,15 @@ class ExamController extends ApiController
         $now = Carbon::now();
         $startTime = Carbon::parse($session->start_time);
 
-        // Duration limit
-        $endTimeByDuration = $startTime->copy()->addMinutes($exam->duration);
+        // Duration limit (including extra time)
+        $duration = $exam->duration + ($session->extra_time ?? 0);
+        $endTimeByDuration = $startTime->copy()->addMinutes($duration);
 
         // Exam strict end time
         $hardEndTime = $exam->end_time ? Carbon::parse($exam->end_time) : null;
 
         // Real end time is the earlier of the two
-        $realEndTime = $endTimeByDuration;
-        if ($hardEndTime && $hardEndTime < $endTimeByDuration) {
-            $realEndTime = $hardEndTime;
-        }
+        $realEndTime = $hardEndTime ? $endTimeByDuration->min($hardEndTime) : $endTimeByDuration;
 
         if ($now > $realEndTime) {
             // Time expired, auto-finish?
