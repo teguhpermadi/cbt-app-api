@@ -17,6 +17,9 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\LiveScoreUpdated;
+use App\Events\TimerSynchronized;
+use App\Events\ExamForceFinished;
 
 final class ExamController extends ApiController
 {
@@ -316,7 +319,7 @@ final class ExamController extends ApiController
 
             if ($session) {
                 // Detect logical statuses
-                $isTimedOut = $this->calculateRemainingTime($session, $exam) <= 0;
+                $isTimedOut = $session->getRemainingSeconds() <= 0;
                 $isAllAnswered = ($session->total_questions > 0) && ($session->answered_count >= $session->total_questions);
 
                 if ($session->is_finished) {
@@ -339,7 +342,7 @@ final class ExamController extends ApiController
                 ];
 
                 if ($status === 'in_progress' || $status === 'completed' || $status === 'timed_out') {
-                    $remainingTime = $this->calculateRemainingTime($session, $exam);
+                    $remainingTime = $session->getRemainingSeconds();
                 }
 
                 if ($session->is_finished) {
@@ -449,6 +452,13 @@ final class ExamController extends ApiController
             $session->increment('extra_time', $request->minutes);
         }
 
+        // Dispatch TimerSynchronized event
+        $remainingSeconds = $session->fresh()->getRemainingSeconds();
+        event(new TimerSynchronized($exam->id, $request->user_id, $remainingSeconds));
+
+        // Dispatch LiveScoreUpdated event for dashboard sync
+        event(new LiveScoreUpdated($exam->id, $session->fresh()->getBroadcastData()));
+
         return $this->success(message: 'Extra time added successfully');
     }
 
@@ -470,7 +480,7 @@ final class ExamController extends ApiController
             return $this->error('No active session found for this student.', 404);
         }
 
-        DB::transaction(function () use ($session) {
+        DB::transaction(function () use ($session, $id, $request) {
             $session->update([
                 'is_finished' => true,
                 'finish_time' => now(),
@@ -478,6 +488,12 @@ final class ExamController extends ApiController
 
             // Dispatch Scoring Job (Calculate final score asynchronously)
             \App\Jobs\CalculateExamScoreJob::dispatch($session);
+
+            // Dispatch ExamForceFinished event
+            event(new ExamForceFinished($id, $request->user_id));
+
+            // Dispatch LiveScoreUpdated event for dashboard sync
+            event(new LiveScoreUpdated($id, $session->refresh()->getBroadcastData()));
         });
 
         return $this->success(message: 'Exam force finished successfully');
@@ -518,8 +534,16 @@ final class ExamController extends ApiController
             'extra_time' => $newExtraTime,
         ]);
 
+        // Dispatch TimerSynchronized event
+        $remainingSeconds = $session->fresh()->getRemainingSeconds();
+        event(new TimerSynchronized($id, $request->user_id, $remainingSeconds));
+
+        // Dispatch LiveScoreUpdated event for dashboard sync
+        event(new LiveScoreUpdated($id, $session->fresh()->getBroadcastData()));
+
         return $this->success(message: 'Exam session reopened successfully.');
     }
+
     /**
      * Regenerate exam token.
      */
@@ -533,34 +557,5 @@ final class ExamController extends ApiController
             ['token' => $newToken],
             'Token regenerated successfully'
         );
-    }
-
-
-    /**
-     * Calculate remaining time for a session.
-     */
-    private function calculateRemainingTime(ExamSession $session, Exam $exam): int
-    {
-        $startTime = Carbon::parse($session->start_time);
-        $duration = $exam->duration + ($session->extra_time ?? 0);
-
-        // Hitung waktu selesai berdasarkan durasi
-        $endTimeByDuration = $startTime->copy()->addMinutes($duration);
-
-        // Hitung waktu selesai berdasarkan batas akhir ujian (jika ada)
-        $endTimeBySchedule = $exam->end_time ? Carbon::parse($exam->end_time) : null;
-
-        // Ambil waktu selesai paling awal (minimum)
-        $endTime = $endTimeBySchedule
-            ? $endTimeByDuration->min($endTimeBySchedule)
-            : $endTimeByDuration;
-
-        $now = now();
-
-        if ($now->greaterThanOrEqualTo($endTime)) {
-            return 0;
-        }
-
-        return $now->diffInSeconds($endTime);
     }
 }

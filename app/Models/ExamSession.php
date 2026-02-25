@@ -68,4 +68,55 @@ class ExamSession extends Model
     {
         return $this->hasOne(ExamResult::class, 'exam_session_id');
     }
+
+    /**
+     * Get data for real-time broadcasting.
+     */
+    public function getBroadcastData()
+    {
+        $user = $this->user;
+        $exam = $this->exam;
+
+        $classroom = $exam->classrooms()
+            ->whereHas('students', fn($q) => $q->where('users.id', $this->user_id))
+            ->first();
+
+        $currentScore = $this->is_finished
+            ? (float) $this->total_score
+            : (float) $this->examResultDetails()->sum('score_earned');
+
+        return [
+            'id' => $user->id,
+            'student' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar' => $user->avatar,
+                'classroom' => $classroom?->name ?? 'N/A',
+            ],
+            'status' => $this->is_finished ? 'finished' : 'in_progress',
+            'score' => $currentScore,
+            'progress' => [
+                'answered' => (int) $this->examResultDetails()->whereNotNull('student_answer')->count(),
+                'total' => (int) $this->examResultDetails()->count(),
+            ],
+            'remaining_time' => (int) $this->getRemainingSeconds(),
+        ];
+    }
+
+    /**
+     * Calculate remaining seconds for this session.
+     */
+    public function getRemainingSeconds(): int
+    {
+        $now = now();
+        $startTime = \Carbon\Carbon::parse($this->start_time);
+        $exam = $this->exam;
+        $duration = $exam->duration + ($this->extra_time ?? 0);
+        $endTimeByDuration = $startTime->copy()->addMinutes($duration);
+        $hardEndTime = $exam->end_time ? \Carbon\Carbon::parse($exam->end_time) : null;
+        $realEndTime = $hardEndTime ? $endTimeByDuration->min($hardEndTime) : $endTimeByDuration;
+
+        return $now->greaterThan($realEndTime) ? 0 : $now->diffInSeconds($realEndTime);
+    }
 }

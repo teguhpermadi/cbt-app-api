@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Events\LiveScoreUpdated;
 
 class ExamController extends ApiController
 {
@@ -482,6 +483,16 @@ class ExamController extends ApiController
         $detail->answered_at = now();
         $detail->save();
 
+        // Dispatch LiveScoreUpdated event
+        // We need to fetch the live score data or just enough for real-time update.
+        // For efficiency, we can just send the updated score and progress for this student.
+        $exam = Exam::find($id);
+        $classroom = $exam->classrooms()->whereHas('students', fn($q) => $q->where('users.id', $user->id))->first();
+
+        $sessionData = $detail->examSession->getBroadcastData();
+
+        event(new LiveScoreUpdated($id, $sessionData));
+
         return $this->success(
             [
                 'question_id' => $detail->id,
@@ -515,6 +526,13 @@ class ExamController extends ApiController
                 'is_finished' => true,
             ]);
 
+            // Dispatch LiveScoreUpdated event
+            $exam = Exam::find($id);
+            $classroom = $exam->classrooms()->whereHas('students', fn($q) => $q->where('users.id', $user->id))->first();
+
+            $sessionData = $session->refresh()->getBroadcastData();
+            event(new LiveScoreUpdated($id, $sessionData));
+
             // 2. Dispatch Scoring Job (Calculate final score asynchronously)
             \App\Jobs\CalculateExamScoreJob::dispatch($session);
 
@@ -529,4 +547,5 @@ class ExamController extends ApiController
             );
         });
     }
+
 }
