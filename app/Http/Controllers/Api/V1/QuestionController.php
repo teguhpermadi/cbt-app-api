@@ -5,15 +5,18 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Question\BulkDeleteQuestionRequest;
 use App\Http\Requests\Api\V1\Question\BulkUpdateQuestionRequest;
+use App\Http\Requests\Api\V1\Question\ImportWordRequest;
 use App\Http\Requests\Api\V1\Question\StoreQuestionRequest;
 use App\Http\Requests\Api\V1\Question\UpdateQuestionRequest;
 use App\Http\Requests\Api\V1\Question\UploadMediaRequest;
 use App\Http\Resources\QuestionResource;
 use App\Models\Question;
+use App\Services\WordToDatabaseParserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class QuestionController extends ApiController
 {
@@ -493,5 +496,39 @@ final class QuestionController extends ApiController
         $media->delete();
 
         return $this->success(message: 'Media deleted successfully');
+    }
+
+    /**
+     * Import questions from a Word document (2-column Key-Value format).
+     */
+    public function importWord(ImportWordRequest $request, WordToDatabaseParserService $service): JsonResponse
+    {
+        $file = $request->file('file');
+        $questionBankId = $request->get('question_bank_id');
+        $authorId = \Illuminate\Support\Facades\Auth::id();
+
+        $result = $service->parse($file->getRealPath(), $authorId, $questionBankId);
+
+        if (!$result['success']) {
+            return $this->error('Word import failed', 422, $result['errors']);
+        }
+
+        return $this->success(
+            [
+                'total_imported' => $result['total'],
+                'errors' => $result['errors']
+            ],
+            'Questions imported successfully'
+        );
+    }
+
+    /**
+     * Download the Word template for question import.
+     */
+    public function downloadTemplate(WordToDatabaseParserService $service): BinaryFileResponse
+    {
+        $filePath = $service->generateTemplate();
+
+        return response()->download($filePath, 'template_soal_word.docx')->deleteFileAfterSend(true);
     }
 }

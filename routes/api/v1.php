@@ -120,6 +120,8 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{question}/force-delete', [QuestionController::class, 'forceDelete'])->name('api.v1.questions.force-delete');
         Route::post('bulk-delete', [QuestionController::class, 'bulkDelete'])->name('api.v1.questions.bulk-delete');
         Route::post('bulk-update', [QuestionController::class, 'bulkUpdate'])->name('api.v1.questions.bulk-update');
+        Route::post('import-word', [QuestionController::class, 'importWord'])->name('api.v1.questions.import-word');
+        Route::get('import-template', [QuestionController::class, 'downloadTemplate'])->name('api.v1.questions.import-template');
 
         // Media handling
         Route::post('{question}/media', [QuestionController::class, 'uploadMedia'])->name('api.v1.questions.media.upload');
