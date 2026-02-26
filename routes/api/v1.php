@@ -216,6 +216,9 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     // Activity Logs
     Route::get('activity-logs/mine', [ActivityLogController::class, 'mine'])->name('api.v1.activity-logs.mine');
     Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('api.v1.activity-logs.index');
+
+    // Dashboard
+    Route::get('dashboard', [\App\Http\Controllers\Api\V1\DashboardController::class, 'index'])->name('api.v1.dashboard');
 });
 
 // Password reset routes (public with rate limiting)
