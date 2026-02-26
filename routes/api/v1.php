@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
             Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'index'])->name('api.v1.student.exam-results.index');
             Route::get('leaderboard', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'leaderboard'])->name('api.v1.student.exam-results.leaderboard');
         });
+
+        Route::get('dashboard', [\App\Http\Controllers\Api\V1\Student\DashboardController::class, 'index'])->name('api.v1.student.dashboard');
     });
     Route::apiResource('students', StudentController::class)->names('api.v1.students');
 
