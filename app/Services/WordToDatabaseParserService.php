@@ -25,6 +25,7 @@ class WordToDatabaseParserService
 {
     protected $createdQuestions = [];
     protected $errors = [];
+    protected $baseOrder = 0;
 
     /**
      * Parse Word document (2-column Key-Value format) and create questions
@@ -38,6 +39,13 @@ class WordToDatabaseParserService
             $sections = $phpWord->getSections();
 
             DB::beginTransaction();
+
+            $this->baseOrder = 0;
+            if ($questionBankId) {
+                $this->baseOrder = Question::whereHas('questionBanks', function ($q) use ($questionBankId) {
+                    $q->where('question_bank_id', $questionBankId);
+                })->max('order') ?? 0;
+            }
 
             foreach ($sections as $section) {
                 foreach ($section->getElements() as $element) {
@@ -134,7 +142,7 @@ class WordToDatabaseParserService
                 'difficulty' => QuestionDifficultyLevelEnum::Medium,
                 'timer' => QuestionTimeEnum::THIRTY_SECONDS,
                 'is_approved' => true,
-                'order' => count($this->createdQuestions) + 1,
+                'order' => $this->baseOrder + count($this->createdQuestions) + 1,
             ]);
             file_put_contents(storage_path('app/import_debug.log'), "Question created: " . $question->id . "\n", FILE_APPEND);
 
@@ -172,6 +180,7 @@ class WordToDatabaseParserService
             7 => QuestionTypeEnum::SEQUENCE,
             8 => QuestionTypeEnum::ARABIC_RESPONSE,
             9 => QuestionTypeEnum::JAVANESE_RESPONSE,
+            10 => QuestionTypeEnum::MATCHING,
             default => null,
         };
     }
@@ -246,6 +255,19 @@ class WordToDatabaseParserService
             case QuestionTypeEnum::JAVANESE_RESPONSE:
                 Option::createJavaneseOption($question->id, $keyAnswer);
                 break;
+
+            case QuestionTypeEnum::MATCHING:
+                $pairs = [];
+                foreach ($lines as $line) {
+                    if (str_contains($line, '::')) {
+                        [$left, $right] = array_map('trim', explode('::', $line, 2));
+                        $pairs[] = ['left' => $left, 'right' => $right];
+                    }
+                }
+                if (!empty($pairs)) {
+                    Option::createMatchingOptions($question->id, $pairs);
+                }
+                break;
         }
     }
 
@@ -260,49 +282,15 @@ class WordToDatabaseParserService
         $section->addTitle('TEMPLATE IMPORT SOAL (WORD-TO-DATABASE)', 1);
         $section->addText('Petunjuk Singkat:', ['bold' => true]);
         $section->addText('1. Gunakan tabel 2 kolom untuk setiap soal.');
-        $section->addText('2. Kolom pertama (Key) harus tetap seperti contoh (type, score, question, dll).');
-        $section->addText('3. Kolom kedua (Content) adalah tempat Anda mengisi data.');
-        $section->addText('4. Gunakan kode angka (1-9) untuk Tipe Soal.');
+        $section->addText('2. Setiap soal HARUS berada dalam tabel yang terpisah (jangan digabung menjadi satu tabel besar).', ['color' => 'FF0000', 'bold' => true]);
+        $section->addText('3. Kolom pertama (Key) harus tetap seperti contoh (type, score, question, dll).');
+        $section->addText('4. Kolom kedua (Content) adalah tempat Anda mengisi data.');
+        $section->addText('5. Gunakan kode angka (1-10) untuk Tipe Soal.');
         $section->addTextBreak(1);
 
         $styleTable = ['borderSize' => 6, 'borderColor' => '999999', 'cellMargin' => 80];
         $phpWord->addTableStyle('QuestionTable', $styleTable);
 
-        // --- CONTOH 1: MULTIPLE CHOICE ---
-        $section->addTitle('Contoh 1: Pilihan Ganda', 2);
-        $table1 = $section->addTable('QuestionTable');
-        $this->addQuestionRow($table1, 'type', '1');
-        $this->addQuestionRow($table1, 'score', '1');
-        $this->addQuestionRow($table1, 'question', 'Apa ibu kota Indonesia?');
-        $this->addQuestionRow($table1, 'option', "Jakarta\nBandung\nSurabaya\nMedan");
-        $this->addQuestionRow($table1, 'key', 'A');
-        $this->addQuestionRow($table1, 'hint', 'Terletak di pulau Jawa');
-
-        $section->addTextBreak(2);
-
-        // --- CONTOH 2: SHORT ANSWER ---
-        $section->addTitle('Contoh 2: Isian Singkat', 2);
-        $table2 = $section->addTable('QuestionTable');
-        $this->addQuestionRow($table2, 'type', '4');
-        $this->addQuestionRow($table2, 'score', '2');
-        $this->addQuestionRow($table2, 'question', 'Siapa presiden pertama Indonesia?');
-        $this->addQuestionRow($table2, 'option', ''); // Kosongkan untuk isian
-        $this->addQuestionRow($table2, 'key', "Soekarno\nIr. Soekarno");
-        $this->addQuestionRow($table2, 'hint', 'Bapak Proklamator');
-
-        $section->addTextBreak(2);
-
-        // --- CONTOH 3: TRUE/FALSE ---
-        $section->addTitle('Contoh 3: Benar/Salah', 2);
-        $table3 = $section->addTable('QuestionTable');
-        $this->addQuestionRow($table3, 'type', '3');
-        $this->addQuestionRow($table3, 'score', '1');
-        $this->addQuestionRow($table3, 'question', 'Matahari terbit dari sebelah barat.');
-        $this->addQuestionRow($table3, 'option', '');
-        $this->addQuestionRow($table3, 'key', 'F'); // F/False/Salah
-        $this->addQuestionRow($table3, 'hint', '');
-
-        $section->addTextBreak(2);
         $section->addTitle('LEGENDA TIPE SOAL (KODE):', 2);
         $types = [
             '1' => 'Multiple Choice (Pilihan Ganda)',
@@ -314,11 +302,161 @@ class WordToDatabaseParserService
             '7' => 'Sequence (Urutan)',
             '8' => 'Arabic Response',
             '9' => 'Javanese Response',
+            '10' => 'Matching (Menjodohkan)',
         ];
+
 
         foreach ($types as $code => $label) {
             $section->addText("{$code} : {$label}");
         }
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 1: MULTIPLE CHOICE ---
+        $section->addTitle('Contoh 1: Pilihan Ganda (Multiple Choice)', 2);
+        $section->addText('Opsi dipisahkan dengan baris baru.');
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan HURUF pilihan jawaban (A, B, C, dst).', ['bold' => true]);
+        $table1 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table1, 'type', '1');
+        $this->addQuestionRow($table1, 'score', '1');
+        $this->addQuestionRow($table1, 'question', 'Apa ibu kota Indonesia?');
+        $this->addQuestionRow($table1, 'option', "Jakarta\nBandung\nSurabaya\nMedan");
+        $this->addQuestionRow($table1, 'key', 'A');
+        $this->addQuestionRow($table1, 'hint', 'Terletak di pulau Jawa');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 2: MULTIPLE SELECTION ---
+        $section->addTitle('Contoh 2: Kotak Centang (Multiple Selection)', 2);
+        $section->addText('Opsi dipisahkan baris baru.');
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan HURUF dipisahkan koma (A, C).', ['bold' => true]);
+        $table2 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table2, 'type', '2');
+        $this->addQuestionRow($table2, 'score', '1');
+        $this->addQuestionRow($table2, 'question', 'Manakah yang termasuk bahasa pemrograman?');
+        $this->addQuestionRow($table2, 'option', "PHP\nHTML\nPython\nCSS");
+        $this->addQuestionRow($table2, 'key', 'A, C');
+        $this->addQuestionRow($table2, 'hint', 'HTML/CSS adalah bahasa markup/styling');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 3: TRUE/FALSE ---
+        $section->addTitle('Contoh 3: Benar/Salah (True/False)', 2);
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan: T / TRUE / BENAR atau F / FALSE / SALAH.', ['bold' => true]);
+        $table3 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table3, 'type', '3');
+        $this->addQuestionRow($table3, 'score', '1');
+        $this->addQuestionRow($table3, 'question', 'Matahari terbit dari sebelah barat.');
+        $this->addQuestionRow($table3, 'option', '');
+        $this->addQuestionRow($table3, 'key', 'F');
+        $this->addQuestionRow($table3, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 4: SHORT ANSWER ---
+        $section->addTitle('Contoh 4: Isian Singkat (Short Answer)', 2);
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan satu atau beberapa kemungkinan jawaban (dipisah baris baru).', ['bold' => true]);
+        $table4 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table4, 'type', '4');
+        $this->addQuestionRow($table4, 'score', '1');
+        $this->addQuestionRow($table4, 'question', 'Siapa presiden pertama Indonesia?');
+        $this->addQuestionRow($table4, 'option', '');
+        $this->addQuestionRow($table4, 'key', "Soekarno\nIr. Soekarno");
+        $this->addQuestionRow($table4, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 5: ESSAY ---
+        $section->addTitle('Contoh 5: Uraian (Essay)', 2);
+        $section->addText('Keterangan Kunci: OPSIONAL (Bisa Kosong). Bisa diisi dengan rubrik penilaian atau contoh jawaban.', ['bold' => true]);
+        $table5 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table5, 'type', '5');
+        $this->addQuestionRow($table5, 'score', '5');
+        $this->addQuestionRow($table5, 'question', 'Jelaskan sejarah kemerdekaan Indonesia!');
+        $this->addQuestionRow($table5, 'option', '');
+        $this->addQuestionRow($table5, 'key', 'Proklamasi 17 Agustus 1945...');
+        $this->addQuestionRow($table5, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 6: MATH INPUT ---
+        $section->addTitle('Contoh 6: Jawaban Matematika (Math Input)', 2);
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Gunakan format LaTeX. Contoh: \frac{1}{2}', ['bold' => true]);
+        $table6 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table6, 'type', '6');
+        $this->addQuestionRow($table6, 'score', '1');
+        $this->addQuestionRow($table6, 'question', 'Hasil dari 1 dibagi 2 adalah...');
+        $this->addQuestionRow($table6, 'option', '');
+        $this->addQuestionRow($table6, 'key', '\frac{1}{2}');
+        $this->addQuestionRow($table6, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 7: SEQUENCE ---
+        $section->addTitle('Contoh 7: Urutan (Sequence)', 2);
+        $section->addText('Keterangan Opsi: Urutkan pilihan pada kolom "option" sesuai urutan yang BENAR.');
+        $section->addText('Keterangan Kunci: KOSONGKAN. Soal ini mengambil urutan langsung dari kolom "option".', ['bold' => true]);
+        $table7 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table7, 'type', '7');
+        $this->addQuestionRow($table7, 'score', '1');
+        $this->addQuestionRow($table7, 'question', 'Urutkan siklus hidup katak!');
+        $this->addQuestionRow($table7, 'option', "Telur\nKecebong\nKatak Muda\nKatak Dewasa");
+        $this->addQuestionRow($table7, 'key', '');
+        $this->addQuestionRow($table7, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 8: ARABIC RESPONSE ---
+        $section->addTitle('Contoh 8: Arabic Response', 2);
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan teks bahasa Arab yang benar.', ['bold' => true]);
+        $table8 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table8, 'type', '8');
+        $this->addQuestionRow($table8, 'score', '1');
+        $this->addQuestionRow($table8, 'question', 'Bagaimana tulisan "Allahu Akbar"?');
+        $this->addQuestionRow($table8, 'option', '');
+        $this->addQuestionRow($table8, 'key', 'الله أكبر');
+        $this->addQuestionRow($table8, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 9: JAVANESE RESPONSE ---
+        $section->addTitle('Contoh 9: Javanese Response', 2);
+        $section->addText('Keterangan Kunci: WAJIB DIISI. Isi dengan teks Aksara Jawa yang benar.', ['bold' => true]);
+        $table9 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table9, 'type', '9');
+        $this->addQuestionRow($table9, 'score', '1');
+        $this->addQuestionRow($table9, 'question', 'Tulislah "Sugeng Dalu" dalam aksara Jawa!');
+        $this->addQuestionRow($table9, 'option', '');
+        $this->addQuestionRow($table9, 'key', 'ꦱꦸꦒꦼꦁꦝꦭꦸ');
+        $this->addQuestionRow($table9, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 10: MATCHING ---
+        $section->addTitle('Contoh 10: Menjodohkan (Matching)', 2);
+        $section->addText('Keterangan Opsi: Tulis pasangan dengan format: "kiri"::"kanan".');
+        $section->addText('Keterangan Kunci: KOSONGKAN. Pasangan sudah didefinisikan di kolom "option".', ['bold' => true]);
+        $table10 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table10, 'type', '10');
+        $this->addQuestionRow($table10, 'score', '1');
+        $this->addQuestionRow($table10, 'question', 'Jodohkan hewan dengan golongan makanannya!');
+        $this->addQuestionRow($table10, 'option', "\"ayam\"::\"herbivora\"\n\"singa\"::\"karnivora\"\n\"manusia\"::\"omnivora\"");
+        $this->addQuestionRow($table10, 'key', '');
+        $this->addQuestionRow($table10, 'hint', '');
+
+        $section->addTextBreak(1);
+
+        // --- CONTOH 11: SOAL DENGAN GAMBAR ---
+        $section->addTitle('Contoh 11: Soal Berbasis Gambar (Image Support)', 2);
+        $section->addText('Anda bisa memasukkan GAMBAR langsung ke dalam sel tabel (Question atau Option).');
+        $section->addText('Keterangan: Cukup copy-paste gambar ke dalam kotak Content di bawah.', ['bold' => true, 'color' => '0000FF']);
+        $table11 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table11, 'type', '1');
+        $this->addQuestionRow($table11, 'score', '1');
+        $this->addQuestionRow($table11, 'question', "Manakah gambar yang menunjukkan buah apel?\n[SISIPKAN GAMBAR APEL DI SINI]");
+        $this->addQuestionRow($table11, 'option', "[GAMBAR OPSI A]\n[GAMBAR OPSI B]\n[GAMBAR OPSI C]");
+        $this->addQuestionRow($table11, 'key', 'A');
+        $this->addQuestionRow($table11, 'hint', 'Cari gambar berwarna merah');
 
         $tempFile = tempnam(sys_get_temp_dir(), 'template_') . '.docx';
         $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
