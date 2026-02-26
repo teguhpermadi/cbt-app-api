@@ -9,7 +9,10 @@ use App\Models\ExamQuestion;
 use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Enums\UserTypeEnum;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class ExamCorrectionController extends ApiController
 {
@@ -38,8 +41,23 @@ class ExamCorrectionController extends ApiController
     /**
      * Get all answers for a specific session for correction.
      */
-    public function show(Exam $exam, ExamSession $examSession)
+    public function show(Request $request, Exam $exam, ExamSession $examSession)
     {
+        $user = Auth::user();
+
+        // Authorization check
+        if ($user->user_type === UserTypeEnum::STUDENT) {
+            // Student can only view their own session
+            if ($examSession->user_id !== $user->id) {
+                return $this->error('You can only view your own results.', 403);
+            }
+
+            // Student can only view if exam's is_show_result is true
+            if (!$exam->is_show_result) {
+                return $this->error('Detailed results are not available for this exam.', 403);
+            }
+        }
+
         // Ensure session belongs to exam
         if ($examSession->exam_id !== $exam->id) {
             abort(404, 'Session not found for this exam.');

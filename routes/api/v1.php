@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
         // Student Exams
         Route::prefix('exams')->group(function () {
+            Route::get('history', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'history'])->name('api.v1.student.exams.history');
             Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'index'])->name('api.v1.student.exams.index');
             Route::get('{exam}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'show'])->name('api.v1.student.exams.show');
             Route::post('{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->name('api.v1.student.exams.start');

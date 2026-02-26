@@ -548,4 +548,28 @@ class ExamController extends ApiController
         });
     }
 
+    /**
+     * Get exam history (results) for the student.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $perPage = $request->integer('per_page', 15);
+
+        $results = \App\Models\ExamResult::query()
+            ->with([
+                'exam' => function ($query) {
+                    $query->with(['subject', 'academicYear']);
+                },
+                'officialSession'
+            ])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->paginate($perPage);
+
+        return $this->success(
+            \App\Http\Resources\Student\ExamResultResource::collection($results)->response()->getData(true),
+            'Exam history retrieved successfully'
+        );
+    }
 }
