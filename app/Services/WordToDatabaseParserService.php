@@ -31,6 +31,8 @@ class WordToDatabaseParserService
      */
     public function parse(string $filePath, string $authorId, ?string $questionBankId = null): array
     {
+        file_put_contents(storage_path('app/import_debug.log'), "Parse started: " . $filePath . "\n", FILE_APPEND);
+        Log::info("WordToDatabaseParserService::parse started", ['file' => $filePath]);
         try {
             $phpWord = IOFactory::load($filePath);
             $sections = $phpWord->getSections();
@@ -46,7 +48,11 @@ class WordToDatabaseParserService
             }
 
             if (empty($this->createdQuestions) && !empty($this->errors)) {
-                throw new Exception("Gagal mengimpor soal. Periksa format tabel dalam dokumen.");
+                return [
+                    'success' => false,
+                    'total' => 0,
+                    'errors' => $this->errors,
+                ];
             }
 
             DB::commit();
@@ -62,7 +68,7 @@ class WordToDatabaseParserService
             return [
                 'success' => false,
                 'total' => 0,
-                'errors' => [$e->getMessage()],
+                'errors' => array_merge($this->errors, [$e->getMessage()]),
             ];
         }
     }
@@ -72,6 +78,8 @@ class WordToDatabaseParserService
      */
     protected function processTable(Table $table, string $authorId, ?string $questionBankId): void
     {
+        file_put_contents(storage_path('app/import_debug.log'), "Processing Table...\n", FILE_APPEND);
+        Log::info("WordToDatabaseParserService::processTable started");
         $data = [
             'type' => null,
             'score' => 1,
@@ -79,7 +87,6 @@ class WordToDatabaseParserService
             'option' => ['text' => '', 'images' => []],
             'key' => '',
             'hint' => '',
-            'tag' => '',
         ];
 
         foreach ($table->getRows() as $row) {
@@ -89,13 +96,20 @@ class WordToDatabaseParserService
             $key = strtolower(trim($this->extractRawText($cells[0])));
             $content = $this->extractCellContent($cells[1]);
 
+            file_put_contents(storage_path('app/import_debug.log'), "Key: '{$key}' | Content: '" . substr($content['text'], 0, 50) . "...'\n", FILE_APPEND);
+            Log::info("Word Import Key: '{$key}' Content: '{$content['text']}'");
+
             if (array_key_exists($key, $data)) {
                 $data[$key] = $content;
             }
         }
 
+        Log::info("Word Import Table Data Collected", ['type' => $data['type']['text'] ?? 'null', 'question' => $data['question']['text'] ?? 'null']);
+
         // Validate mandatory fields
         if (empty($data['type']['text']) || empty($data['question']['text'])) {
+            file_put_contents(storage_path('app/import_debug.log'), "Skipped table: type=" . ($data['type']['text'] ?? 'null') . ", q=" . ($data['question']['text'] ?? 'null') . "\n", FILE_APPEND);
+            Log::info("Word Import skipped table: type or question empty");
             return;
         }
 
@@ -110,6 +124,7 @@ class WordToDatabaseParserService
             $scoreValue = (int) $data['score']['text'];
             $scoreEnum = QuestionScoreEnum::tryFrom($scoreValue) ?? QuestionScoreEnum::ONE;
 
+            file_put_contents(storage_path('app/import_debug.log'), "Attempting to create question...\n", FILE_APPEND);
             $question = Question::create([
                 'user_id' => $authorId,
                 'type' => $type,
@@ -121,6 +136,7 @@ class WordToDatabaseParserService
                 'is_approved' => true,
                 'order' => count($this->createdQuestions) + 1,
             ]);
+            file_put_contents(storage_path('app/import_debug.log'), "Question created: " . $question->id . "\n", FILE_APPEND);
 
             if ($questionBankId) {
                 $question->questionBanks()->attach($questionBankId);
@@ -129,17 +145,14 @@ class WordToDatabaseParserService
             // Attach Question Images
             $this->attachImages($question, $data['question']['images'], 'question_content');
 
-            // Handle Tags
-            if (!empty($data['tag']['text'])) {
-                $tags = array_map('trim', explode(',', $data['tag']['text']));
-                $question->attachTags(array_filter($tags));
-            }
 
             // Handle Options logic
             $this->createOptions($question, $type, $data['option'], $data['key']['text']);
 
             $this->createdQuestions[] = $question->id;
+            file_put_contents(storage_path('app/import_debug.log'), "Process finished for this table.\n", FILE_APPEND);
         } catch (Exception $e) {
+            file_put_contents(storage_path('app/import_debug.log'), "Error in Table Processing: " . $e->getMessage() . "\n", FILE_APPEND);
             $this->errors[] = "Tabel " . (count($this->createdQuestions) + count($this->errors) + 1) . ": " . $e->getMessage();
         }
     }
@@ -242,41 +255,62 @@ class WordToDatabaseParserService
     public function generateTemplate(): string
     {
         $phpWord = new PhpWord();
-        $section = $phpWord->addSection();
+        $section = $phpWord->getSections()[0] ?? $phpWord->addSection();
 
         $section->addTitle('TEMPLATE IMPORT SOAL (WORD-TO-DATABASE)', 1);
-        $section->addText('Gunakan format tabel 2 kolom berikut untuk setiap soal. Jangan mengubah teks di kolom pertama (Key).');
+        $section->addText('Petunjuk Singkat:', ['bold' => true]);
+        $section->addText('1. Gunakan tabel 2 kolom untuk setiap soal.');
+        $section->addText('2. Kolom pertama (Key) harus tetap seperti contoh (type, score, question, dll).');
+        $section->addText('3. Kolom kedua (Content) adalah tempat Anda mengisi data.');
+        $section->addText('4. Gunakan kode angka (1-9) untuk Tipe Soal.');
         $section->addTextBreak(1);
 
         $styleTable = ['borderSize' => 6, 'borderColor' => '999999', 'cellMargin' => 80];
         $phpWord->addTableStyle('QuestionTable', $styleTable);
 
-        $table = $section->addTable('QuestionTable');
-        $rows = [
-            ['type', '1'],
-            ['score', '1'],
-            ['question', 'Apa ibu kota Indonesia?'],
-            ['option', "Jakarta\nBandung\nSurabaya\nMedan"],
-            ['key', 'A'],
-            ['hint', 'Terletak di pulau Jawa'],
-            ['tag', 'geografi, umum'],
-        ];
+        // --- CONTOH 1: MULTIPLE CHOICE ---
+        $section->addTitle('Contoh 1: Pilihan Ganda', 2);
+        $table1 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table1, 'type', '1');
+        $this->addQuestionRow($table1, 'score', '1');
+        $this->addQuestionRow($table1, 'question', 'Apa ibu kota Indonesia?');
+        $this->addQuestionRow($table1, 'option', "Jakarta\nBandung\nSurabaya\nMedan");
+        $this->addQuestionRow($table1, 'key', 'A');
+        $this->addQuestionRow($table1, 'hint', 'Terletak di pulau Jawa');
 
-        foreach ($rows as $rowData) {
-            $row = $table->addRow();
-            $row->addCell(2000)->addText($rowData[0], ['bold' => true]);
-            $row->addCell(8000)->addText($rowData[1]);
-        }
+        $section->addTextBreak(2);
+
+        // --- CONTOH 2: SHORT ANSWER ---
+        $section->addTitle('Contoh 2: Isian Singkat', 2);
+        $table2 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table2, 'type', '4');
+        $this->addQuestionRow($table2, 'score', '2');
+        $this->addQuestionRow($table2, 'question', 'Siapa presiden pertama Indonesia?');
+        $this->addQuestionRow($table2, 'option', ''); // Kosongkan untuk isian
+        $this->addQuestionRow($table2, 'key', "Soekarno\nIr. Soekarno");
+        $this->addQuestionRow($table2, 'hint', 'Bapak Proklamator');
+
+        $section->addTextBreak(2);
+
+        // --- CONTOH 3: TRUE/FALSE ---
+        $section->addTitle('Contoh 3: Benar/Salah', 2);
+        $table3 = $section->addTable('QuestionTable');
+        $this->addQuestionRow($table3, 'type', '3');
+        $this->addQuestionRow($table3, 'score', '1');
+        $this->addQuestionRow($table3, 'question', 'Matahari terbit dari sebelah barat.');
+        $this->addQuestionRow($table3, 'option', '');
+        $this->addQuestionRow($table3, 'key', 'F'); // F/False/Salah
+        $this->addQuestionRow($table3, 'hint', '');
 
         $section->addTextBreak(2);
         $section->addTitle('LEGENDA TIPE SOAL (KODE):', 2);
         $types = [
-            '1' => 'Multiple Choice',
-            '2' => 'Multiple Selection',
-            '3' => 'True/False',
+            '1' => 'Multiple Choice (Pilihan Ganda)',
+            '2' => 'Multiple Selection (Kotak Centang)',
+            '3' => 'True/False (Benar/Salah)',
             '4' => 'Short Answer (Isian Singkat)',
-            '5' => 'Essay',
-            '6' => 'Math Input',
+            '5' => 'Essay (Uraian)',
+            '6' => 'Math Input (Jawaban Matematika)',
             '7' => 'Sequence (Urutan)',
             '8' => 'Arabic Response',
             '9' => 'Javanese Response',
@@ -291,6 +325,24 @@ class WordToDatabaseParserService
         $objWriter->save($tempFile);
 
         return $tempFile;
+    }
+
+    /**
+     * Helper to add row with multiline support
+     */
+    protected function addQuestionRow($table, $key, $value): void
+    {
+        $row = $table->addRow();
+        $row->addCell(2000)->addText($key, ['bold' => true]);
+        $cell = $row->addCell(8000);
+
+        $lines = explode("\n", $value);
+        foreach ($lines as $index => $line) {
+            $cell->addText($line);
+            if ($index < count($lines) - 1) {
+                $cell->addTextBreak(1);
+            }
+        }
     }
 
     /**
@@ -369,8 +421,9 @@ class WordToDatabaseParserService
         return $text;
     }
 
-    protected function attachImages(HasMedia $model, array $images, string $collection): void
+    protected function attachImages($model, array $images, string $collection): void
     {
+        /** @var \Spatie\MediaLibrary\InteractsWithMedia $model */
         foreach ($images as $image) {
             try {
                 $source = $image->getSource();
