@@ -6,7 +6,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8000/api"
+            "url": "http://192.168.1.2:8000/api"
         }
     ],
     "security": [
@@ -2486,6 +2486,222 @@
                 }
             }
         },
+        "/v1/students/dashboard": {
+            "get": {
+                "operationId": "v1.student.dashboard",
+                "tags": [
+                    "Dashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "user": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "avatar": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "avatar"
+                                                    ]
+                                                },
+                                                "stats": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "xp": {
+                                                            "type": "integer"
+                                                        },
+                                                        "level": {
+                                                            "type": "string"
+                                                        },
+                                                        "streak": {
+                                                            "type": "integer"
+                                                        },
+                                                        "xp_to_next": {
+                                                            "type": "string"
+                                                        },
+                                                        "next_rank": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "Grandmaster",
+                                                                "Master",
+                                                                "Apprentice",
+                                                                "Novice"
+                                                            ]
+                                                        },
+                                                        "progress_to_next": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "xp",
+                                                        "level",
+                                                        "streak",
+                                                        "xp_to_next",
+                                                        "next_rank",
+                                                        "progress_to_next"
+                                                    ]
+                                                },
+                                                "active_exams": {
+                                                    "type": "string"
+                                                },
+                                                "upcoming_exams": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "user",
+                                                "stats",
+                                                "active_exams",
+                                                "upcoming_exams"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/dashboard": {
+            "get": {
+                "operationId": "v1.dashboard",
+                "tags": [
+                    "Dashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "stats": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "students_count": {
+                                                            "type": "string"
+                                                        },
+                                                        "classrooms_count": {
+                                                            "type": "string"
+                                                        },
+                                                        "ongoing_exams_count": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "students_count",
+                                                        "classrooms_count",
+                                                        "ongoing_exams_count"
+                                                    ]
+                                                },
+                                                "ongoing_exams": {
+                                                    "type": "string"
+                                                },
+                                                "recent_activities": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ActivityLogResource"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "stats",
+                                                "ongoing_exams",
+                                                "recent_activities"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/students/exams/history": {
+            "get": {
+                "operationId": "v1.student.exams.history",
+                "summary": "Get exam history (results) for the student",
+                "tags": [
+                    "Exam"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Exam history retrieved successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/students/exams": {
             "get": {
                 "operationId": "v1.student.exams.index",
@@ -3557,24 +3773,52 @@
                                                         "duration": {
                                                             "type": "integer"
                                                         },
-                                                        "classroom": {
+                                                        "token": {
                                                             "type": "string"
+                                                        },
+                                                        "classrooms": {
+                                                            "type": "string"
+                                                        },
+                                                        "subject": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name"
+                                                            ]
+                                                        },
+                                                        "academic_year": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "year": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "year"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
                                                         "id",
                                                         "title",
                                                         "duration",
-                                                        "classroom"
+                                                        "token",
+                                                        "classrooms",
+                                                        "subject",
+                                                        "academic_year"
                                                     ]
                                                 },
-                                                "students": {
+                                                "sessions": {
                                                     "type": "string"
                                                 }
                                             },
                                             "required": [
                                                 "exam",
-                                                "students"
+                                                "sessions"
                                             ]
                                         }
                                     },
@@ -3757,7 +4001,7 @@
                 }
             }
         },
-        "/v1/exams/{exam}/force-finish": {
+        "/v1/exams/{id}/force-finish": {
             "post": {
                 "operationId": "v1.exams.force-finish",
                 "summary": "Force finish exam for a specific student",
@@ -3766,10 +4010,9 @@
                 ],
                 "parameters": [
                     {
-                        "name": "exam",
+                        "name": "id",
                         "in": "path",
                         "required": true,
-                        "description": "The exam ID",
                         "schema": {
                             "type": "string"
                         }
@@ -3783,7 +4026,7 @@
                                 "type": "object",
                                 "properties": {
                                     "user_id": {
-                                        "type": "integer"
+                                        "type": "string"
                                     }
                                 },
                                 "required": [
@@ -3824,7 +4067,143 @@
                         }
                     },
                     "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "No active session found for this student."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{id}/reopen": {
+            "post": {
+                "operationId": "v1.exams.reopen",
+                "summary": "Reopen a finished exam session",
+                "tags": [
+                    "Exam"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {
+                                        "type": "string"
+                                    },
+                                    "minutes": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    }
+                                },
+                                "required": [
+                                    "user_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Exam session reopened successfully."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "No finished session found for this student."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -3959,7 +4338,6 @@
         "/v1/exams": {
             "get": {
                 "operationId": "v1.exams.index",
-                "summary": "Display a listing of exams with pagination, search, and sorting",
                 "tags": [
                     "Exam"
                 ],
@@ -3986,6 +4364,13 @@
                         "schema": {
                             "type": "string",
                             "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -4353,20 +4738,47 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `ExamSessionResource`",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Success"
+                                            ]
+                                        },
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/ExamSessionResource"
-                                            }
+                                            "type": "object",
+                                            "properties": {
+                                                "exam": {
+                                                    "$ref": "#/components/schemas/Exam"
+                                                },
+                                                "sessions": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ExamSessionResource"
+                                                    }
+                                                },
+                                                "questions": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "exam",
+                                                "sessions",
+                                                "questions"
+                                            ]
                                         }
                                     },
                                     "required": [
+                                        "success",
+                                        "message",
                                         "data"
                                     ]
                                 }
@@ -4417,16 +4829,97 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "session": {
-                                            "type": "string"
+                                        "success": {
+                                            "type": "boolean"
                                         },
-                                        "answers": {
-                                            "type": "string"
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Success"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "session": {
+                                                    "$ref": "#/components/schemas/ExamSessionResource"
+                                                },
+                                                "exam": {
+                                                    "$ref": "#/components/schemas/ExamResource"
+                                                },
+                                                "answers": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ExamCorrectionResource"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "session",
+                                                "exam",
+                                                "answers"
+                                            ]
                                         }
                                     },
                                     "required": [
-                                        "session",
-                                        "answers"
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Detailed results are not available for this exam."
+                                                    ]
+                                                },
+                                                "errors": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "You can only view your own results."
+                                                    ]
+                                                },
+                                                "errors": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message",
+                                                "errors"
+                                            ]
+                                        }
                                     ]
                                 }
                             }
@@ -4441,7 +4934,258 @@
                 }
             }
         },
-        "/v1/exams/sessions/{examSession}/details/{examResultDetail}": {
+        "/v1/exams/{exam}/questions/{examQuestion}/correction": {
+            "get": {
+                "operationId": "v1.exams.correction.by-question",
+                "summary": "Get all student answers for a specific exam question",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examQuestion",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam question ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Success"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "question": {
+                                                    "$ref": "#/components/schemas/ExamQuestion"
+                                                },
+                                                "answers": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ExamCorrectionResource"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "question",
+                                                "answers"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/bulk-correction": {
+            "post": {
+                "operationId": "v1.exams.correction.bulk-update",
+                "summary": "Bulk update scores for multiple answers",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "updates": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "score_earned": {
+                                                    "type": [
+                                                        "number",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 0
+                                                },
+                                                "marking_status": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "enum": [
+                                                        "full",
+                                                        "partial",
+                                                        "no"
+                                                    ]
+                                                },
+                                                "correction_notes": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "is_correct": {
+                                                    "type": [
+                                                        "boolean",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "updates"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/recalculate-all": {
+            "post": {
+                "operationId": "v1.exams.correction.recalculate-all",
+                "summary": "Recalculate all scores for all sessions in an exam",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/sessions/{examSession}/details/{examResultDetail}": {
             "put": {
                 "operationId": "v1.exams.correction.update",
                 "summary": "Update score and notes for a specific answer",
@@ -4469,15 +5213,28 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
                                     "score_earned": {
-                                        "type": "number",
+                                        "type": [
+                                            "number",
+                                            "null"
+                                        ],
                                         "minimum": 0
+                                    },
+                                    "marking_status": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "enum": [
+                                            "full",
+                                            "partial",
+                                            "no"
+                                        ]
                                     },
                                     "correction_notes": {
                                         "type": [
@@ -4491,27 +5248,35 @@
                                             "null"
                                         ]
                                     }
-                                },
-                                "required": [
-                                    "score_earned"
-                                ]
+                                }
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "`ExamCorrectionResource`",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Correction updated successfully"
+                                            ]
+                                        },
                                         "data": {
                                             "$ref": "#/components/schemas/ExamCorrectionResource"
                                         }
                                     },
                                     "required": [
+                                        "success",
+                                        "message",
                                         "data"
                                     ]
                                 }
@@ -4530,7 +5295,7 @@
                 }
             }
         },
-        "/v1/exams/sessions/{examSession}/finish-correction": {
+        "/v1/sessions/{examSession}/finish-correction": {
             "post": {
                 "operationId": "v1.exams.correction.finish",
                 "summary": "Finish correction, recalculate totals, and update status",
@@ -4556,6 +5321,9 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
                                         "message": {
                                             "type": "string",
                                             "enum": [
@@ -4567,6 +5335,64 @@
                                         }
                                     },
                                     "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/sessions/{examSession}/recalculate": {
+            "post": {
+                "operationId": "v1.exams.correction.recalculate",
+                "summary": "Recalculate all scores for a specific session",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Scores recalculated successfully."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
                                         "message",
                                         "data"
                                     ]
@@ -6276,6 +7102,98 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/questions/import-word": {
+            "post": {
+                "operationId": "v1.questions.import-word",
+                "summary": "Import questions from a Word document (2-column Key-Value format)",
+                "tags": [
+                    "Question"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportWordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Questions imported successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_imported": {
+                                                    "type": "string"
+                                                },
+                                                "errors": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "total_imported",
+                                                "errors"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/questions/import-template": {
+            "get": {
+                "operationId": "v1.questions.import-template",
+                "summary": "Download the Word template for question import",
+                "tags": [
+                    "Question"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -12537,6 +13455,129 @@
                 ],
                 "title": "ClassroomResource"
             },
+            "Exam": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "academic_year_id": {
+                        "type": "string"
+                    },
+                    "subject_id": {
+                        "type": "string"
+                    },
+                    "user_id": {
+                        "type": "string"
+                    },
+                    "question_bank_id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/ExamTypeEnum"
+                    },
+                    "duration": {
+                        "type": "integer"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "is_token_visible": {
+                        "type": "boolean"
+                    },
+                    "is_published": {
+                        "type": "boolean"
+                    },
+                    "is_randomized_question": {
+                        "type": "boolean"
+                    },
+                    "is_randomized_answer": {
+                        "type": "boolean"
+                    },
+                    "is_show_result": {
+                        "type": "boolean"
+                    },
+                    "is_visible_hint": {
+                        "type": "boolean"
+                    },
+                    "max_attempts": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "timer_type": {
+                        "$ref": "#/components/schemas/ExamTimerTypeEnum"
+                    },
+                    "passing_score": {
+                        "type": "integer"
+                    },
+                    "start_time": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "end_time": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "deleted_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "academic_year_id",
+                    "subject_id",
+                    "user_id",
+                    "question_bank_id",
+                    "title",
+                    "type",
+                    "duration",
+                    "token",
+                    "is_token_visible",
+                    "is_published",
+                    "is_randomized_question",
+                    "is_randomized_answer",
+                    "is_show_result",
+                    "is_visible_hint",
+                    "max_attempts",
+                    "timer_type",
+                    "passing_score",
+                    "start_time",
+                    "end_time",
+                    "created_at",
+                    "updated_at",
+                    "deleted_at"
+                ],
+                "title": "Exam"
+            },
             "ExamCorrectionResource": {
                 "type": "object",
                 "properties": {
@@ -12579,6 +13620,42 @@
                     },
                     "options": {
                         "type": "string"
+                    },
+                    "session": {
+                        "type": "object",
+                        "description": "Context for MC/Multiple Answer",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "is_corrected": {
+                                "type": "string"
+                            },
+                            "student": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name",
+                                    "email"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "is_corrected",
+                            "student"
+                        ]
                     }
                 },
                 "required": [
@@ -12597,6 +13674,86 @@
                     "options"
                 ],
                 "title": "ExamCorrectionResource"
+            },
+            "ExamQuestion": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "exam_id": {
+                        "type": "string"
+                    },
+                    "question_id": {
+                        "type": "string"
+                    },
+                    "question_number": {
+                        "type": "integer"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "key_answer": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "score_value": {
+                        "type": "integer"
+                    },
+                    "question_type": {
+                        "$ref": "#/components/schemas/QuestionTypeEnum"
+                    },
+                    "difficulty_level": {
+                        "$ref": "#/components/schemas/QuestionDifficultyLevelEnum"
+                    },
+                    "media_path": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "hint": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "exam_id",
+                    "question_id",
+                    "question_number",
+                    "content",
+                    "options",
+                    "key_answer",
+                    "score_value",
+                    "question_type",
+                    "difficulty_level",
+                    "media_path",
+                    "hint",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ExamQuestion"
             },
             "ExamQuestionResource": {
                 "type": "object",
@@ -12757,6 +13914,12 @@
                     },
                     "teacher": {
                         "$ref": "#/components/schemas/UserResource"
+                    },
+                    "classrooms": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ClassroomResource"
+                        }
                     },
                     "attempts_count": {
                         "type": "string"
@@ -13103,6 +14266,28 @@
                     "file"
                 ],
                 "title": "ImportTeacherRequest"
+            },
+            "ImportWordRequest": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
+                        "maxLength": 20480
+                    },
+                    "question_bank_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "20MB max"
+                    }
+                },
+                "required": [
+                    "file"
+                ],
+                "title": "ImportWordRequest"
             },
             "LoginRequest": {
                 "type": "object",
@@ -13515,7 +14700,10 @@
                     "math_input",
                     "matching",
                     "sequence",
-                    "arrange_words"
+                    "arrange_words",
+                    "categorization",
+                    "arabic_response",
+                    "javanese_response"
                 ],
                 "title": "QuestionTypeEnum"
             },
@@ -13808,7 +14996,10 @@
                             "math_input",
                             "matching",
                             "sequence",
-                            "arrange_words"
+                            "arrange_words",
+                            "categorization",
+                            "arabic_response",
+                            "javanese_response"
                         ]
                     },
                     "difficulty_level": {
@@ -13940,6 +15131,13 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "classroom_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "minItems": 1
                     }
                 },
                 "required": [
@@ -13949,7 +15147,8 @@
                     "title",
                     "type",
                     "duration",
-                    "timer_type"
+                    "timer_type",
+                    "classroom_ids"
                 ],
                 "title": "StoreExamRequest"
             },
@@ -14038,7 +15237,10 @@
                             "math_input",
                             "matching",
                             "sequence",
-                            "arrange_words"
+                            "arrange_words",
+                            "categorization",
+                            "arabic_response",
+                            "javanese_response"
                         ]
                     },
                     "difficulty": {
@@ -14119,6 +15321,18 @@
                             "null"
                         ]
                     },
+                    "arabic_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "javanese_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "tags": {
                         "type": [
                             "array",
@@ -14191,6 +15405,41 @@
                                 },
                                 "order": {
                                     "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "categorization_groups": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Categorization",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "content": {
+                                                "type": "string"
+                                            },
+                                            "image": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "format": "binary",
+                                                "contentMediaType": "application/octet-stream",
+                                                "maxLength": 2048
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -14456,13 +15705,22 @@
                         ]
                     },
                     "user_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "academic_year_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "classroom_id": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "user": {
                         "$ref": "#/components/schemas/UserResource"
@@ -14653,7 +15911,10 @@
                             "math_input",
                             "matching",
                             "sequence",
-                            "arrange_words"
+                            "arrange_words",
+                            "categorization",
+                            "arabic_response",
+                            "javanese_response"
                         ]
                     },
                     "difficulty_level": {
@@ -14774,6 +16035,13 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "classroom_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "minItems": 1
                     }
                 },
                 "title": "UpdateExamRequest"
@@ -14848,7 +16116,10 @@
                             "math_input",
                             "matching",
                             "sequence",
-                            "arrange_words"
+                            "arrange_words",
+                            "categorization",
+                            "arabic_response",
+                            "javanese_response"
                         ]
                     },
                     "difficulty": {
@@ -14923,6 +16194,18 @@
                         ]
                     },
                     "math_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "arabic_content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "javanese_content": {
                         "type": [
                             "string",
                             "null"
@@ -15005,6 +16288,41 @@
                                 },
                                 "order": {
                                     "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "categorization_groups": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Categorization",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "content": {
+                                                "type": "string"
+                                            },
+                                            "image": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "format": "binary",
+                                                "contentMediaType": "application/octet-stream",
+                                                "maxLength": 2048
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -15197,6 +16515,12 @@
                     },
                     "user_type": {
                         "type": "string"
+                    },
+                    "classrooms": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ClassroomResource"
+                        }
                     },
                     "created_at": {
                         "type": "string"
