@@ -290,8 +290,10 @@ final class ExamController extends ApiController
 
         $students = $classrooms->flatMap->students->unique('id');
 
-        // 2. Ambil sesi ujian yang aktif/selesai untuk ujian ini
-        $examSessions = ExamSession::where('exam_id', $exam->id)
+        // 2. Ambil sesi ujian yang saat ini (termasuk yang baru saja soft deleted jika ada history, tapi kita butuh active/latest)
+        // Kita ambil SEMUA session milik siswa di ujian ini termasuk yang soft deleted untuk melihat history
+        $allSessions = ExamSession::withTrashed()
+            ->where('exam_id', $exam->id)
             ->whereIn('user_id', $students->pluck('id'))
             ->withCount([
                 'examResultDetails as total_questions',
@@ -300,12 +302,35 @@ final class ExamController extends ApiController
                 }
             ])
             ->withSum('examResultDetails as current_score', 'score_earned')
-            ->get()
-            ->keyBy('user_id');
+            ->orderBy('created_at', 'asc') // Urutan lama ke baru agar history terurut
+            ->get();
+
+        // Kelompokkan berdasarkan user_id
+        $sessionsByUser = $allSessions->groupBy('user_id');
 
         // 3. Format data response
-        $data = $students->map(function ($student) use ($examSessions, $exam, $classrooms) {
-            $session = $examSessions->get($student->id);
+        $data = $students->map(function ($student) use ($sessionsByUser, $exam, $classrooms) {
+            $userSessions = $sessionsByUser->get($student->id, collect());
+            
+            // Sesi aktif/terbaru adalah yang terakhir di array (bisa jadi soft deleted atau active)
+            // Tapi yang benar-benar aktif/terbaru adalah yang belum di-delete, atau yang paling akhir.
+            // Kita prioritaskan yang belum di delete (active) sebagai current session.
+            $activeSession = $userSessions->filter(fn($s) => !$s->trashed())->last();
+            
+            // Jika tidak ada yang aktif, ambil yang paling akhir (meskipun trashed, mungkin jadi history saja)
+            if (!$activeSession && $userSessions->isNotEmpty()) {
+                 $activeSession = $userSessions->last();
+            }
+
+            // History adalah skor total dari sesi-sesi sebelumnya yang sudah SELESAI
+            // Ambil maksimal 2 sesi terakhir SEBELUM sesi aktif saat ini
+            $historySessions = $userSessions->filter(function($s) use ($activeSession) {
+                return $s->id !== ($activeSession ? $activeSession->id : null) && $s->is_finished;
+            })->take(-2); // Ambil 2 terakhir
+
+            $historyScores = $historySessions->map(function($s) {
+                return (float) $s->total_score;
+            })->values()->toArray();
 
             $status = 'idle'; // 'not_started' mapped to 'idle'
             $startTime = null;
@@ -317,13 +342,16 @@ final class ExamController extends ApiController
                 'total' => 0,
             ];
 
-            if ($session) {
+            if ($activeSession) {
                 // Detect logical statuses
-                $isTimedOut = $session->getRemainingSeconds() <= 0;
-                $isAllAnswered = ($session->total_questions > 0) && ($session->answered_count >= $session->total_questions);
+                $isTimedOut = $activeSession->getRemainingSeconds() <= 0;
+                $isAllAnswered = ($activeSession->total_questions > 0) && ($activeSession->answered_count >= $activeSession->total_questions);
 
-                if ($session->is_finished) {
+                if ($activeSession->is_finished) {
                     $status = 'finished';
+                } elseif ($activeSession->trashed()) {
+                    // Jika sesi terakhir ternyata trashed (karena di-reset manual sebelum selesai)
+                    $status = 'idle'; 
                 } elseif ($isTimedOut) {
                     $status = 'timed_out';
                 } elseif ($isAllAnswered) {
@@ -332,21 +360,23 @@ final class ExamController extends ApiController
                     $status = 'in_progress';
                 }
 
-                $startTime = $session->start_time;
-                $currentScore = $session->current_score ?? 0;
-                $extraTime = $session->extra_time ?? 0;
+                $startTime = $activeSession->start_time;
+                $currentScore = $activeSession->current_score ?? 0;
+                $extraTime = $activeSession->extra_time ?? 0;
 
                 $progress = [
-                    'answered' => (int) $session->answered_count,
-                    'total' => (int) $session->total_questions,
+                    'answered' => (int) $activeSession->answered_count,
+                    'total' => (int) $activeSession->total_questions,
                 ];
 
                 if ($status === 'in_progress' || $status === 'completed' || $status === 'timed_out') {
-                    $remainingTime = $session->getRemainingSeconds();
+                    $remainingTime = $activeSession->getRemainingSeconds();
                 }
 
-                if ($session->is_finished) {
-                    $currentScore = $session->total_score;
+                if ($activeSession->is_finished) {
+                    // Jika sudah selesai, pasti total_score sudah ada atau sedang dihitung
+                    // Gunakan max antara hitungan real-time detail dengan total_score di table
+                    $currentScore = max((float)$activeSession->total_score, (float)$currentScore);
                 }
             }
 
@@ -363,6 +393,7 @@ final class ExamController extends ApiController
                 'start_time' => $startTime,
                 'remaining_time' => $remainingTime,
                 'score' => (float) $currentScore, // mapped from current_score/total_score
+                'history' => $historyScores, // NEW: History array
                 'extra_time' => $extraTime,
                 'progress' => $progress,
             ];
@@ -401,15 +432,15 @@ final class ExamController extends ApiController
         $userId = $request->user_id;
 
         DB::transaction(function () use ($exam, $userId) {
-            // Hapus ExamSession
+            // Hapus ExamSession (Gunakan soft delete agar jadi history)
             ExamSession::where('exam_id', $exam->id)
                 ->where('user_id', $userId)
-                ->forceDelete(); // Gunakan forceDelete agar benar-benar bersih
+                ->delete();
 
-            // Hapus ExamResult
+            // Hapus ExamResult (Soft delete juga jika model mendukung, atau biarkan agar riwayat resmi terhapus tapi detil sesi masih ada)
             ExamResult::where('exam_id', $exam->id)
                 ->where('user_id', $userId)
-                ->forceDelete();
+                ->delete();
 
             // Opsional: Hapus ExamAnswer/ExamResultDetail jika ada tabel terpisah yang menyimpan jawaban per soal
             // ExamResultDetail::whereHas('examSession', function($q) use ($exam, $userId) { ... })->delete();
@@ -481,9 +512,14 @@ final class ExamController extends ApiController
         }
 
         DB::transaction(function () use ($session, $id, $request) {
+            // Set is_finished dan hitung skor sementara (sebelum job di background selesai)
+            // Ini untuk mencegah websocket mengirim nilai 0 saat tombol disubmit
+            $tempScore = $session->examResultDetails()->sum('score_earned');
+            
             $session->update([
                 'is_finished' => true,
                 'finish_time' => now(),
+                'total_score' => $tempScore, // Temporary, will be recalculated by Job
             ]);
 
             // Dispatch Scoring Job (Calculate final score asynchronously)

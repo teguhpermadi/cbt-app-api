@@ -85,6 +85,22 @@ class ExamSession extends Model
             ? (float) $this->total_score
             : (float) $this->examResultDetails()->sum('score_earned');
 
+        // NEW: Get history of previous finished sessions (up to 2)
+        // Since getBroadcastData is usually called for the Active Session, 
+        // we find other finished sessions for this user/exam that are not this one
+        $historySessions = ExamSession::withTrashed()
+            ->where('exam_id', $this->exam_id)
+            ->where('user_id', $this->user_id)
+            ->where('id', '!=', $this->id)
+            ->where('is_finished', true)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->take(-2); // Take last 2
+
+        $historyScores = $historySessions->map(function ($s) {
+            return (float) $s->total_score;
+        })->values()->toArray();
+
         return [
             'id' => $user->id,
             'student' => [
@@ -96,6 +112,7 @@ class ExamSession extends Model
             ],
             'status' => $this->is_finished ? 'finished' : 'in_progress',
             'score' => $currentScore,
+            'history' => $historyScores, // NEW: Include history in websocket payload
             'progress' => [
                 'answered' => (int) $this->examResultDetails()->whereNotNull('student_answer')->count(),
                 'total' => (int) $this->examResultDetails()->count(),

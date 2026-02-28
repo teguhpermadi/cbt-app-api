@@ -520,10 +520,15 @@ class ExamController extends ApiController
         }
 
         return DB::transaction(function () use ($session, $user, $id) {
+            // Set is_finished dan hitung skor sementara (sebelum job di background selesai)
+            // Ini untuk mencegah websocket mengirim nilai 0 saat tombol disubmit
+            $tempScore = $session->examResultDetails()->sum('score_earned');
+
             // 1. Update Session Status
             $session->update([
                 'finish_time' => now(),
                 'is_finished' => true,
+                'total_score' => $tempScore, // Temporary, will be recalculated by Job
             ]);
 
             // Dispatch LiveScoreUpdated event
