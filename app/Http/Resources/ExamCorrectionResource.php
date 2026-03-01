@@ -28,6 +28,7 @@ class ExamCorrectionResource extends JsonResource
             'correction_notes' => $this->correction_notes,
             'answered_at' => $this->answered_at,
             'options' => $this->examQuestion->options, // Context for MC/Multiple Answer
+            'tags' => $this->examQuestion->originalQuestion ? $this->examQuestion->originalQuestion->tags->pluck('name') : [],
             'session' => $this->whenLoaded('examSession', function () {
                 return [
                     'id' => $this->examSession->id,

@@ -66,7 +66,7 @@ class ExamCorrectionController extends ApiController
         $examSession->load(['user.classrooms', 'exam.subject', 'exam.classrooms']);
 
         $details = $examSession->examResultDetails()
-            ->with(['examQuestion'])
+            ->with(['examQuestion.originalQuestion.tags'])
             ->orderBy('question_number')
             ->get();
 
