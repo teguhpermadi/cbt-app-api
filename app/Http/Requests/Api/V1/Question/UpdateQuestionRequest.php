@@ -31,6 +31,7 @@ class UpdateQuestionRequest extends FormRequest
             'hint' => ['nullable', 'string'],
             'order' => ['nullable', 'integer'],
             'is_approved' => ['nullable', 'boolean'],
+            'tag_type' => ['nullable', 'string'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string'],
 

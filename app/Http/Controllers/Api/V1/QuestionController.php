@@ -160,6 +160,7 @@ final class QuestionController extends ApiController
 
         $data = $request->validated();
         $tags = $data['tags'] ?? null;
+        $tagType = $data['tag_type'] ?? null;
 
         // Extract option-related data
         $optionsData = $data['options'] ?? [];
@@ -173,6 +174,7 @@ final class QuestionController extends ApiController
 
 
         unset($data['tags']);
+        unset($data['tag_type']);
         unset($data['options']);
         unset($data['matching_pairs']);
         unset($data['sequence_items']);
@@ -183,12 +185,16 @@ final class QuestionController extends ApiController
         unset($data['categorization_groups']);
 
 
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups) {
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $tagType, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups) {
 
             $question->update($data);
 
             if ($tags !== null) {
-                $question->syncTags($tags);
+                if ($tagType) {
+                    $question->syncTagsWithType($tags, $tagType);
+                } else {
+                    $question->syncTags($tags);
+                }
             }
 
             // Handle Question Image

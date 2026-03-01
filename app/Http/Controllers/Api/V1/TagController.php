@@ -18,12 +18,16 @@ final class TagController extends ApiController
     {
         $search = $request->string('search')->trim();
         $limit = $request->integer('limit', 20);
+        $type = $request->string('type')->trim();
 
         $query = Tag::query()
             ->when($search, function ($q) use ($search) {
                 // Spatie tags store translations in a JSON column natively, but checking the whole JSON or a specific locale is common
                 // The most basic approach for exact/like match when name is localized (Spatie HasTags default):
                 $q->where('name', 'like', "%{$search}%");
+            })
+            ->when($type, function ($q) use ($type) {
+                $q->where('type', $type);
             })
             ->orderBy('name')
             ->limit($limit);
