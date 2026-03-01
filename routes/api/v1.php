@@ -133,6 +133,9 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     });
     Route::apiResource('questions', QuestionController::class)->names('api.v1.questions');
 
+    // Tags
+    Route::get('tags', [\App\Http\Controllers\Api\V1\TagController::class, 'index'])->name('api.v1.tags.index');
+
     // Options
     Route::prefix('options')->group(function () {
         // Media handling

@@ -197,8 +197,10 @@ final class QuestionController extends ApiController
             }
 
             // Sync options instead of delete/re-create
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups);
-
+            // Only sync options if they are explicitly provided in the request or if the question type is changing
+            if ($request->hasAny(['type', 'options', 'matching_pairs', 'sequence_items', 'keywords', 'math_content', 'arabic_content', 'javanese_content', 'categorization_groups'])) {
+                $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups);
+            }
 
             return $question;
         });
