@@ -262,4 +262,211 @@ class ExamCorrectionController extends ApiController
             "Successfully recalculated scores for {$sessions->count()} sessions."
         );
     }
+
+    /**
+     * Telaah Soal (Item Analysis)
+     */
+    public function itemAnalysis(Exam $exam)
+    {
+        // Get all finished or corrected sessions for this exam
+        $sessions = ExamSession::where('exam_id', $exam->id)
+            ->where(function ($q) {
+                $q->where('is_finished', true)->orWhere('is_corrected', true);
+            })
+            ->orderByDesc('total_score')
+            ->get();
+
+        $totalStudents = $sessions->count();
+
+        if ($totalStudents < 3) {
+            return $this->error('Data tidak cukup untuk melakukan telaah soal. Minimal 3 siswa diperlukan.', 400);
+        }
+
+        $topCount = max(1, (int) round($totalStudents * 0.27));
+        $bottomCount = max(1, (int) round($totalStudents * 0.27));
+
+        $topSessions = $sessions->take($topCount)->pluck('id')->toArray();
+        $bottomSessions = $sessions->slice(-$bottomCount)->pluck('id')->toArray();
+
+        $questions = ExamQuestion::where('exam_id', $exam->id)
+            ->with(['originalQuestion.options'])
+            ->orderBy('question_number')
+            ->get();
+
+        $analysisData = [];
+        $statusCounts = [
+            'Diterima' => 0,
+            'Direvisi' => 0,
+            'Ditolak' => 0,
+        ];
+
+        foreach ($questions as $question) {
+            $details = ExamResultDetail::where('exam_question_id', $question->id)->get();
+
+            $totalAnswered = $details->count();
+            if ($totalAnswered === 0) continue;
+
+            $maxScore = max(1, (float)($question->score_value ?? 1));
+
+            // 1. Tingkat Kesukaran (P) - Menggunakan rerata skor untuk mendukung soal uraian/isian singkat
+            $totalScoreEarned = $details->sum('score_earned');
+            $difficultyScore = $totalScoreEarned / ($totalAnswered * $maxScore);
+
+            $difficultyCategory = 'Sedang';
+            if ($difficultyScore < 0.3) {
+                $difficultyCategory = 'Sukar';
+            } elseif ($difficultyScore > 0.7) {
+                $difficultyCategory = 'Mudah';
+            }
+
+            // 2. Daya Beda (D) - Membedakan rerata kelompok atas dan bawah
+            $topScoreEarned = $details->whereIn('exam_session_id', $topSessions)->sum('score_earned');
+            $bottomScoreEarned = $details->whereIn('exam_session_id', $bottomSessions)->sum('score_earned');
+
+            $discriminationScore = 0;
+            if ($topCount > 0 && $bottomCount > 0) {
+                $meanTop = $topScoreEarned / $topCount;
+                $meanBottom = $bottomScoreEarned / $bottomCount;
+                $discriminationScore = ($meanTop - $meanBottom) / $maxScore;
+            }
+
+            $discriminationCategory = 'Cukup';
+            if ($discriminationScore < 0.2) {
+                $discriminationCategory = 'Jelek';
+            } elseif ($discriminationScore >= 0.4 && $discriminationScore < 0.7) {
+                $discriminationCategory = 'Baik';
+            } elseif ($discriminationScore >= 0.7) {
+                $discriminationCategory = 'Sangat Baik';
+            }
+
+            // 3. Efektivitas Pengecoh
+            $distractorStatus = 'Tidak Berlaku';
+            $distractorNote = '';
+
+            if ($question->question_type === 'multiple_choice' && $question->originalQuestion) {
+                $options = $question->originalQuestion->options;
+                $optionsCount = $options->count();
+                $minChosen = max(1, (int) round(0.05 * $totalStudents)); // 5% rule
+
+                $badDistractors = 0;
+                $distractorDetails = [];
+
+                foreach ($options as $option) {
+                    if ($option->is_correct) continue;
+
+                    // How many chose this option
+                    $chosenByAll = $details->filter(function ($d) use ($option) {
+                        return is_array($d->student_answer) && in_array($option->id, $d->student_answer);
+                    })->count();
+
+                    $chosenByTop = $details->whereIn('exam_session_id', $topSessions)->filter(function ($d) use ($option) {
+                        return is_array($d->student_answer) && in_array($option->id, $d->student_answer);
+                    })->count();
+
+                    $chosenByBottom = $details->whereIn('exam_session_id', $bottomSessions)->filter(function ($d) use ($option) {
+                        return is_array($d->student_answer) && in_array($option->id, $d->student_answer);
+                    })->count();
+
+                    $isFunctional = ($chosenByAll >= $minChosen) && ($chosenByBottom >= $chosenByTop);
+
+                    if (!$isFunctional) {
+                        $badDistractors++;
+                    }
+
+                    $distractorDetails[] = [
+                        'option_id' => $option->id,
+                        'chosen_all' => $chosenByAll,
+                        'chosen_top' => $chosenByTop,
+                        'chosen_bottom' => $chosenByBottom,
+                        'is_functional' => $isFunctional
+                    ];
+                }
+
+                if ($badDistractors === 0) {
+                    $distractorStatus = 'Sangat Baik';
+                } elseif ($badDistractors <= ($optionsCount - 1) / 2) {
+                    $distractorStatus = 'Berfungsi';
+                } else {
+                    $distractorStatus = 'Kurang Berfungsi';
+                }
+            }
+
+            // 4. Kesimpulan dan Rekomendasi
+            $status = 'Diterima';
+            $recommendation = "Soal ini sudah baik karena memiliki tingkat kesukaran {$difficultyCategory} dan daya beda {$discriminationCategory}.";
+
+            if ($discriminationScore < 0.2) {
+                if ($difficultyScore < 0.3) {
+                    $status = 'Ditolak';
+                    $recommendation = "Soal ini terlalu sukar dan tidak membedakan siswa (daya beda jelek). Sebaiknya dibuang atau dirombak total.";
+                } elseif ($difficultyScore > 0.7) {
+                    $status = 'Direvisi';
+                    $recommendation = "Soal ini terlalu mudah dan daya bedanya jelek. Perlu ditambah tingkat kesukarannya.";
+                } else {
+                    $status = 'Direvisi';
+                    $recommendation = "Tingkat kesukaran sedang, tetapi daya bedanya jelek (mungkin membingungkan siswa pandai). Perlu perbaikan pada redaksi soal atau pengecoh.";
+                }
+            } elseif ($discriminationScore < 0.3) {
+                $status = 'Direvisi';
+                $recommendation = "Daya beda soal ini {$discriminationCategory}. Soal dapat diterima dengan sedikit perbaikan kalimat.";
+            }
+
+            if ($distractorStatus === 'Kurang Berfungsi') {
+                $status = ($status === 'Diterima') ? 'Direvisi' : $status;
+                $recommendation .= " Beberapa pengecoh tidak berfungsi dengan baik (kurang diminati atau lebih mengecoh kelompok atas).";
+            }
+
+            $statusCounts[$status]++;
+
+            $analysisData[] = [
+                'question_id' => $question->id,
+                'question_number' => $question->question_number,
+                'question_type' => $question->question_type,
+                'content' => $question->content,
+                'difficulty' => [
+                    'score' => round($difficultyScore, 2),
+                    'category' => $difficultyCategory
+                ],
+                'discrimination' => [
+                    'score' => round($discriminationScore, 2),
+                    'category' => $discriminationCategory
+                ],
+                'distractor' => [
+                    'status' => $distractorStatus,
+                    'details' => $distractorDetails ?? []
+                ],
+                'conclusion' => [
+                    'status' => $status,
+                    'recommendation' => $recommendation
+                ]
+            ];
+        }
+
+        $totalExamQuestions = $questions->count();
+        $acceptedPercent = $totalExamQuestions > 0 ? round(($statusCounts['Diterima'] / $totalExamQuestions) * 100) : 0;
+
+        $overallRecommendation = "Instrumen tes memerlukan banyak perbaikan.";
+        if ($acceptedPercent >= 80) {
+            $overallRecommendation = "Secara umum, instrumen tes sudah sangat baik dan layak diujikan kembali.";
+        } elseif ($acceptedPercent >= 50) {
+            $overallRecommendation = "Instrumen tes cukup baik, namun beberapa soal perlu direvisi sebelum digunakan kembali.";
+        } else {
+            $overallRecommendation = "Sebagian besar butir soal kurang relevan atau membingungkan. Sangat disarankan untuk merombak ulang instrumen tes.";
+        }
+
+        return $this->success([
+            'exam_id' => $exam->id,
+            'total_students' => $totalStudents,
+            'top_group_size' => $topCount,
+            'bottom_group_size' => $bottomCount,
+            'summary' => [
+                'total_questions' => $totalExamQuestions,
+                'accepted' => $statusCounts['Diterima'],
+                'revised' => $statusCounts['Direvisi'],
+                'rejected' => $statusCounts['Ditolak'],
+                'general_recommendation' => $overallRecommendation,
+            ],
+            'item_analysis' => $analysisData
+        ]);
+    }
 }
