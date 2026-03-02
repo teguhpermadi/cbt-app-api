@@ -136,6 +136,26 @@ class QuestionImportService
 
 
     /**
+     * Fix double-encoded UTF-8 strings (Mojibake)
+     * Useful when Arabic/Javanese characters are extracted from PhpWord as Windows-1252 mapped to UTF-8.
+     */
+    protected function fixMojibake(string $text): string
+    {
+        if (empty($text)) return $text;
+
+        $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
+
+        if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
+            if (substr_count($decoded, '?') === substr_count($text, '?')) {
+                if ($decoded !== $text) {
+                    return $decoded;
+                }
+            }
+        }
+        return $text;
+    }
+
+    /**
      * Extract text and images from a cell
      */
     protected function extractCellContent($cell): array
@@ -143,7 +163,7 @@ class QuestionImportService
         $images = [];
         $text = $this->recursiveExtractText($cell, $images);
         return [
-            'text' => trim($text),
+            'text' => $this->fixMojibake(trim($text)),
             'images' => $images
         ];
     }
@@ -215,6 +235,7 @@ class QuestionImportService
 
             // Check if source is base64 data URI
             if (str_starts_with($source, 'data:image')) {
+                /** @var Question|Option $model */
                 $model->addMediaFromBase64($source)
                     ->usingFileName('image_' . uniqid() . '.' . $extension)
                     ->toMediaCollection($collection);
@@ -259,6 +280,7 @@ class QuestionImportService
             $filename = 'image_' . uniqid() . '.' . $extension;
             Log::debug("Attaching image: " . $filename . " (Mime: {$mimeType}) | Size: " . strlen($binaryData));
 
+            /** @var Question|Option $model */
             $model->addMediaFromString($binaryData)
                 ->usingFileName($filename)
                 ->toMediaCollection($collection);
@@ -335,13 +357,20 @@ class QuestionImportService
             // Create options based on type
             $this->createOptions($question, $questionType, $optionsCell, $keyCell['text']);
 
+            // Smart detect language from question and options
+            $detectedTags = $this->detectLanguageTags($questionCell['text'] . ' ' . $optionsCell['text']);
+
             // Attach Tags
+            $tags = [];
             if (!empty(trim($tagsCell['text']))) {
                 // Split by comma, trim, and filter empty
                 $tags = array_values(array_filter(array_map('trim', explode(',', $tagsCell['text']))));
-                if (!empty($tags)) {
-                    $question->attachTags($tags);
-                }
+            }
+
+            $tags = array_unique(array_merge($tags, $detectedTags));
+
+            if (!empty($tags)) {
+                $question->attachTags($tags);
             }
 
             DB::commit();
@@ -685,5 +714,28 @@ class QuestionImportService
         $options = preg_split('/\r\n|\r|\n/', $text);
 
         return array_values(array_filter(array_map('trim', $options)));
+    }
+
+    /**
+     * Detect languages from text and return language tags
+     * 
+     * @param string $text Text to analyze
+     * @return array Array of detected tags
+     */
+    protected function detectLanguageTags(string $text): array
+    {
+        $tags = [];
+
+        // Detect Arabic script
+        if (preg_match('/\p{Arabic}/u', $text)) {
+            $tags[] = 'ara';
+        }
+
+        // Detect Javanese script
+        if (preg_match('/\p{Javanese}/u', $text)) {
+            $tags[] = 'jav';
+        }
+
+        return $tags;
     }
 }
