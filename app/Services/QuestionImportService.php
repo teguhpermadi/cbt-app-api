@@ -436,7 +436,56 @@ class QuestionImportService
                     $html .= '<p>' . $line . '</p>';
                 }
             }
+
+            // Wrap detected language runs with tags (Arabic / Javanese)
+            $html = $this->wrapLanguageTags($html);
+
             return $html;
+        }
+
+        // Single line: still attempt to wrap language runs
+        return $this->wrapLanguageTags($text);
+    }
+
+    /**
+     * Wrap contiguous runs of Arabic or Javanese script with simple tags.
+     * - Arabic -> [ara]...[/ara]
+     * - Javanese -> [jav]...[/jav]
+     *
+     * This helper avoids double-wrapping by checking whether the tag
+     * already exists in the given text for that language.
+     */
+    protected function wrapLanguageTags(string $text): string
+    {
+        if (empty($text)) {
+            return $text;
+        }
+
+        $original = $text;
+
+        // Avoid double wrapping: if tag already present, skip wrapping that language
+        if (strpos($text, '[ara]') === false) {
+            // Wrap runs of Arabic characters (one or more) with [ara]...[/ara]
+            // Use Unicode property \p{Arabic} and the u modifier. Expand pattern to common Arabic ranges.
+            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
+            if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
+                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
+                Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
+            }
+        }
+
+        if (strpos($text, '[jav]') === false) {
+            // Javanese Unicode block: U+A980–U+A9DF. Use explicit range since \p{Javanese}
+            // may not be available in all PCRE builds.
+            $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
+            if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
+                $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
+                Log::debug('wrapLanguageTags: wrapped Javanese runs', ['matches' => count($m2[0])]);
+            }
+        }
+
+        if ($original === $text) {
+            Log::debug('wrapLanguageTags: nothing wrapped');
         }
 
         return $text;

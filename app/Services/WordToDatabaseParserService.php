@@ -191,7 +191,8 @@ class WordToDatabaseParserService
     protected function createOptions(Question $question, QuestionTypeEnum $type, array $optionData, string $keyAnswer): void
     {
         $lines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
-
+        // Pre-format all option lines so language tags and latex are handled
+        $lines = array_map(fn($l) => $this->formatRichText($l), $lines);
         switch ($type) {
             case QuestionTypeEnum::MULTIPLE_CHOICE:
             case QuestionTypeEnum::MULTIPLE_SELECTION:
@@ -209,7 +210,7 @@ class WordToDatabaseParserService
                     $option = Option::create([
                         'question_id' => $question->id,
                         'option_key' => $key,
-                        'content' => $this->formatRichText($line),
+                        'content' => $line,
                         'order' => $index,
                         'is_correct' => $isCorrect,
                     ]);
@@ -233,27 +234,30 @@ class WordToDatabaseParserService
             case QuestionTypeEnum::SHORT_ANSWER:
                 // Multiple correct answers can be separated by newline in the 'key' cell
                 $answers = array_values(array_filter(array_map('trim', explode("\n", $keyAnswer))));
+                // Format answers so language tags are applied
+                $answers = array_map(fn($a) => $this->formatRichText($a), $answers);
                 Option::createShortAnswerOptions($question->id, $answers);
                 break;
 
             case QuestionTypeEnum::ESSAY:
-                Option::createEssayOption($question->id, $keyAnswer);
+                Option::createEssayOption($question->id, $this->formatRichText($keyAnswer));
                 break;
 
             case QuestionTypeEnum::MATH_INPUT:
-                Option::createMathInputOption($question->id, $keyAnswer);
+                Option::createMathInputOption($question->id, $this->formatRichText($keyAnswer));
                 break;
 
             case QuestionTypeEnum::SEQUENCE:
+                // Lines already formatted above
                 Option::createOrderingOptions($question->id, $lines);
                 break;
 
             case QuestionTypeEnum::ARABIC_RESPONSE:
-                Option::createArabicOption($question->id, $keyAnswer);
+                Option::createArabicOption($question->id, $this->formatRichText($keyAnswer));
                 break;
 
             case QuestionTypeEnum::JAVANESE_RESPONSE:
-                Option::createJavaneseOption($question->id, $keyAnswer);
+                Option::createJavaneseOption($question->id, $this->formatRichText($keyAnswer));
                 break;
 
             case QuestionTypeEnum::MATCHING:
@@ -261,6 +265,9 @@ class WordToDatabaseParserService
                 foreach ($lines as $line) {
                     if (str_contains($line, '::')) {
                         [$left, $right] = array_map('trim', explode('::', $line, 2));
+                        // Format both sides
+                        $left = $this->formatRichText($left);
+                        $right = $this->formatRichText($right);
                         $pairs[] = ['left' => $left, 'right' => $right];
                     }
                 }
@@ -512,8 +519,13 @@ class WordToDatabaseParserService
     {
         $images = [];
         $text = $this->recursiveExtract($cell, $images);
+        $clean = trim($text);
+
+        // Attempt to fix common mojibake (double-encoded UTF-8) before returning
+        $clean = $this->fixMojibake($clean);
+
         return [
-            'text' => trim($text),
+            'text' => $clean,
             'images' => $images
         ];
     }
@@ -554,8 +566,64 @@ class WordToDatabaseParserService
         // Basic multi-line to P tags if many
         $lines = explode("\n", $text);
         if (count($lines) > 1) {
-            return collect($lines)->map(fn($l) => trim($l) ? "<p>{$l}</p>" : "")->implode('');
+            $html = collect($lines)->map(fn($l) => trim($l) ? "<p>{$l}</p>" : "")->implode('');
+            // After generating HTML, wrap language runs
+            return $this->wrapLanguageTags($html);
         }
+
+        // Single-line: wrap language runs as well
+        return $this->wrapLanguageTags($text);
+    }
+
+    /**
+     * Fix double-encoded UTF-8 strings (mojibake)
+     */
+    protected function fixMojibake(string $text): string
+    {
+        if (empty($text)) return $text;
+
+        $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
+
+        if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
+            if (substr_count($decoded, '?') === substr_count($text, '?')) {
+                if ($decoded !== $text) {
+                    Log::debug('fixMojibake: converted text', ['original_snippet' => substr($text, 0, 60)]);
+                    return $decoded;
+                }
+            }
+        }
+        return $text;
+    }
+
+    /**
+     * Wrap Arabic and Javanese script runs with simple tags [ara]...[/ara] and [jav]...[/jav]
+     */
+    protected function wrapLanguageTags(string $text): string
+    {
+        if (empty($text)) return $text;
+
+        $original = $text;
+
+        if (strpos($text, '[ara]') === false) {
+            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
+            if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
+                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
+                Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
+            }
+        }
+
+        if (strpos($text, '[jav]') === false) {
+            $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
+            if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
+                $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
+                Log::debug('wrapLanguageTags: wrapped Javanese runs', ['matches' => count($m2[0])]);
+            }
+        }
+
+        if ($original === $text) {
+            Log::debug('wrapLanguageTags: nothing wrapped');
+        }
+
         return $text;
     }
 
