@@ -18,3 +18,4 @@ declare(strict_types=1);
 
 // Routes are now loaded automatically from config/apiroute.php
 // See routes/api/v1.php for version 1 routes
+Route::get('/ping', function() { return response()->json(['message' => 'pong']); });
