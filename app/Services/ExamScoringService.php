@@ -61,6 +61,9 @@ class ExamScoringService
             case QuestionTypeEnum::ARRANGE_WORDS:
                 return $this->scoreArrangeWords($examQuestion, $studentAnswer, $keyAnswer, $maxScore);
 
+            case QuestionTypeEnum::CATEGORIZATION:
+                return $this->scoreCategorization($examQuestion, $studentAnswer, $keyAnswer, $maxScore);
+
             default:
                 return ['score' => 0, 'is_correct' => false];
         }
@@ -225,5 +228,42 @@ class ExamScoringService
     {
         // For now, same as short answer but could include normalization later
         return $this->scoreShortAnswer($question, $studentAnswer, $keyAnswer, $maxScore);
+    }
+
+    private function scoreCategorization($question, $studentAnswer, $keyAnswer, $maxScore): array
+    {
+        $studentMap = is_array($studentAnswer) ? $studentAnswer : [];
+        $options = $question->options ?? [];
+
+        $totalItems = count($options);
+        if ($totalItems === 0) {
+            return ['score' => 0, 'is_correct' => false];
+        }
+
+        $correctCount = 0;
+        foreach ($options as $opt) {
+            $key = is_array($opt) ? ($opt['option_key'] ?? null) : ($opt->option_key ?? null);
+            if (!$key) continue;
+
+            $metadata = is_array($opt) ? ($opt['metadata'] ?? []) : ($opt->metadata ?? []);
+
+            $correctGroupUuid = $metadata['group_uuid']
+                ?? (isset($metadata['group_index']) ? (string)$metadata['group_index'] : null)
+                ?? $metadata['category_title']
+                ?? null;
+
+            if (isset($studentMap[$key]) && $studentMap[$key] === $correctGroupUuid) {
+                $correctCount++;
+            }
+        }
+
+        $ratio = $correctCount / $totalItems;
+        $scoreEarned = round($ratio * $maxScore, 1);
+        $isCorrect = ($ratio == 1.0);
+
+        return [
+            'score' => $scoreEarned,
+            'is_correct' => $isCorrect
+        ];
     }
 }
