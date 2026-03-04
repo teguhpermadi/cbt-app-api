@@ -290,6 +290,13 @@ final class ExamController extends ApiController
 
         $students = $classrooms->flatMap->students->unique('id');
 
+        // Compute total possible score for this exam (sum of question score_value)
+        // Fallback to question count if score_value is not available
+        $totalPossible = \App\Models\ExamQuestion::where('exam_id', $exam->id)->sum('score_value');
+        if ($totalPossible <= 0) {
+            $totalPossible = \App\Models\ExamQuestion::where('exam_id', $exam->id)->count();
+        }
+
         // 2. Ambil sesi ujian yang saat ini (termasuk yang baru saja soft deleted jika ada history, tapi kita butuh active/latest)
         // Kita ambil SEMUA session milik siswa di ujian ini termasuk yang soft deleted untuk melihat history
         $allSessions = ExamSession::withTrashed()
@@ -309,7 +316,7 @@ final class ExamController extends ApiController
         $sessionsByUser = $allSessions->groupBy('user_id');
 
         // 3. Format data response
-        $data = $students->map(function ($student) use ($sessionsByUser, $exam, $classrooms) {
+        $data = $students->map(function ($student) use ($sessionsByUser, $exam, $classrooms, $totalPossible) {
             $userSessions = $sessionsByUser->get($student->id, collect());
             
             // Sesi aktif/terbaru adalah yang terakhir di array (bisa jadi soft deleted atau active)
@@ -328,8 +335,10 @@ final class ExamController extends ApiController
                 return $s->id !== ($activeSession ? $activeSession->id : null) && $s->is_finished;
             })->take(-2); // Ambil 2 terakhir
 
-            $historyScores = $historySessions->map(function($s) {
-                return (float) $s->total_score;
+            // Convert history total_score to percentage based on totalPossible
+            $historyScores = $historySessions->map(function($s) use ($totalPossible) {
+                $raw = (float) $s->total_score;
+                return $totalPossible > 0 ? round(($raw / $totalPossible) * 100, 2) : 0;
             })->values()->toArray();
 
             $status = 'idle'; // 'not_started' mapped to 'idle'
@@ -378,6 +387,10 @@ final class ExamController extends ApiController
                     // Gunakan max antara hitungan real-time detail dengan total_score di table
                     $currentScore = max((float)$activeSession->total_score, (float)$currentScore);
                 }
+
+                // Convert current/raw score to percentage based on totalPossible
+                $currentScore = (float) $currentScore;
+                $percentageScore = $totalPossible > 0 ? round(($currentScore / $totalPossible) * 100, 2) : 0;
             }
 
             return [
@@ -392,8 +405,8 @@ final class ExamController extends ApiController
                 'status' => $status,
                 'start_time' => $startTime,
                 'remaining_time' => $remainingTime,
-                'score' => (float) $currentScore, // mapped from current_score/total_score
-                'history' => $historyScores, // NEW: History array
+                'score' => (float) ($percentageScore ?? 0), // percentage (0-100)
+                'history' => $historyScores, // NEW: History array (percentages)
                 'extra_time' => $extraTime,
                 'progress' => $progress,
             ];

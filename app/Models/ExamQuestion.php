@@ -56,4 +56,109 @@ class ExamQuestion extends Model
     {
         return $this->belongsTo(Question::class, 'question_id');
     }
+
+    /**
+     * Apply mojibake fix and language tag wrapping to this exam question's content and options.
+     * Returns true if anything changed (and saved when $dry is false).
+     *
+     * @param bool $dry
+     * @param bool $verbose
+     * @param \Illuminate\Console\Command|null $output
+     * @return bool
+     */
+    public function applyMojibakeConversion(bool $dry = false, bool $verbose = false, $output = null): bool
+    {
+        $changed = false;
+
+        // Helpers (local copies to avoid coupling)
+        $fixMojibake = function (string $text): string {
+            if ($text === '') return $text;
+            $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
+            if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
+                if (substr_count($decoded, '?') === substr_count($text, '?')) {
+                    if ($decoded !== $text) return $decoded;
+                }
+            }
+            return $text;
+        };
+
+        $wrapLanguageTags = function (string $text): string {
+            if ($text === '') return $text;
+            if (strpos($text, '[ara]') === false) {
+                $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
+                if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
+                    $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
+                }
+            }
+            if (strpos($text, '[jav]') === false) {
+                $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
+                if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
+                    $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
+                }
+            }
+            return $text;
+        };
+
+        // Process content
+        $origContent = $this->content ?? '';
+        $fixedContent = $fixMojibake($origContent);
+        $wrappedContent = $wrapLanguageTags($fixedContent);
+        if ($wrappedContent !== $origContent) {
+            $changed = true;
+            if ($verbose && $output) {
+                $output->line("ExamQuestion {$this->id} content before => " . substr($origContent, 0, 200));
+                $output->line("ExamQuestion {$this->id} content after  => " . substr($wrappedContent, 0, 200));
+            }
+            if (!$dry) {
+                $this->content = $wrappedContent;
+            }
+        }
+
+        // Process options array (recursive)
+        $origOptions = $this->options ?? [];
+        $convertedOptions = $this->convertArrayStrings($origOptions, $fixMojibake, $wrapLanguageTags);
+        if ($convertedOptions !== $origOptions) {
+            $changed = true;
+            if ($verbose && $output) {
+                $output->line("ExamQuestion {$this->id} options changed (showing json snippet)");
+                $output->line(substr(json_encode(array_slice($origOptions, 0, 5), JSON_UNESCAPED_UNICODE), 0, 400));
+                $output->line('->');
+                $output->line(substr(json_encode(array_slice($convertedOptions, 0, 5), JSON_UNESCAPED_UNICODE), 0, 400));
+            }
+            if (!$dry) {
+                $this->options = $convertedOptions;
+            }
+        }
+
+        if ($changed && !$dry) {
+            $this->save();
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Recursively convert all string values in array using provided callbacks.
+     *
+     * @param array $arr
+     * @param callable $fixFn
+     * @param callable $wrapFn
+     * @return array
+     */
+    protected function convertArrayStrings(array $arr, callable $fixFn, callable $wrapFn): array
+    {
+        $result = [];
+        foreach ($arr as $k => $v) {
+            if (is_array($v)) {
+                $result[$k] = $this->convertArrayStrings($v, $fixFn, $wrapFn);
+            } elseif (is_string($v)) {
+                $fixed = $fixFn($v);
+                $wrapped = $wrapFn($fixed);
+                $result[$k] = $wrapped;
+            } else {
+                $result[$k] = $v;
+            }
+        }
+        return $result;
+    }
 }

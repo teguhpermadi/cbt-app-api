@@ -38,6 +38,77 @@ class Option extends Model implements HasMedia
         return $this->belongsTo(Question::class);
     }
 
+    /**
+     * Apply mojibake fix and language tag wrapping to this option's content.
+     * Returns true if content would change (and is saved when $dry is false).
+     *
+     * @param bool $dry If true, do not persist changes.
+     * @param bool $verbose If true, optionally output before/after via $output
+     * @param \Illuminate\Console\Command|null $output
+     * @return bool
+     */
+    public function applyMojibakeConversion(bool $dry = false, bool $verbose = false, $output = null): bool
+    {
+        $orig = $this->content ?? '';
+        $fixed = self::fixMojibakeStatic($orig);
+        $wrapped = self::wrapLanguageTagsStatic($fixed);
+
+        if ($wrapped === $orig) {
+            return false;
+        }
+
+        if ($verbose && $output) {
+            $output->line("Option {$this->id}: before => " . substr($orig, 0, 200));
+            $output->line("Option {$this->id}: after  => " . substr($wrapped, 0, 200));
+        }
+
+        if (!$dry) {
+            $this->content = $wrapped;
+            $this->save();
+        }
+
+        return true;
+    }
+
+    /**
+     * Static helper to fix mojibake-like double-encoding issues.
+     */
+    protected static function fixMojibakeStatic(string $text): string
+    {
+        if ($text === '') return $text;
+        $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
+        if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
+            if (substr_count($decoded, '?') === substr_count($text, '?')) {
+                if ($decoded !== $text) return $decoded;
+            }
+        }
+        return $text;
+    }
+
+    /**
+     * Static helper to wrap Arabic and Javanese runs with tags.
+     */
+    protected static function wrapLanguageTagsStatic(string $text): string
+    {
+        if ($text === '') return $text;
+
+        if (strpos($text, '[ara]') === false) {
+            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
+            if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
+                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
+            }
+        }
+
+        if (strpos($text, '[jav]') === false) {
+            $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
+            if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
+                $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
+            }
+        }
+
+        return $text;
+    }
+
     // --- SCOPES ---
 
     /**
