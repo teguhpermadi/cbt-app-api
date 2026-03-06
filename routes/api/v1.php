@@ -161,6 +161,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Question Banks
     Route::prefix('question-banks')->group(function () {
+        Route::get('{questionBank}/export', [QuestionBankController::class, 'export'])->name('api.v1.question-banks.export');
         Route::post('{questionBank}/import', [QuestionBankController::class, 'import'])->name('api.v1.question-banks.import');
         Route::get('trashed', [QuestionBankController::class, 'trashed'])->name('api.v1.question-banks.trashed');
         Route::post('{questionBank}/restore', [QuestionBankController::class, 'restore'])->name('api.v1.question-banks.restore');

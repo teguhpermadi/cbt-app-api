@@ -223,4 +223,34 @@ final class QuestionBankController extends ApiController
             );
         }
     }
+
+    /**
+     * Export questions to Word document.
+     */
+    public function export(string $id, \App\Services\QuestionExportService $exportService): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    {
+        $questionBank = QuestionBank::find($id);
+
+        if (!$questionBank) {
+            return $this->notFound('Question bank not found');
+        }
+
+        try {
+            $filePath = $exportService->exportToWord($questionBank);
+
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            return response()->download($filePath, $questionBank->name . '.docx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ])->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return $this->error(
+                'Terjadi kesalahan saat mengekspor file.',
+                500,
+                ['error' => $e->getMessage()]
+            );
+        }
+    }
 }
