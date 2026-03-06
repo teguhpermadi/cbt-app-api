@@ -62,12 +62,8 @@ class ConvertMojibake extends Command
         $wrapLanguageTags = function (string $text): string {
             if ($text === '') return $text;
 
-            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
-            if (strpos($text, '[ara]') === false) {
-                if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
-                    $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
-                }
-            }
+            // Note: Arabic [ara] tagging was removed as requested by user.
+            // Keeping Javanese [jav] tagging for now.
 
             $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
             if (strpos($text, '[jav]') === false) {
@@ -79,9 +75,9 @@ class ConvertMojibake extends Command
             return $text;
         };
 
-    $qChanged = 0;
-    $oChanged = 0;
-    $eqChanged = 0;
+        $qChanged = 0;
+        $oChanged = 0;
+        $eqChanged = 0;
 
         Question::chunk(100, function ($questions) use (&$qChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
             foreach ($questions as $q) {

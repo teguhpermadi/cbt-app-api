@@ -604,13 +604,8 @@ class WordToDatabaseParserService
 
         $original = $text;
 
-        if (strpos($text, '[ara]') === false) {
-            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
-            if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
-                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
-                Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
-            }
-        }
+        // Note: Arabic [ara] tagging was removed as requested by user.
+        // Keeping Javanese [jav] tagging for now.
 
         if (strpos($text, '[jav]') === false) {
             $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
