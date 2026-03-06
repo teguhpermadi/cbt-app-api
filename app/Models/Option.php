@@ -359,9 +359,10 @@ class Option extends Model implements HasMedia
      * @param string $questionId
      * @param string $sentence Kalimat lengkap
      * @param string $delimiter Delimiter pemisah kata
+     * @param bool $isArabic Apakah teks Arab (RTL)
      * @return Option
      */
-    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ')
+    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ', bool $isArabic = false)
     {
         return self::create([
             'question_id' => $questionId,
@@ -371,6 +372,7 @@ class Option extends Model implements HasMedia
             'is_correct' => true,
             'metadata' => [
                 'delimiter' => $delimiter,
+                'is_arabic' => $isArabic,
             ],
         ]);
     }
