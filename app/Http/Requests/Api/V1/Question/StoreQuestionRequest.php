@@ -58,6 +58,8 @@ class StoreQuestionRequest extends FormRequest
             'math_content' => ['nullable', 'string'],
             'arabic_content' => ['nullable', 'string'],
             'javanese_content' => ['nullable', 'string'],
+            'arrange_words_sentence' => ['nullable', 'string'],
+            'arrange_words_delimiter' => ['nullable', 'string'],
 
             // Categorization
             'categorization_groups' => ['nullable', 'array'],
