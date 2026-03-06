@@ -73,6 +73,7 @@ final class QuestionController extends ApiController
         $arrangeWordsSentence = $data['arrange_words_sentence'] ?? '';
         $arrangeWordsDelimiter = $data['arrange_words_delimiter'] ?? ' ';
         $arrangeWordsIsArabic = (bool) ($data['arrange_words_is_arabic'] ?? false);
+        $arrangeWordsShuffleMode = $data['arrange_words_shuffle_mode'] ?? 'phrase';
 
 
         // Clean up data for Question model
@@ -86,6 +87,10 @@ final class QuestionController extends ApiController
         unset($data['arabic_content']);
         unset($data['javanese_content']);
         unset($data['categorization_groups']);
+        unset($data['arrange_words_sentence']);
+        unset($data['arrange_words_delimiter']);
+        unset($data['arrange_words_is_arabic']);
+        unset($data['arrange_words_shuffle_mode']);
 
 
         $data['user_id'] = \Illuminate\Support\Facades\Auth::id();
@@ -102,7 +107,7 @@ final class QuestionController extends ApiController
             $data['order'] = $data['order'] ?? 1;
         }
 
-        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic) {
+        $question = DB::transaction(function () use ($request, $data, $tags, $questionBankId, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic, $arrangeWordsShuffleMode) {
 
             $question = Question::create($data);
 
@@ -119,7 +124,7 @@ final class QuestionController extends ApiController
                 $question->addMediaFromRequest('question_image')->toMediaCollection('question_content');
             }
 
-            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic);
+            $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic, $arrangeWordsShuffleMode);
 
 
             return $question;
@@ -177,6 +182,7 @@ final class QuestionController extends ApiController
         $arrangeWordsSentence = $data['arrange_words_sentence'] ?? '';
         $arrangeWordsDelimiter = $data['arrange_words_delimiter'] ?? ' ';
         $arrangeWordsIsArabic = (bool) ($data['arrange_words_is_arabic'] ?? false);
+        $arrangeWordsShuffleMode = $data['arrange_words_shuffle_mode'] ?? 'phrase';
 
 
         unset($data['tags']);
@@ -192,7 +198,8 @@ final class QuestionController extends ApiController
         unset($data['arrange_words_sentence']);
         unset($data['arrange_words_delimiter']);
         unset($data['arrange_words_is_arabic']);
-        $question = DB::transaction(function () use ($request, $question, $data, $tags, $tagType, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic) {
+        unset($data['arrange_words_shuffle_mode']);
+        $question = DB::transaction(function () use ($request, $question, $data, $tags, $tagType, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic, $arrangeWordsShuffleMode) {
 
             $question->update($data);
 
@@ -211,8 +218,8 @@ final class QuestionController extends ApiController
 
             // Sync options instead of delete/re-create
             // Only sync options if they are explicitly provided in the request or if the question type is changing
-            if ($request->hasAny(['type', 'options', 'matching_pairs', 'sequence_items', 'keywords', 'math_content', 'arabic_content', 'javanese_content', 'categorization_groups', 'arrange_words_sentence', 'arrange_words_delimiter', 'arrange_words_is_arabic'])) {
-                $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic);
+            if ($request->hasAny(['type', 'options', 'matching_pairs', 'sequence_items', 'keywords', 'math_content', 'arabic_content', 'javanese_content', 'categorization_groups', 'arrange_words_sentence', 'arrange_words_delimiter', 'arrange_words_is_arabic', 'arrange_words_shuffle_mode'])) {
+                $this->saveOptions($question, $optionsData, $matchingPairs, $sequenceItems, $keywords, $mathContent, $arabicContent, $javaneseContent, $categorizationGroups, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic, $arrangeWordsShuffleMode);
             }
 
             return $question;
@@ -227,7 +234,7 @@ final class QuestionController extends ApiController
     /**
      * Helper to save options based on question type
      */
-    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent, string $javaneseContent, array $categorizationGroups, string $arrangeWordsSentence = '', string $arrangeWordsDelimiter = ' ', bool $arrangeWordsIsArabic = false): void
+    private function saveOptions(Question $question, array $optionsData, array $matchingPairs, array $sequenceItems, string $keywords, string $mathContent, string $arabicContent, string $javaneseContent, array $categorizationGroups, string $arrangeWordsSentence = '', string $arrangeWordsDelimiter = ' ', bool $arrangeWordsIsArabic = false, string $arrangeWordsShuffleMode = 'phrase'): void
 
     {
         switch ($question->type) {
@@ -326,7 +333,7 @@ final class QuestionController extends ApiController
                 break;
             case \App\Enums\QuestionTypeEnum::ARRANGE_WORDS:
                 $question->options()->delete();
-                \App\Models\Option::createArrangeWordsOption($question->id, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic);
+                \App\Models\Option::createArrangeWordsOption($question->id, $arrangeWordsSentence, $arrangeWordsDelimiter, $arrangeWordsIsArabic, $arrangeWordsShuffleMode);
                 break;
         }
     }

@@ -62,6 +62,7 @@ class UpdateQuestionRequest extends FormRequest
             'arrange_words_sentence' => ['nullable', 'string'],
             'arrange_words_delimiter' => ['nullable', 'string'],
             'arrange_words_is_arabic' => ['nullable', 'boolean'],
+            'arrange_words_shuffle_mode' => ['nullable', 'string', 'in:phrase,alphabet'],
 
             // Categorization
             'categorization_groups' => ['nullable', 'array'],

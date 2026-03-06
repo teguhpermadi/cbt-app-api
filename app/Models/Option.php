@@ -360,9 +360,10 @@ class Option extends Model implements HasMedia
      * @param string $sentence Kalimat lengkap
      * @param string $delimiter Delimiter pemisah kata
      * @param bool $isArabic Apakah teks Arab (RTL)
+     * @param string $shuffleMode Mode pengacakan (phrase atau alphabet)
      * @return Option
      */
-    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ', bool $isArabic = false)
+    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ', bool $isArabic = false, string $shuffleMode = 'phrase')
     {
         return self::create([
             'question_id' => $questionId,
@@ -373,6 +374,7 @@ class Option extends Model implements HasMedia
             'metadata' => [
                 'delimiter' => $delimiter,
                 'is_arabic' => $isArabic,
+                'shuffle_mode' => $shuffleMode,
             ],
         ]);
     }
