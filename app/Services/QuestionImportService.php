@@ -463,21 +463,8 @@ class QuestionImportService
 
         $original = $text;
 
-        // Avoid double wrapping: if tag already present, skip wrapping that language
-        if (strpos($text, '[ara]') === false) {
-            // Wrap Arabic phrases (including spaces and common punctuation between words) with [ara]...[/ara]
-            // We use \xA0 and other specific whitespace indicators as sometimes PhpWord produces
-            // non-standard spaces that \s might miss depending on environment.
-            $arabicInner  = '[\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]';
-            $arabicBridge = '[ \t\n\r\xA0\x{00A0}.,;:!\?\-\+\'\"()\[\]{}\/_\\\\@#%&\*~`^=|]';
-            $arabicPattern = '/(' . $arabicInner . '(' . $arabicBridge . '*' . $arabicInner . ')*)/u';
-            if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
-                // Use a callback to ensure we don't accidentally double-wrap if logic gets complex,
-                // though preg_replace with $1 is usually fine for simple non-overlapping runs.
-                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
-                Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
-            }
-        }
+        // Note: Arabic [ara] tagging was removed as requested by user.
+        // We only keep Javanese [jav] tagging for now.
 
         if (strpos($text, '[jav]') === false) {
             // Javanese Unicode block: U+A980–U+A9DF. Use explicit range since \p{Javanese}
