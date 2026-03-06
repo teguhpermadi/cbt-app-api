@@ -192,7 +192,8 @@ class WordToDatabaseParserService
     {
         $lines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
         // Pre-format all option lines so language tags and latex are handled
-        $lines = array_map(fn($l) => $this->formatRichText($l), $lines);
+        $wrapArabic = $type !== QuestionTypeEnum::ARABIC_RESPONSE;
+        $lines = array_map(fn($l) => $this->formatRichText($l, $wrapArabic), $lines);
         switch ($type) {
             case QuestionTypeEnum::MULTIPLE_CHOICE:
             case QuestionTypeEnum::MULTIPLE_SELECTION:
@@ -253,7 +254,7 @@ class WordToDatabaseParserService
                 break;
 
             case QuestionTypeEnum::ARABIC_RESPONSE:
-                Option::createArabicOption($question->id, $this->formatRichText($keyAnswer));
+                Option::createArabicOption($question->id, $this->formatRichText($keyAnswer, false));
                 break;
 
             case QuestionTypeEnum::JAVANESE_RESPONSE:
@@ -554,7 +555,7 @@ class WordToDatabaseParserService
         return $text;
     }
 
-    protected function formatRichText(string $text): string
+    protected function formatRichText(string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) return '';
 
@@ -568,11 +569,11 @@ class WordToDatabaseParserService
         if (count($lines) > 1) {
             $html = collect($lines)->map(fn($l) => trim($l) ? "<p>{$l}</p>" : "")->implode('');
             // After generating HTML, wrap language runs
-            return $this->wrapLanguageTags($html);
+            return $this->wrapLanguageTags($html, $wrapArabic);
         }
 
         // Single-line: wrap language runs as well
-        return $this->wrapLanguageTags($text);
+        return $this->wrapLanguageTags($text, $wrapArabic);
     }
 
     /**
@@ -598,14 +599,14 @@ class WordToDatabaseParserService
     /**
      * Wrap Arabic and Javanese script runs with simple tags [ara]...[/ara] and [jav]...[/jav]
      */
-    protected function wrapLanguageTags(string $text): string
+    protected function wrapLanguageTags(string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) return $text;
 
         $original = $text;
 
         // Wrap Arabic runs [ara]...[/ara]
-        if (strpos($text, '[ara]') === false) {
+        if ($wrapArabic && strpos($text, '[ara]') === false) {
             $arabicPattern = '/(\p{Arabic}(?:[\p{Arabic}\p{M}\p{Cf}\s\p{P}\p{S}\d]*\p{Arabic})?)/u';
             if (preg_match_all($arabicPattern, $text, $m1) && count($m1[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);

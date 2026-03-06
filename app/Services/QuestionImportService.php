@@ -411,7 +411,7 @@ class QuestionImportService
     /**
      * Process text to convert specific patterns to Rich Text HTML components
      */
-    protected function processRichText(?string $text): string
+    protected function processRichText(?string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) {
             return '';
@@ -438,13 +438,13 @@ class QuestionImportService
             }
 
             // Wrap detected language runs with tags (Arabic / Javanese)
-            $html = $this->wrapLanguageTags($html);
+            $html = $this->wrapLanguageTags($html, $wrapArabic);
 
             return $html;
         }
 
         // Single line: still attempt to wrap language runs
-        return $this->wrapLanguageTags($text);
+        return $this->wrapLanguageTags($text, $wrapArabic);
     }
 
     /**
@@ -455,7 +455,7 @@ class QuestionImportService
      * This helper avoids double-wrapping by checking whether the tag
      * already exists in the given text for that language.
      */
-    protected function wrapLanguageTags(string $text): string
+    protected function wrapLanguageTags(string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) {
             return $text;
@@ -464,7 +464,7 @@ class QuestionImportService
         $original = $text;
 
         // Wrap contiguous runs of Arabic text [ara]...[/ara]
-        if (strpos($text, '[ara]') === false) {
+        if ($wrapArabic && strpos($text, '[ara]') === false) {
             $arabicPattern = '/(\p{Arabic}(?:[\p{Arabic}\p{M}\p{Cf}\s\p{P}\p{S}\d]*\p{Arabic})?)/u';
             if (preg_match_all($arabicPattern, $text, $m1) && count($m1[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
