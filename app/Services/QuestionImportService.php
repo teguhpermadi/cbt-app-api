@@ -465,10 +465,12 @@ class QuestionImportService
 
         // Avoid double wrapping: if tag already present, skip wrapping that language
         if (strpos($text, '[ara]') === false) {
-            // Wrap runs of Arabic characters (including spaces between Arabic words) with [ara]...[/ara]
-            // The pattern allows Arabic characters interspersed with spaces/punctuation so that an
-            // entire Arabic phrase is captured as one run rather than each word separately.
-            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]([\s\p{P}]*[\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}])*)/u';
+            // Wrap Arabic phrases (including spaces and common punctuation between words) with [ara]...[/ara]
+            // The middle character class explicitly lists every separator that may appear inside an Arabic
+            // phrase so that the whole sentence is captured as one unit.
+            $arabicInner  = '[\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]';
+            $arabicBridge = '[\s\t.,;:!\?\-\+\'\"()\[\]{}\/_\\\\@#%&\*~`^=|]';
+            $arabicPattern = '/(' . $arabicInner . '(' . $arabicBridge . '*' . $arabicInner . ')*)/u';
             if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
                 Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
