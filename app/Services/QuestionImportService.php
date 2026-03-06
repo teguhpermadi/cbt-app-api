@@ -463,9 +463,16 @@ class QuestionImportService
 
         $original = $text;
 
-        // Note: Arabic [ara] tagging was removed as requested by user.
-        // We only keep Javanese [jav] tagging for now.
+        // Wrap contiguous runs of Arabic text [ara]...[/ara]
+        if (strpos($text, '[ara]') === false) {
+            $arabicPattern = '/(\p{Arabic}(?:[\p{Arabic}\p{M}\p{Cf}\s\p{P}\p{S}\d]*\p{Arabic})?)/u';
+            if (preg_match_all($arabicPattern, $text, $m1) && count($m1[0]) > 0) {
+                $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
+                Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m1[0])]);
+            }
+        }
 
+        // Wrap Javanese runs [jav]...[/jav]
         if (strpos($text, '[jav]') === false) {
             // Javanese Unicode block: U+A980–U+A9DF. Use explicit range since \p{Javanese}
             // may not be available in all PCRE builds.
