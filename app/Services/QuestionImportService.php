@@ -465,9 +465,10 @@ class QuestionImportService
 
         // Avoid double wrapping: if tag already present, skip wrapping that language
         if (strpos($text, '[ara]') === false) {
-            // Wrap runs of Arabic characters (one or more) with [ara]...[/ara]
-            // Use Unicode property \p{Arabic} and the u modifier. Expand pattern to common Arabic ranges.
-            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
+            // Wrap runs of Arabic characters (including spaces between Arabic words) with [ara]...[/ara]
+            // The pattern allows Arabic characters interspersed with spaces/punctuation so that an
+            // entire Arabic phrase is captured as one run rather than each word separately.
+            $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]([\s\p{P}]*[\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}])*)/u';
             if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
                 Log::debug('wrapLanguageTags: wrapped Arabic runs', ['matches' => count($m[0])]);
