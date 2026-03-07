@@ -34,5 +34,7 @@ class ReadingMaterial extends Model implements HasMedia
     {
         $this->addMediaCollection('reading_materials')
             ->singleFile();
+
+        $this->addMediaCollection('reading_images');
     }
 }
