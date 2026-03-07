@@ -161,8 +161,8 @@ class QuestionExportService
     }
 
     /**
-     * Add options into a single cell using ONE TextRun with line breaks,
-     * so all options appear in one table row.
+     * Add options into a single cell using separate paragraphs (addText)
+     * so each option appears on a new line.
      */
     private function addOptionsToCell($question, $cell): void
     {
@@ -170,45 +170,36 @@ class QuestionExportService
         $type    = $question->type;
 
         if ($type === QuestionTypeEnum::MULTIPLE_CHOICE || $type === QuestionTypeEnum::MULTIPLE_SELECTION) {
-            $run   = $cell->addTextRun();
-            $first = true;
             foreach ($options as $opt) {
-                if (!$first) {
-                    $run->addBreak(); // soft line-break within same paragraph
-                }
-                $run->addText($opt->option_key . '. ' . $this->sanitizeText($opt->content), self::VALUE_FONT);
-                $first = false;
+                // Each option as a new paragraph
+                $cell->addText($this->sanitizeText($opt->content), self::VALUE_FONT);
+                $this->addMediaToCell($cell, $opt->getMedia('option_media'));
             }
         } elseif ($type === QuestionTypeEnum::TRUE_FALSE) {
-            $run = $cell->addTextRun();
-            $run->addText('TRUE', self::VALUE_FONT);
-            $run->addBreak();
-            $run->addText('FALSE', self::VALUE_FONT);
+            $cell->addText('TRUE', self::VALUE_FONT);
+            $cell->addText('FALSE', self::VALUE_FONT);
         } elseif ($type === QuestionTypeEnum::MATCHING) {
             $leftSide  = $options->filter(fn($o) => str_starts_with($o->option_key, 'L'));
             $rightSide = $options->filter(fn($o) => str_starts_with($o->option_key, 'R'));
-            $run       = $cell->addTextRun();
-            $first     = true;
             foreach ($leftSide as $leftOpt) {
-                if (!$first) {
-                    $run->addBreak();
-                }
                 $rightOpt  = $rightSide->where('option_key', $leftOpt->getMetadata('match_with'))->first();
                 $leftText  = $this->sanitizeText($leftOpt->content);
                 $rightText = $rightOpt ? $this->sanitizeText($rightOpt->content) : '';
-                $run->addText($leftText . ' :: ' . $rightText, self::VALUE_FONT);
-                $first = false;
+                // Format as left::right (no quotes)
+                $cell->addText($leftText . '::' . $rightText, self::VALUE_FONT);
+
+                // Add media for both sides if they exist
+                $this->addMediaToCell($cell, $leftOpt->getMedia('option_media'));
+                if ($rightOpt) {
+                    $this->addMediaToCell($cell, $rightOpt->getMedia('option_media'));
+                }
             }
         } elseif ($type === QuestionTypeEnum::SEQUENCE) {
             $sorted = $options->sortBy(fn($o) => $o->getMetadata('correct_position'));
-            $run    = $cell->addTextRun();
-            $first  = true;
             foreach ($sorted as $opt) {
-                if (!$first) {
-                    $run->addBreak();
-                }
-                $run->addText($opt->getMetadata('correct_position') . '. ' . $this->sanitizeText($opt->content), self::VALUE_FONT);
-                $first = false;
+                // Each sorted option as a new paragraph
+                $cell->addText($this->sanitizeText($opt->content), self::VALUE_FONT);
+                $this->addMediaToCell($cell, $opt->getMedia('option_media'));
             }
         } else {
             // ESSAY, SHORT_ANSWER, MATH_INPUT — no options to list
@@ -228,14 +219,24 @@ class QuestionExportService
             $key = $options->where('is_correct', true)->pluck('option_key')->implode(', ');
             $cell->addText($key ?: '-', self::VALUE_FONT);
         } elseif ($type === QuestionTypeEnum::MULTIPLE_SELECTION) {
-            $keys = $options->where('is_correct', true)->pluck('option_key')->implode(', ');
+            $keys = $options->where('is_correct', true)->pluck('option_key')->sort()->implode(', ');
             $cell->addText($keys ?: '-', self::VALUE_FONT);
         } elseif ($type === QuestionTypeEnum::TRUE_FALSE) {
             $correct = $options->where('is_correct', true)->first();
             $cell->addText($correct ? ($correct->option_key === 'T' ? 'TRUE' : 'FALSE') : '-', self::VALUE_FONT);
         } elseif ($type === QuestionTypeEnum::MATCHING || $type === QuestionTypeEnum::SEQUENCE) {
-            $cell->addText('-', self::VALUE_FONT);
-        } elseif ($type === QuestionTypeEnum::ESSAY || $type === QuestionTypeEnum::SHORT_ANSWER) {
+            // EMPTY as requested
+            $cell->addText('', self::VALUE_FONT);
+        } elseif ($type === QuestionTypeEnum::SHORT_ANSWER) {
+            $answers = $options->pluck('content')->map(fn($c) => $this->sanitizeText($c))->filter();
+            if ($answers->isEmpty()) {
+                $cell->addText('-', self::VALUE_FONT);
+            } else {
+                foreach ($answers as $ans) {
+                    $cell->addText($ans, self::VALUE_FONT);
+                }
+            }
+        } elseif ($type === QuestionTypeEnum::ESSAY) {
             $rubric = $options->first();
             $cell->addText($rubric ? $this->sanitizeText($rubric->content) : '-', self::VALUE_FONT);
         } elseif ($type === QuestionTypeEnum::MATH_INPUT) {
@@ -246,6 +247,9 @@ class QuestionExportService
             } else {
                 $cell->addText('-', self::VALUE_FONT);
             }
+        } elseif ($type === QuestionTypeEnum::ARABIC_RESPONSE || $type === QuestionTypeEnum::JAVANESE_RESPONSE) {
+            $ans = $options->first();
+            $cell->addText($ans ? $this->sanitizeText($ans->content) : '-', self::VALUE_FONT);
         } else {
             $cell->addText('-', self::VALUE_FONT);
         }
@@ -254,14 +258,16 @@ class QuestionExportService
     private function mapQuestionType(QuestionTypeEnum $type): string
     {
         return match ($type) {
-            QuestionTypeEnum::MULTIPLE_CHOICE   => 'MULTIPLE_CHOICE',
-            QuestionTypeEnum::MULTIPLE_SELECTION => 'MULTIPLE_SELECTION',
-            QuestionTypeEnum::TRUE_FALSE        => 'TRUE_FALSE',
-            QuestionTypeEnum::MATCHING          => 'MATCHING',
-            QuestionTypeEnum::SEQUENCE          => 'ORDERING',
-            QuestionTypeEnum::ESSAY             => 'ESSAY',
-            QuestionTypeEnum::SHORT_ANSWER      => 'SHORT_ANSWER',
-            QuestionTypeEnum::MATH_INPUT        => 'NUMERICAL_INPUT',
+            QuestionTypeEnum::MULTIPLE_CHOICE   => '1',
+            QuestionTypeEnum::MULTIPLE_SELECTION => '2',
+            QuestionTypeEnum::TRUE_FALSE        => '3',
+            QuestionTypeEnum::SHORT_ANSWER      => '4',
+            QuestionTypeEnum::ESSAY             => '5',
+            QuestionTypeEnum::MATH_INPUT        => '6',
+            QuestionTypeEnum::SEQUENCE          => '7',
+            QuestionTypeEnum::ARABIC_RESPONSE   => '8',
+            QuestionTypeEnum::JAVANESE_RESPONSE => '9',
+            QuestionTypeEnum::MATCHING          => '10',
             default                             => $type->name,
         };
     }
@@ -269,6 +275,7 @@ class QuestionExportService
     private function sanitizeText(?string $text): string
     {
         if (empty($text)) return '';
+        $text = str_replace(['[ara]', '[/ara]', '[jav]', '[/jav]'], '', $text);
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);
@@ -279,7 +286,8 @@ class QuestionExportService
     {
         if (empty($html)) return;
 
-        $text = str_replace(['<br>', '<br/>', '<br />', '</p>', '</li>', '</div>'], "\n", $html);
+        $text = str_replace(['[ara]', '[/ara]', '[jav]', '[/jav]'], '', $html);
+        $text = str_replace(['<br>', '<br/>', '<br />', '</p>', '</li>', '</div>'], "\n", $text);
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);

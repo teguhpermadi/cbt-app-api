@@ -15,7 +15,7 @@ class ExamQuestion extends Model
     use HasFactory, HasUlids;
 
     // model ini berfungsi untuk menyimpan snapshot soal yang akan dikerjakan oleh siswa
-    
+
     protected $fillable = [
         'exam_id',
         'question_id',          // ID soal asli (untuk referensi/analisis)
@@ -84,6 +84,7 @@ class ExamQuestion extends Model
 
         $wrapLanguageTags = function (string $text): string {
             if ($text === '') return $text;
+            /*
             if (strpos($text, '[ara]') === false) {
                 $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
                 if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
@@ -96,6 +97,7 @@ class ExamQuestion extends Model
                     $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
                 }
             }
+            */
             return $text;
         };
 
