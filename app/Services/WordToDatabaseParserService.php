@@ -259,6 +259,7 @@ class WordToDatabaseParserService
             case QuestionTypeEnum::SEQUENCE:
                 $options = Option::createOrderingOptions($question->id, $formattedLines);
                 foreach ($options as $index => $option) {
+                    /** @var Option $option */
                     if (isset($rawLines[$index])) {
                         $this->processPlaceholdersAndAttach($option, $rawLines[$index], $optionData['images'], 'option_media');
                         if (strpos($option->content, '[IMG_ID:') !== false) {
@@ -295,7 +296,9 @@ class WordToDatabaseParserService
                     $createdOptions = Option::createMatchingOptions($question->id, $pairs);
                     // Match up images from the raw line to the newly created L/R pairs
                     foreach ($validLines as $lineIndex => $line) {
+                        /** @var Option|null $leftOption */
                         $leftOption = $createdOptions->get($lineIndex * 2);
+                        /** @var Option|null $rightOption */
                         $rightOption = $createdOptions->get($lineIndex * 2 + 1);
 
                         if ($leftOption && $rightOption) {
@@ -623,13 +626,13 @@ class WordToDatabaseParserService
      */
     protected function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
     {
+        /** @var \Spatie\MediaLibrary\InteractsWithMedia $model */
         try {
             $source = $image->getSource();
             $binaryData = null;
             $extension = $image->getImageExtension() ?: 'png';
 
             if (str_starts_with($source, 'data:image')) {
-                /** @var Question|Option $model */
                 $model->addMediaFromBase64($source)
                     ->usingFileName('img_' . uniqid() . '.' . $extension)
                     ->toMediaCollection($collection);
