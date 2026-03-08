@@ -17,6 +17,7 @@ class QuestionResource extends JsonResource
         return [
             'id' => $this->id,
             'user' => $this->whenLoaded('user') ? new UserResource($this->user) : null,
+            'reading_material_id' => $this->reading_material_id,
             'reading_material' => $this->whenLoaded('readingMaterial') ? $this->readingMaterial : null, // Assuming ReadingMaterialResource doesn't exist or isn't needed yet
             'type' => $this->type,
             'difficulty' => $this->difficulty,
