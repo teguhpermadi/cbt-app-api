@@ -29,6 +29,9 @@ final class ReadingMaterialController extends ApiController
         $materials = ReadingMaterial::query()
             ->with(['user'])
             ->withCount('questions')
+            ->when($request->filled('question_bank_id'), function ($query) use ($request) {
+                $query->where('question_bank_id', $request->question_bank_id);
+            })
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")

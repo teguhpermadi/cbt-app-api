@@ -17,6 +17,7 @@ class ReadingMaterialResource extends JsonResource
         return [
             'id' => $this->id,
             'user' => new UserResource($this->whenLoaded('user')),
+            'question_bank_id' => $this->question_bank_id,
             'title' => $this->title,
             'content' => $this->content,
             'media' => [

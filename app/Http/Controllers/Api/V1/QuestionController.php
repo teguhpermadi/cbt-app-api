@@ -142,7 +142,7 @@ final class QuestionController extends ApiController
     public function show(string $id): JsonResponse
     {
         $question = Question::query()
-            ->with(['user', 'readingMaterial', 'tags', 'options'])
+            ->with(['user', 'readingMaterial', 'tags', 'options', 'questionBanks'])
             ->find($id);
 
         if (!$question) {

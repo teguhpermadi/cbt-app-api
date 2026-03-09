@@ -16,6 +16,7 @@ class ReadingMaterial extends Model implements HasMedia
 
     protected $fillable = [
         'user_id',
+        'question_bank_id',
         'title',
         'content',
     ];
@@ -23,6 +24,11 @@ class ReadingMaterial extends Model implements HasMedia
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function questionBank()
+    {
+        return $this->belongsTo(QuestionBank::class);
     }
 
     public function questions()
