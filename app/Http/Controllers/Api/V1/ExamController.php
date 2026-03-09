@@ -77,11 +77,32 @@ final class ExamController extends ApiController
                 $bank = \App\Models\QuestionBank::find($exam->question_bank_id);
                 if ($bank) {
                     $questions = $bank->questions;
+
+                    // 1. Snapshot Reading Materials
+                    $readingMaterialIds = $questions->pluck('reading_material_id')->filter()->unique();
+                    $readingMaterialMap = [];
+
+                    if ($readingMaterialIds->isNotEmpty()) {
+                        $readingMaterials = \App\Models\ReadingMaterial::whereIn('id', $readingMaterialIds)->get();
+                        foreach ($readingMaterials as $rm) {
+                            $examRM = \App\Models\ExamReadingMaterial::create([
+                                'exam_id' => $exam->id,
+                                'reading_material_id' => $rm->id,
+                                'title' => $rm->title,
+                                'content' => $rm->content,
+                                'media_path' => $rm->getFirstMediaUrl('reading_materials'), // Optional: adjust if needed
+                            ]);
+                            $readingMaterialMap[$rm->id] = $examRM->id;
+                        }
+                    }
+
+                    // 2. Snapshot Questions
                     $order = 1;
                     foreach ($questions as $question) {
                         \App\Models\ExamQuestion::create([
                             'exam_id' => $exam->id,
                             'question_id' => $question->id,
+                            'exam_reading_material_id' => $readingMaterialMap[$question->reading_material_id] ?? null,
                             'question_number' => $order++,
                             'content' => $question->content,
                             'options' => $question->getOptionsForExam(),
@@ -318,25 +339,25 @@ final class ExamController extends ApiController
         // 3. Format data response
         $data = $students->map(function ($student) use ($sessionsByUser, $exam, $classrooms, $totalPossible) {
             $userSessions = $sessionsByUser->get($student->id, collect());
-            
+
             // Sesi aktif/terbaru adalah yang terakhir di array (bisa jadi soft deleted atau active)
             // Tapi yang benar-benar aktif/terbaru adalah yang belum di-delete, atau yang paling akhir.
             // Kita prioritaskan yang belum di delete (active) sebagai current session.
             $activeSession = $userSessions->filter(fn($s) => !$s->trashed())->last();
-            
+
             // Jika tidak ada yang aktif, ambil yang paling akhir (meskipun trashed, mungkin jadi history saja)
             if (!$activeSession && $userSessions->isNotEmpty()) {
-                 $activeSession = $userSessions->last();
+                $activeSession = $userSessions->last();
             }
 
             // History adalah skor total dari sesi-sesi sebelumnya yang sudah SELESAI
             // Ambil maksimal 2 sesi terakhir SEBELUM sesi aktif saat ini
-            $historySessions = $userSessions->filter(function($s) use ($activeSession) {
+            $historySessions = $userSessions->filter(function ($s) use ($activeSession) {
                 return $s->id !== ($activeSession ? $activeSession->id : null) && $s->is_finished;
             })->take(-2); // Ambil 2 terakhir
 
             // Convert history total_score to percentage based on totalPossible
-            $historyScores = $historySessions->map(function($s) use ($totalPossible) {
+            $historyScores = $historySessions->map(function ($s) use ($totalPossible) {
                 $raw = (float) $s->total_score;
                 return $totalPossible > 0 ? round(($raw / $totalPossible) * 100, 2) : 0;
             })->values()->toArray();
@@ -360,7 +381,7 @@ final class ExamController extends ApiController
                     $status = 'finished';
                 } elseif ($activeSession->trashed()) {
                     // Jika sesi terakhir ternyata trashed (karena di-reset manual sebelum selesai)
-                    $status = 'idle'; 
+                    $status = 'idle';
                 } elseif ($isTimedOut) {
                     $status = 'timed_out';
                 } elseif ($isAllAnswered) {
@@ -528,7 +549,7 @@ final class ExamController extends ApiController
             // Set is_finished dan hitung skor sementara (sebelum job di background selesai)
             // Ini untuk mencegah websocket mengirim nilai 0 saat tombol disubmit
             $tempScore = $session->examResultDetails()->sum('score_earned');
-            
+
             $session->update([
                 'is_finished' => true,
                 'finish_time' => now(),

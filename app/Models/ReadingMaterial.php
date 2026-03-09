@@ -36,6 +36,11 @@ class ReadingMaterial extends Model implements HasMedia
         return $this->hasMany(Question::class);
     }
 
+    public function snapshots()
+    {
+        return $this->hasMany(ExamReadingMaterial::class, 'reading_material_id');
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('reading_materials')

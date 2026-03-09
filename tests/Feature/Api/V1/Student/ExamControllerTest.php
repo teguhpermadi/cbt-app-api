@@ -269,4 +269,59 @@ class ExamControllerTest extends TestCase
             'is_passed' => true,
         ]);
     }
+
+    public function test_student_can_take_exam_with_reading_material()
+    {
+        $academicYear = AcademicYear::factory()->create();
+        $student = User::factory()->student()->create();
+        $classroom = Classroom::factory()->create();
+        $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+        $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
+
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'is_published' => true,
+        ]);
+
+        // Create Reading Material
+        $readingMaterial = \App\Models\ReadingMaterial::factory()->create([
+            'title' => 'Sample Reading Material',
+            'content' => 'Sample Content',
+        ]);
+
+        // Snapshot Reading Material (This usually happens when Exam is created or manually)
+        $examReadingMaterial = \App\Models\ExamReadingMaterial::create([
+            'exam_id' => $exam->id,
+            'reading_material_id' => $readingMaterial->id,
+            'title' => $readingMaterial->title,
+            'content' => $readingMaterial->content,
+        ]);
+
+        // Create Question Bank and Question
+        $bank = QuestionBank::factory()->create();
+        $question = Question::factory()->withoutOptions()->create([
+            'reading_material_id' => $readingMaterial->id,
+            'content' => 'Question with reading material',
+        ]);
+        $bank->questions()->attach($question->id);
+
+        // Link Bank to Exam
+        $exam->update(['question_bank_id' => $bank->id]);
+
+        // Start Exam (This should snapshot the question and link it to examReadingMaterial)
+        $this->actingAs($student, 'sanctum')
+            ->postJson(route('api.v1.student.exams.start', $exam->id));
+
+        // Take Exam
+        $response = $this->actingAs($student, 'sanctum')
+            ->getJson(route('api.v1.student.exams.take', $exam->id));
+
+        $response->assertOk();
+
+        $data = $response->json('data.questions');
+        $this->assertNotEmpty($data);
+
+        $this->assertEquals($examReadingMaterial->id, $data[0]['exam_question']['exam_reading_material']['id']);
+        $this->assertEquals('Sample Reading Material', $data[0]['exam_question']['exam_reading_material']['title']);
+    }
 }

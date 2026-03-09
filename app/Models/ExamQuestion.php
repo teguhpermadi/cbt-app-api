@@ -19,6 +19,7 @@ class ExamQuestion extends Model
     protected $fillable = [
         'exam_id',
         'question_id',          // ID soal asli (untuk referensi/analisis)
+        'exam_reading_material_id',
         'question_number',      // Nomor urut soal dalam ujian ini
         'content',              // Salinan konten soal
         'options',              // Salinan opsi jawaban (termasuk ULID media)
@@ -47,6 +48,14 @@ class ExamQuestion extends Model
     public function exam(): BelongsTo
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    /**
+     * Relasi ke snapshot Reading Material.
+     */
+    public function examReadingMaterial(): BelongsTo
+    {
+        return $this->belongsTo(ExamReadingMaterial::class);
     }
 
     /**

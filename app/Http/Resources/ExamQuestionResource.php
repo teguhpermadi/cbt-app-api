@@ -34,6 +34,7 @@ final class ExamQuestionResource extends JsonResource
             'media_path' => $this->media_path,
             'hint' => $this->hint,
             'exam' => new ExamResource($this->whenLoaded('exam')),
+            'exam_reading_material' => new ExamReadingMaterialResource($this->whenLoaded('examReadingMaterial')),
             'original_question' => new QuestionResource($this->whenLoaded('originalQuestion')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

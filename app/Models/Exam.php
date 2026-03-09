@@ -78,6 +78,16 @@ class Exam extends Model
         return $this->hasMany(ExamResult::class);
     }
 
+    public function examQuestions()
+    {
+        return $this->hasMany(ExamQuestion::class);
+    }
+
+    public function examReadingMaterials()
+    {
+        return $this->hasMany(ExamReadingMaterial::class);
+    }
+
     public function examSessions()
     {
         return $this->hasMany(ExamSession::class);
