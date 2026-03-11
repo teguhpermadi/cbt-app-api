@@ -474,4 +474,27 @@ class ExamCorrectionController extends ApiController
             'item_analysis' => $analysisData
         ]);
     }
+
+    /**
+     * Delete a specific exam session.
+     */
+    public function destroy(Exam $exam, ExamSession $examSession)
+    {
+        // Ensure session belongs to exam
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        DB::transaction(function () use ($examSession) {
+            // Delete related ExamResult if exists
+            if ($examSession->examResult) {
+                $examSession->examResult->delete();
+            }
+
+            // Soft delete the session
+            $examSession->delete();
+        });
+
+        return $this->success(null, 'Exam session deleted successfully.');
+    }
 }
