@@ -66,8 +66,10 @@ class ExamCorrectionController extends ApiController
         $examSession->load(['user.classrooms', 'exam.subject', 'exam.classrooms']);
 
         $details = $examSession->examResultDetails()
+            ->join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')
             ->with(['examQuestion.originalQuestion.tags'])
-            ->orderBy('question_number')
+            ->select('exam_result_details.*')
+            ->orderBy('exam_questions.question_number')
             ->get();
 
         return $this->success([
@@ -88,8 +90,11 @@ class ExamCorrectionController extends ApiController
         }
 
         $details = ExamResultDetail::query()
-            ->where('exam_question_id', $examQuestion->id)
+            ->join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')
+            ->where('exam_result_details.exam_question_id', $examQuestion->id)
             ->with(['examSession.user', 'examQuestion'])
+            ->select('exam_result_details.*')
+            ->orderBy('exam_questions.question_number')
             ->get();
 
         return $this->success([

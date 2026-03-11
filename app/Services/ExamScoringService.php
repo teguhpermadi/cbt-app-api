@@ -85,8 +85,11 @@ class ExamScoringService
 
     private function scoreMultipleChoice($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
-        $keyVal = $keyAnswer['answer'] ?? null;
-        $isCorrect = ($studentAnswer == $keyVal);
+        $keyVal = strip_tags($keyAnswer['answer'] ?? '');
+        $studentVal = is_array($studentAnswer) ? ($studentAnswer[0] ?? '') : $studentAnswer;
+        $studentVal = strip_tags((string)$studentVal);
+
+        $isCorrect = ($studentVal === $keyVal);
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
@@ -96,8 +99,11 @@ class ExamScoringService
 
     private function scoreTrueFalse($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
-        $keyVal = $keyAnswer['answer'] ?? null;
-        $isCorrect = ($studentAnswer == $keyVal);
+        $keyVal = strip_tags($keyAnswer['answer'] ?? '');
+        $studentVal = is_array($studentAnswer) ? ($studentAnswer[0] ?? '') : $studentAnswer;
+        $studentVal = strip_tags((string)$studentVal);
+
+        $isCorrect = ($studentVal === $keyVal);
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
@@ -182,9 +188,11 @@ class ExamScoringService
 
     private function scoreMathInput($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
-        $correctVal = (float)($keyAnswer['answer'] ?? 0);
+        $correctVal = (float)(strip_tags((string)($keyAnswer['answer'] ?? 0)));
         $tolerance = (float)($keyAnswer['tolerance'] ?? 0);
-        $studentVal = (float)$studentAnswer;
+
+        $rawStudentAnswer = is_array($studentAnswer) ? ($studentAnswer[0] ?? 0) : $studentAnswer;
+        $studentVal = (float)strip_tags((string)$rawStudentAnswer);
 
         $isCorrect = abs($studentVal - $correctVal) <= $tolerance;
 
@@ -202,12 +210,20 @@ class ExamScoringService
             $correctAnswers[] = $keyAnswer['answer'];
         }
 
-        $studentVal = trim(strtolower((string)$studentAnswer));
+        // Handle if student answer is an array (e.g. from a component that returns an array of inputs)
+        $rawStudentAnswer = is_array($studentAnswer) ? (isset($studentAnswer[0]) ? $studentAnswer[0] : '') : $studentAnswer;
+        $studentVal = trim(strtolower(strip_tags((string)$rawStudentAnswer)));
+
         $isCorrect = false;
 
+        \Illuminate\Support\Facades\Log::info("scoreShortAnswer Checking => Student: '{$studentVal}' | Keys: " . json_encode($correctAnswers) . " | Raw Student Answer: " . json_encode($studentAnswer) . " | Raw Key: " . json_encode($keyAnswer));
+
         foreach ($correctAnswers as $answer) {
-            if ($studentVal === trim(strtolower((string)$answer))) {
+            $keyVal = trim(strtolower(strip_tags((string)$answer)));
+            \Illuminate\Support\Facades\Log::info("  |- Comparing student '{$studentVal}' vs key '{$keyVal}'");
+            if ($studentVal === $keyVal) {
                 $isCorrect = true;
+                \Illuminate\Support\Facades\Log::info("  |- Result: MATCH");
                 break;
             }
         }

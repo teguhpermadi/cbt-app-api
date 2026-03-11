@@ -12,6 +12,9 @@ use App\Models\ExamQuestion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\ExamResultDetail;
+use App\Models\ExamSession;
+use App\Jobs\CalculateExamScoreJob;
 
 final class ExamQuestionController extends ApiController
 {
@@ -89,6 +92,9 @@ final class ExamQuestionController extends ApiController
 
         $examQuestion->update($request->validated());
 
+        // Dispatch recorrection for affected sessions specifically targeting this question
+        \App\Jobs\RecalculateSpecificQuestionScoreJob::dispatch($examQuestion->exam_id, $examQuestion->id);
+
         return $this->success(
             new ExamQuestionResource($examQuestion->load(['exam', 'originalQuestion'])),
             'Exam question updated successfully'
@@ -133,15 +139,30 @@ final class ExamQuestionController extends ApiController
     public function bulkUpdate(BulkUpdateExamQuestionRequest $request): JsonResponse
     {
         $examQuestionsData = $request->exam_questions;
+        $updatedQuestionIds = [];
 
-        DB::transaction(function () use ($examQuestionsData) {
+        DB::transaction(function () use ($examQuestionsData, &$updatedQuestionIds) {
             foreach ($examQuestionsData as $data) {
                 $id = $data['id'];
                 unset($data['id']);
 
                 ExamQuestion::where('id', $id)->update($data);
+                $updatedQuestionIds[] = $id;
             }
         });
+
+        if (!empty($updatedQuestionIds)) {
+            // Get the distinctive exam_ids for the updated questions
+            $examIds = ExamQuestion::whereIn('id', $updatedQuestionIds)
+                ->pluck('exam_id')
+                ->unique();
+
+            foreach ($examIds as $examId) {
+                foreach ($updatedQuestionIds as $questionId) {
+                    \App\Jobs\RecalculateSpecificQuestionScoreJob::dispatch($examId, $questionId);
+                }
+            }
+        }
 
         return $this->success(message: 'Exam questions updated successfully');
     }
