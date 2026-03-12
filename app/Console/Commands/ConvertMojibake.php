@@ -81,19 +81,30 @@ class ConvertMojibake extends Command
 
         Question::chunk(100, function ($questions) use (&$qChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
             foreach ($questions as $q) {
-                $orig = $q->content ?? '';
-                $fixed = $fixMojibake($orig);
-                $wrapped = $wrapLanguageTags($fixed);
+                $contentOrig = $q->content ?? '';
+                $contentFixed = $fixMojibake($contentOrig);
+                $contentWrapped = $wrapLanguageTags($contentFixed);
 
-                if ($wrapped !== $orig) {
+                $hintOrig = $q->hint ?? '';
+                $hintFixed = $fixMojibake($hintOrig);
+
+                $changed = false;
+                if ($contentWrapped !== $contentOrig) {
+                    if (!$dry) $q->content = $contentWrapped;
+                    $changed = true;
+                }
+                if ($hintFixed !== $hintOrig) {
+                    if (!$dry) $q->hint = $hintFixed;
+                    $changed = true;
+                }
+
+                if ($changed) {
                     Log::info('convert:mojibake - question updated', ['id' => $q->id]);
                     $qChanged++;
                     if ($verbose && $output) {
-                        $output->line("Question {$q->id}: before => " . substr($orig, 0, 200));
-                        $output->line("Question {$q->id}: after  => " . substr($wrapped, 0, 200));
+                        $output->line("Question {$q->id}: content updated" . ($contentWrapped !== $contentOrig ? " (content changed)" : "") . ($hintFixed !== $hintOrig ? " (hint changed)" : ""));
                     }
                     if (!$dry) {
-                        $q->content = $wrapped;
                         $q->save();
                     }
                 }
