@@ -17,10 +17,19 @@ class ReadingMaterialResource extends JsonResource
         return [
             'id' => $this->id,
             'user' => new UserResource($this->whenLoaded('user')),
+            'question_bank_id' => $this->question_bank_id,
             'title' => $this->title,
             'content' => $this->content,
             'media' => [
                 'reading_materials' => $this->getMedia('reading_materials')->map(fn($media) => [
+                    'id' => $media->ulid ?? $media->id,
+                    'name' => $media->name,
+                    'file_name' => $media->file_name,
+                    'url' => $media->getFullUrl(),
+                    'mime_type' => $media->mime_type,
+                    'size' => $media->size,
+                ]),
+                'reading_images' => $this->getMedia('reading_images')->map(fn($media) => [
                     'id' => $media->ulid ?? $media->id,
                     'name' => $media->name,
                     'file_name' => $media->file_name,

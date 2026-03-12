@@ -225,6 +225,7 @@ class ExamController extends ApiController
                                 'difficulty_level' => $bq->difficulty,
                                 'media_path' => $bq->getFirstMediaUrl('question_content'),
                                 'hint' => $bq->hint,
+                                'exam_reading_material_id' => $bq->reading_material_id ? \App\Models\ExamReadingMaterial::where('exam_id', $exam->id)->where('reading_material_id', $bq->reading_material_id)->first()?->id : null,
                             ]);
                         }
                         // Refresh questions list after snapshotting
@@ -326,7 +327,7 @@ class ExamController extends ApiController
         // We load the ExamQuestion snapshot info
         $questions = ExamResultDetail::query()
             ->where('exam_session_id', $session->id)
-            ->with(['examQuestion']) // Load the question content
+            ->with(['examQuestion.examReadingMaterial']) // Load the question content & reading material
             ->orderBy('question_number')
             ->get();
 
@@ -369,6 +370,7 @@ class ExamController extends ApiController
                             'difficulty_level' => $bq->difficulty,
                             'media_path' => $bq->getFirstMediaUrl('question_content'),
                             'hint' => $bq->hint,
+                            'exam_reading_material_id' => $bq->reading_material_id ? \App\Models\ExamReadingMaterial::where('exam_id', $exam->id)->where('reading_material_id', $bq->reading_material_id)->first()?->id : null,
                         ]);
                     }
                     $examQuestions = ExamQuestion::where('exam_id', $exam->id)->get();
@@ -396,7 +398,7 @@ class ExamController extends ApiController
                 // Reload questions
                 $questions = ExamResultDetail::query()
                     ->where('exam_session_id', $session->id)
-                    ->with(['examQuestion'])
+                    ->with(['examQuestion.examReadingMaterial'])
                     ->orderBy('question_number')
                     ->get();
             }

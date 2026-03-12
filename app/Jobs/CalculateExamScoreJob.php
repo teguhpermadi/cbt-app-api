@@ -89,6 +89,8 @@ class CalculateExamScoreJob implements ShouldQueue
                     Log::info("Recalculating Essay Detail {$detail->id}. Existing Score: {$detail->score_earned}, Preserved Score: {$scoreEarned}");
                 }
 
+                Log::info("Calculated output for {$detail->id}", ['is_correct' => $isCorrect, 'score' => $scoreEarned]);
+
                 $detail->update([
                     'is_correct' => $isCorrect,
                     'score_earned' => $scoreEarned,
@@ -115,9 +117,19 @@ class CalculateExamScoreJob implements ShouldQueue
                 ->where('user_id', $session->user_id)
                 ->first();
 
-            $shouldUpdate = !$existingResult || $scorePercent > $existingResult->score_percent;
+            $shouldUpdate = !$existingResult
+                || $existingResult->exam_session_id === $session->id
+                || $scorePercent > $existingResult->score_percent;
 
             if ($shouldUpdate) {
+                $resultType = $existingResult ? \App\Enums\ExamResultTypeEnum::BEST_ATTEMPT : \App\Enums\ExamResultTypeEnum::OFFICIAL;
+
+                // If it already exists and we are just updating the same session's score,
+                // keep its current result_type (so we don't accidentally overwrite OFFICIAL to BEST_ATTEMPT if it was OFFICIAL)
+                if ($existingResult && $existingResult->exam_session_id === $session->id) {
+                    $resultType = $existingResult->result_type;
+                }
+
                 ExamResult::updateOrCreate(
                     [
                         'exam_id' => $session->exam_id,
@@ -128,7 +140,7 @@ class CalculateExamScoreJob implements ShouldQueue
                         'total_score' => $totalEarnedScore,
                         'score_percent' => $scorePercent,
                         'is_passed' => $scorePercent >= ($session->exam->passing_score ?? 0),
-                        'result_type' => $existingResult ? \App\Enums\ExamResultTypeEnum::BEST_ATTEMPT : \App\Enums\ExamResultTypeEnum::OFFICIAL,
+                        'result_type' => $resultType,
                     ]
                 );
             }

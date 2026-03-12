@@ -33,6 +33,7 @@ final class ExamQuestionResource extends JsonResource
             'difficulty_level_label' => $this->difficulty_level?->getLabel(),
             'media_path' => $this->media_path,
             'hint' => $this->hint,
+            'exam_reading_material' => new \App\Http\Resources\ExamReadingMaterialResource($this->whenLoaded('examReadingMaterial')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

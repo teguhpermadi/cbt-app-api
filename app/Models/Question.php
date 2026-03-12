@@ -192,7 +192,9 @@ class Question extends Model implements HasMedia
 
             QuestionTypeEnum::ARRANGE_WORDS => [
                 'words' => ($opt = $this->options->first())
-                    ? explode($opt->getMetadata('delimiter', ' '), $opt->content)
+                    ? ($opt->getMetadata('shuffle_mode') === 'alphabet'
+                        ? mb_str_split(preg_replace('/\s/u', '', $opt->content))
+                        : explode($opt->getMetadata('delimiter', ' '), $opt->content))
                     : []
             ],
 

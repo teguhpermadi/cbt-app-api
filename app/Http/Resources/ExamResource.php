@@ -46,6 +46,7 @@ final class ExamResource extends JsonResource
             'question_bank' => new QuestionBankResource($this->whenLoaded('questionBank')),
             'teacher' => new UserResource($this->whenLoaded('user')),
             'classrooms' => ClassroomResource::collection($this->whenLoaded('classrooms')),
+            'exam_reading_materials' => ExamReadingMaterialResource::collection($this->whenLoaded('examReadingMaterials')),
             'attempts_count' => $this->when(isset($this->attempts_count), $this->attempts_count),
             'latest_session' => $this->when(isset($this->latest_session), function () {
                 return new \App\Http\Resources\Student\ExamSessionResource($this->latest_session);

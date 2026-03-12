@@ -16,6 +16,7 @@ class StoreReadingMaterialRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
+            'question_bank_id' => ['nullable', 'ulid', 'exists:question_banks,id'],
         ];
     }
 }

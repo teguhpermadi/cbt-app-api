@@ -9,6 +9,7 @@ use App\Enums\QuestionScoreEnum;
 use App\Models\Option;
 use App\Models\Question;
 use App\Models\QuestionBank;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Element\TextBreak;
@@ -184,8 +185,10 @@ class QuestionImportService
         }
 
         if ($element instanceof Image) {
-            $images[] = $element;
-            return "";
+            $id = (string) Str::ulid();
+            $images[$id] = $element;
+            // Insert a placeholder to track image position using random ULID
+            return "[IMG_ID:{$id}]";
         }
 
         if (method_exists($element, 'getElements')) {
@@ -217,9 +220,16 @@ class QuestionImportService
     {
         if (empty($images)) return;
 
-        // Just attach all images found in the cell
-        foreach ($images as $image) {
-            $this->attachPhpWordImage($model, $image, $collection);
+        // Scan the text for [IMG_ID:...] placeholders (ULID format)
+        preg_match_all('/\[IMG_ID:([0-9A-Z]+)\]/', $text, $matches);
+
+        if (!empty($matches[1])) {
+            $foundIds = array_unique($matches[1]);
+            foreach ($foundIds as $id) {
+                if (isset($images[$id])) {
+                    $this->attachPhpWordImage($model, $images[$id], $collection);
+                }
+            }
         }
     }
 
@@ -354,6 +364,11 @@ class QuestionImportService
             // Attach images to question
             $this->processPlaceholdersAndAttach($question, $questionCell['text'], $questionCell['images'], 'question_content');
 
+            // Clean up placeholders from question content
+            if (strpos($question->content, '[IMG_ID:') !== false) {
+                $question->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $question->content)]);
+            }
+
             // Create options based on type
             $this->createOptions($question, $questionType, $optionsCell, $keyCell['text']);
 
@@ -393,16 +408,16 @@ class QuestionImportService
         $typeStr = strtoupper(trim($typeStr));
 
         return match ($typeStr) {
-            'MULTIPLE_CHOICE' => QuestionTypeEnum::MULTIPLE_CHOICE,
-            'MULTIPLE_SELECTION' => QuestionTypeEnum::MULTIPLE_SELECTION,
-            'TRUE_FALSE' => QuestionTypeEnum::TRUE_FALSE,
-            'MATCHING' => QuestionTypeEnum::MATCHING,
-            'ORDERING' => QuestionTypeEnum::SEQUENCE, // Updated to match Enum name vs user input
-            'SEQUENCE' => QuestionTypeEnum::SEQUENCE,
-            'ESSAY' => QuestionTypeEnum::ESSAY,
-            'NUMERICAL_INPUT' => QuestionTypeEnum::MATH_INPUT, // Updated to match Enum name vs user input
-            'MATH_INPUT' => QuestionTypeEnum::MATH_INPUT,
-            'SHORT_ANSWER' => QuestionTypeEnum::SHORT_ANSWER,
+            '1', 'MULTIPLE_CHOICE' => QuestionTypeEnum::MULTIPLE_CHOICE,
+            '2', 'MULTIPLE_SELECTION' => QuestionTypeEnum::MULTIPLE_SELECTION,
+            '3', 'TRUE_FALSE' => QuestionTypeEnum::TRUE_FALSE,
+            '4', 'SHORT_ANSWER' => QuestionTypeEnum::SHORT_ANSWER,
+            '5', 'ESSAY' => QuestionTypeEnum::ESSAY,
+            '6', 'MATH_INPUT', 'NUMERICAL_INPUT' => QuestionTypeEnum::MATH_INPUT,
+            '7', 'SEQUENCE', 'ORDERING' => QuestionTypeEnum::SEQUENCE,
+            '8', 'ARABIC_RESPONSE' => QuestionTypeEnum::ARABIC_RESPONSE,
+            '9', 'JAVANESE_RESPONSE' => QuestionTypeEnum::JAVANESE_RESPONSE,
+            '10', 'MATCHING' => QuestionTypeEnum::MATCHING,
             'ARRANGE_WORDS' => QuestionTypeEnum::ARRANGE_WORDS,
             default => null,
         };
@@ -518,7 +533,9 @@ class QuestionImportService
             QuestionTypeEnum::SEQUENCE => $this->handleSequence($question, $optionsCell),
             QuestionTypeEnum::ESSAY => $this->handleEssay($question, $keyAnswer),
             QuestionTypeEnum::MATH_INPUT => $this->handleMathInput($question, $optionsCell, $keyAnswer),
-            QuestionTypeEnum::SHORT_ANSWER => $this->handleShortAnswer($question, $keyAnswer),
+            QuestionTypeEnum::SHORT_ANSWER,
+            QuestionTypeEnum::ARABIC_RESPONSE,
+            QuestionTypeEnum::JAVANESE_RESPONSE => $this->handleShortAnswer($question, $keyAnswer),
             QuestionTypeEnum::ARRANGE_WORDS => $this->handleArrangeWords($question, $optionsCell),
             default => throw new Exception("Handler untuk tipe soal {$type->value} belum diimplementasikan."),
         };
@@ -551,6 +568,11 @@ class QuestionImportService
             ]);
 
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
+
+            // Clean up placeholders from option content
+            if (strpos($option->content, '[IMG_ID:') !== false) {
+                $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+            }
         }
     }
 
@@ -582,6 +604,11 @@ class QuestionImportService
             ]);
 
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
+
+            // Clean up placeholders from option content
+            if (strpos($option->content, '[IMG_ID:') !== false) {
+                $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+            }
         }
     }
 
@@ -621,6 +648,11 @@ class QuestionImportService
             ]);
 
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
+
+            // Clean up placeholders from option content
+            if (strpos($option->content, '[IMG_ID:') !== false) {
+                $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+            }
         }
     }
 
@@ -668,6 +700,14 @@ class QuestionImportService
 
             $this->processPlaceholdersAndAttach($leftOption, $leftContent, $optionsCell['images'], 'option_media');
             $this->processPlaceholdersAndAttach($rightOption, $rightContent, $optionsCell['images'], 'option_media');
+
+            // Clean up placeholders
+            if (strpos($leftOption->content, '[IMG_ID:') !== false) {
+                $leftOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $leftOption->content)]);
+            }
+            if (strpos($rightOption->content, '[IMG_ID:') !== false) {
+                $rightOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $rightOption->content)]);
+            }
         }
     }
 
@@ -696,6 +736,11 @@ class QuestionImportService
             ]);
 
             $this->processPlaceholdersAndAttach($option, $itemText, $optionsCell['images'], 'option_media');
+
+            // Clean up placeholders
+            if (strpos($option->content, '[IMG_ID:') !== false) {
+                $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+            }
         }
     }
 
@@ -722,10 +767,14 @@ class QuestionImportService
 
     protected function handleShortAnswer(Question $question, string $keyAnswer): void
     {
+        // Remove language tags from key answer for consistency
+        // We use a more aggressive replace to ensure no stray tags remain
+        $sanitizedKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+
         Option::create([
             'question_id' => $question->id,
             'option_key' => 'SHORT',
-            'content' => $keyAnswer,
+            'content' => trim($sanitizedKey),
             'order' => 0,
             'is_correct' => true,
         ]);

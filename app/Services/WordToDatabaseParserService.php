@@ -12,6 +12,7 @@ use App\Models\QuestionBank;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\Element\Image;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\Text;
@@ -150,9 +151,13 @@ class WordToDatabaseParserService
                 $question->questionBanks()->attach($questionBankId);
             }
 
-            // Attach Question Images
-            $this->attachImages($question, $data['question']['images'], 'question_content');
+            // Attach Question Images via placeholders
+            $this->processPlaceholdersAndAttach($question, $data['question']['text'], $data['question']['images'], 'question_content');
 
+            // Clean up placeholders from question content
+            if (strpos($question->content, '[IMG_ID:') !== false) {
+                $question->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $question->content)]);
+            }
 
             // Handle Options logic
             $this->createOptions($question, $type, $data['option'], $data['key']['text']);
@@ -190,14 +195,17 @@ class WordToDatabaseParserService
      */
     protected function createOptions(Question $question, QuestionTypeEnum $type, array $optionData, string $keyAnswer): void
     {
-        $lines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
+        // Split by newline while preserving potential placeholders
+        $rawLines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
+
         // Pre-format all option lines so language tags and latex are handled
         $wrapArabic = $type !== QuestionTypeEnum::ARABIC_RESPONSE;
-        $lines = array_map(fn($l) => $this->formatRichText($l, $wrapArabic), $lines);
+        $formattedLines = array_map(fn($l) => $this->formatRichText($l, $wrapArabic), $rawLines);
+
         switch ($type) {
             case QuestionTypeEnum::MULTIPLE_CHOICE:
             case QuestionTypeEnum::MULTIPLE_SELECTION:
-                foreach ($lines as $index => $line) {
+                foreach ($formattedLines as $index => $line) {
                     $key = chr(65 + $index); // A, B, C...
                     $isCorrect = false;
 
@@ -216,13 +224,13 @@ class WordToDatabaseParserService
                         'is_correct' => $isCorrect,
                     ]);
 
-                    // Attach images found in the 'option' cell to ALL options as a fallback 
-                    // or better: just the first one? Usually options in Word are text.
-                    // Request says: "attach image tersebut menjadi milik question / option tersebut"
-                    // If multiple options, mapping image to specific option is hard in plain text split.
-                    // We'll attach images to the question if we can't map them.
-                    if ($index === 0) {
-                        $this->attachImages($option, $optionData['images'], 'option_media');
+                    // Attach images found in THIS specific option line
+                    $originalLine = $rawLines[$index];
+                    $this->processPlaceholdersAndAttach($option, $originalLine, $optionData['images'], 'option_media');
+
+                    // Clean up placeholders from option content
+                    if (strpos($option->content, '[IMG_ID:') !== false) {
+                        $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
                     }
                 }
                 break;
@@ -235,8 +243,8 @@ class WordToDatabaseParserService
             case QuestionTypeEnum::SHORT_ANSWER:
                 // Multiple correct answers can be separated by newline in the 'key' cell
                 $answers = array_values(array_filter(array_map('trim', explode("\n", $keyAnswer))));
-                // Format answers so language tags are applied
-                $answers = array_map(fn($a) => $this->formatRichText($a), $answers);
+                // Strip language tags from answers for consistency
+                $answers = array_map(fn($a) => preg_replace('/\[\/?(ara|jav)\]/i', '', $a), $answers);
                 Option::createShortAnswerOptions($question->id, $answers);
                 break;
 
@@ -249,31 +257,64 @@ class WordToDatabaseParserService
                 break;
 
             case QuestionTypeEnum::SEQUENCE:
-                // Lines already formatted above
-                Option::createOrderingOptions($question->id, $lines);
+                $options = Option::createOrderingOptions($question->id, $formattedLines);
+                foreach ($options as $index => $option) {
+                    /** @var Option $option */
+                    if (isset($rawLines[$index])) {
+                        $this->processPlaceholdersAndAttach($option, $rawLines[$index], $optionData['images'], 'option_media');
+                        if (strpos($option->content, '[IMG_ID:') !== false) {
+                            $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+                        }
+                    }
+                }
                 break;
 
             case QuestionTypeEnum::ARABIC_RESPONSE:
-                Option::createArabicOption($question->id, $this->formatRichText($keyAnswer, false));
+                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+                Option::createArabicOption($question->id, $cleanKey);
                 break;
 
             case QuestionTypeEnum::JAVANESE_RESPONSE:
-                Option::createJavaneseOption($question->id, $this->formatRichText($keyAnswer));
+                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+                Option::createJavaneseOption($question->id, $cleanKey);
                 break;
 
             case QuestionTypeEnum::MATCHING:
                 $pairs = [];
-                foreach ($lines as $line) {
+                $validLines = [];
+                foreach ($rawLines as $line) {
                     if (str_contains($line, '::')) {
-                        [$left, $right] = array_map('trim', explode('::', $line, 2));
-                        // Format both sides
-                        $left = $this->formatRichText($left);
-                        $right = $this->formatRichText($right);
-                        $pairs[] = ['left' => $left, 'right' => $right];
+                        [$left, $right] = explode('::', $line, 2);
+                        $pairs[] = [
+                            'left' => $this->formatRichText(trim(trim($left), '"')),
+                            'right' => $this->formatRichText(trim(trim($right), '"'))
+                        ];
+                        $validLines[] = $line;
                     }
                 }
                 if (!empty($pairs)) {
-                    Option::createMatchingOptions($question->id, $pairs);
+                    $createdOptions = Option::createMatchingOptions($question->id, $pairs);
+                    // Match up images from the raw line to the newly created L/R pairs
+                    foreach ($validLines as $lineIndex => $line) {
+                        /** @var Option|null $leftOption */
+                        $leftOption = $createdOptions->get($lineIndex * 2);
+                        /** @var Option|null $rightOption */
+                        $rightOption = $createdOptions->get($lineIndex * 2 + 1);
+
+                        if ($leftOption && $rightOption) {
+                            [$leftPart, $rightPart] = explode('::', $line, 2);
+                            $this->processPlaceholdersAndAttach($leftOption, $leftPart, $optionData['images'], 'option_media');
+                            $this->processPlaceholdersAndAttach($rightOption, $rightPart, $optionData['images'], 'option_media');
+
+                            // Clean up placeholders
+                            if (strpos($leftOption->content, '[IMG_ID:') !== false) {
+                                $leftOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $leftOption->content)]);
+                            }
+                            if (strpos($rightOption->content, '[IMG_ID:') !== false) {
+                                $rightOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $rightOption->content)]);
+                            }
+                        }
+                    }
                 }
                 break;
         }
@@ -541,18 +582,82 @@ class WordToDatabaseParserService
             return $element->getText();
         }
         if ($element instanceof Image) {
-            $images[] = $element;
-            return "";
+            $id = (string) Str::ulid();
+            $images[$id] = $element;
+            return "[IMG_ID:{$id}]";
         }
         if (method_exists($element, 'getElements')) {
             foreach ($element->getElements() as $child) {
                 $text .= $this->recursiveExtract($child, $images);
             }
-            if ($element instanceof TextRun) {
-                $text .= "\n"; // Simple split for rows
+            if (
+                $element instanceof TextRun ||
+                get_class($element) === 'PhpOffice\PhpWord\Element\ListItem' ||
+                get_class($element) === 'PhpOffice\PhpWord\Element\Title'
+            ) {
+                $text .= "\n";
             }
         }
         return $text;
+    }
+
+    /**
+     * Process placeholders and attach images to model
+     */
+    protected function processPlaceholdersAndAttach(HasMedia $model, string $text, array $images, string $collection)
+    {
+        if (empty($images)) return;
+
+        // Scan the text for [IMG_ID:...] placeholders (ULID format)
+        preg_match_all('/\[IMG_ID:([0-9A-Z]+)\]/', $text, $matches);
+
+        if (!empty($matches[1])) {
+            $foundIds = array_unique($matches[1]);
+            foreach ($foundIds as $id) {
+                if (isset($images[$id])) {
+                    $this->attachPhpWordImage($model, $images[$id], $collection);
+                }
+            }
+        }
+    }
+
+    /**
+     * Attach a PHPWord Image element to a Spatie Media model
+     */
+    protected function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
+    {
+        /** @var \Spatie\MediaLibrary\InteractsWithMedia $model */
+        try {
+            $source = $image->getSource();
+            $binaryData = null;
+            $extension = $image->getImageExtension() ?: 'png';
+
+            if (str_starts_with($source, 'data:image')) {
+                $model->addMediaFromBase64($source)
+                    ->usingFileName('img_' . uniqid() . '.' . $extension)
+                    ->toMediaCollection($collection);
+                return;
+            }
+
+            if (method_exists($image, 'getImageStringData')) {
+                $binaryData = $image->getImageStringData();
+            } elseif (file_exists($source)) {
+                $binaryData = file_get_contents($source);
+            }
+
+            if ($binaryData) {
+                // Check if hex
+                if (ctype_xdigit($binaryData) && strlen($binaryData) > 128) {
+                    $binaryData = hex2bin($binaryData);
+                }
+
+                $model->addMediaFromString($binaryData)
+                    ->usingFileName('img_' . uniqid() . '.' . $extension)
+                    ->toMediaCollection($collection);
+            }
+        } catch (Exception $e) {
+            Log::warning("Failed to attach image from Word: " . $e->getMessage());
+        }
     }
 
     protected function formatRichText(string $text, bool $wrapArabic = true): string

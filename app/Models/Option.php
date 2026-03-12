@@ -92,15 +92,16 @@ class Option extends Model implements HasMedia
     {
         if ($text === '') return $text;
 
-        // Note: Arabic [ara] tagging was removed as requested by user.
-        // Keeping Javanese [jav] tagging for now.
-
-        if (strpos($text, '[jav]') === false) {
+        // Note: Arabic [ara] and Javanese [jav] automatic tagging was disabled to prevent re-introduction of tags in responses.
+        /*
+        if (strpos($text, '[jav]') === false && strpos($text, '[ara]') === false) {
             $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
             if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
+                // Ensure we don't wrap if it's already inside some tag or if it's a "clean" answer
                 $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
             }
         }
+        */
 
         return $text;
     }
@@ -359,9 +360,11 @@ class Option extends Model implements HasMedia
      * @param string $questionId
      * @param string $sentence Kalimat lengkap
      * @param string $delimiter Delimiter pemisah kata
+     * @param bool $isArabic Apakah teks Arab (RTL)
+     * @param string $shuffleMode Mode pengacakan (phrase atau alphabet)
      * @return Option
      */
-    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ')
+    public static function createArrangeWordsOption(string $questionId, string $sentence, string $delimiter = ' ', bool $isArabic = false, string $shuffleMode = 'phrase')
     {
         return self::create([
             'question_id' => $questionId,
@@ -371,6 +374,8 @@ class Option extends Model implements HasMedia
             'is_correct' => true,
             'metadata' => [
                 'delimiter' => $delimiter,
+                'is_arabic' => $isArabic,
+                'shuffle_mode' => $shuffleMode,
             ],
         ]);
     }
@@ -440,7 +445,7 @@ class Option extends Model implements HasMedia
     }
     /**
      * Create option untuk Arabic Input
-     *
+     * 
      * @param string $questionId
      * @param string $arabic Jawaban dalam bahasa Arab
      * @return Option
@@ -461,7 +466,7 @@ class Option extends Model implements HasMedia
 
     /**
      * Create option untuk Javanese Input
-     *
+     * 
      * @param string $questionId
      * @param string $javanese Jawaban dalam aksara Jawa
      * @return Option

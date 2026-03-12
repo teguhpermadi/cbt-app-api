@@ -16,6 +16,7 @@ class ReadingMaterial extends Model implements HasMedia
 
     protected $fillable = [
         'user_id',
+        'question_bank_id',
         'title',
         'content',
     ];
@@ -25,14 +26,26 @@ class ReadingMaterial extends Model implements HasMedia
         return $this->belongsTo(User::class);
     }
 
+    public function questionBank()
+    {
+        return $this->belongsTo(QuestionBank::class);
+    }
+
     public function questions()
     {
         return $this->hasMany(Question::class);
+    }
+
+    public function snapshots()
+    {
+        return $this->hasMany(ExamReadingMaterial::class, 'reading_material_id');
     }
 
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('reading_materials')
             ->singleFile();
+
+        $this->addMediaCollection('reading_images');
     }
 }

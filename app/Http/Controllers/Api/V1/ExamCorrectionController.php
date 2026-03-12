@@ -66,8 +66,10 @@ class ExamCorrectionController extends ApiController
         $examSession->load(['user.classrooms', 'exam.subject', 'exam.classrooms']);
 
         $details = $examSession->examResultDetails()
+            ->join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')
             ->with(['examQuestion.originalQuestion.tags'])
-            ->orderBy('question_number')
+            ->select('exam_result_details.*')
+            ->orderBy('exam_questions.question_number')
             ->get();
 
         return $this->success([
@@ -88,8 +90,13 @@ class ExamCorrectionController extends ApiController
         }
 
         $details = ExamResultDetail::query()
-            ->where('exam_question_id', $examQuestion->id)
+            ->join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')
+            ->join('exam_sessions', 'exam_result_details.exam_session_id', '=', 'exam_sessions.id')
+            ->join('users', 'exam_sessions.user_id', '=', 'users.id')
+            ->where('exam_result_details.exam_question_id', $examQuestion->id)
             ->with(['examSession.user', 'examQuestion'])
+            ->select('exam_result_details.*')
+            ->orderBy('users.name', 'asc')
             ->get();
 
         return $this->success([
@@ -468,5 +475,28 @@ class ExamCorrectionController extends ApiController
             ],
             'item_analysis' => $analysisData
         ]);
+    }
+
+    /**
+     * Delete a specific exam session.
+     */
+    public function destroy(Exam $exam, ExamSession $examSession)
+    {
+        // Ensure session belongs to exam
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        DB::transaction(function () use ($examSession) {
+            // Delete related ExamResult if exists
+            if ($examSession->examResult) {
+                $examSession->examResult->delete();
+            }
+
+            // Soft delete the session
+            $examSession->delete();
+        });
+
+        return $this->success(null, 'Exam session deleted successfully.');
     }
 }

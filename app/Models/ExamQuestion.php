@@ -15,10 +15,11 @@ class ExamQuestion extends Model
     use HasFactory, HasUlids;
 
     // model ini berfungsi untuk menyimpan snapshot soal yang akan dikerjakan oleh siswa
-    
+
     protected $fillable = [
         'exam_id',
         'question_id',          // ID soal asli (untuk referensi/analisis)
+        'exam_reading_material_id',
         'question_number',      // Nomor urut soal dalam ujian ini
         'content',              // Salinan konten soal
         'options',              // Salinan opsi jawaban (termasuk ULID media)
@@ -47,6 +48,14 @@ class ExamQuestion extends Model
     public function exam(): BelongsTo
     {
         return $this->belongsTo(Exam::class);
+    }
+
+    /**
+     * Relasi ke snapshot Reading Material.
+     */
+    public function examReadingMaterial(): BelongsTo
+    {
+        return $this->belongsTo(ExamReadingMaterial::class);
     }
 
     /**
@@ -84,6 +93,7 @@ class ExamQuestion extends Model
 
         $wrapLanguageTags = function (string $text): string {
             if ($text === '') return $text;
+            /*
             if (strpos($text, '[ara]') === false) {
                 $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
                 if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
@@ -96,6 +106,7 @@ class ExamQuestion extends Model
                     $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
                 }
             }
+            */
             return $text;
         };
 
