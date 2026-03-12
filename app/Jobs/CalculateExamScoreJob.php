@@ -45,58 +45,24 @@ class CalculateExamScoreJob implements ShouldQueue
         $totalMaxScore = 0;
         $totalEarnedScore = 0;
 
-        $scoringService = new \App\Services\ExamScoringService();
-
-        DB::transaction(function () use ($session, $scoringService, &$totalMaxScore, &$totalEarnedScore) {
+        DB::transaction(function () use ($session, &$totalMaxScore, &$totalEarnedScore) {
             foreach ($session->examResultDetails as $detail) {
                 $examQuestion = $detail->examQuestion;
-
-                // --- FILTER LOGIC ---
-                // If questionType is NOT 'all' AND it does not match this question's type,
-                // we skip recalculating but still must accumulate existing scores.
-
-                // Note: $examQuestion->question_type is an Enum in the model cast.
-                // We use ->value to get the string.
-                $qTypeValue = $examQuestion->question_type instanceof \BackedEnum
-                    ? $examQuestion->question_type->value
-                    : $examQuestion->question_type;
-
-                $shouldRecalculate = false;
-                if ($this->questionTypes === 'all') {
-                    $shouldRecalculate = true;
-                } elseif (is_array($this->questionTypes) && in_array($qTypeValue, $this->questionTypes)) {
-                    $shouldRecalculate = true;
-                }
-
-                if (!$shouldRecalculate) {
-                    $maxScore = $examQuestion->score_value ?? 0;
-                    $totalMaxScore += $maxScore;
-                    $totalEarnedScore += $detail->score_earned;
-                    continue;
-                }
-                // --------------------
 
                 $maxScore = $examQuestion->score_value ?? 0;
                 $totalMaxScore += $maxScore;
 
-                // Process the score for this question
-                $result = $scoringService->calculateDetailScore($detail);
-
-                $scoreEarned = $result['score'];
-                $isCorrect = $result['is_correct'];
-
-                if ($qTypeValue === 'essay') {
-                    Log::info("Recalculating Essay Detail {$detail->id}. Existing Score: {$detail->score_earned}, Preserved Score: {$scoreEarned}");
-                }
-
-                Log::info("Calculated output for {$detail->id}", ['is_correct' => $isCorrect, 'score' => $scoreEarned]);
-
-                $detail->update([
-                    'is_correct' => $isCorrect,
-                    'score_earned' => $scoreEarned,
-                ]);
-
+                // Sum up already earned score instead of recalculating (correcting)
+                $scoreEarned = $detail->score_earned ?? 0;
                 $totalEarnedScore += $scoreEarned;
+
+                $qTypeValue = $examQuestion->question_type instanceof \BackedEnum
+                    ? $examQuestion->question_type->value
+                    : $examQuestion->question_type;
+
+                if (in_array($qTypeValue, ['essay', 'short_answer'])) {
+                    Log::info("Calculating " . ucfirst(str_replace('_', ' ', $qTypeValue)) . " Detail {$detail->id}. Current Score: {$scoreEarned}");
+                }
             }
 
             // Finalize Total Score (Floor at 0)
