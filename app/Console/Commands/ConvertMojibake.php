@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Question;
 use App\Models\Option;
+use App\Models\ExamQuestion;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -126,22 +127,20 @@ class ConvertMojibake extends Command
             }
         });
 
-        // Also scan ExamQuestion model for stored snapshots - use model helper
-        if (class_exists('\App\\Models\\ExamQuestion')) {
-            \App\Models\ExamQuestion::chunk(200, function ($items) use (&$eqChanged, $dry, $output, $verbose) {
-                foreach ($items as $item) {
-                    try {
-                        $changed = $item->applyMojibakeConversion($dry, $verbose, $output);
-                        if ($changed) {
-                            Log::info('convert:mojibake - examquestion updated', ['id' => $item->id]);
-                            $eqChanged++;
-                        }
-                    } catch (\Throwable $e) {
-                        Log::warning('convert:mojibake - examquestion conversion failed', ['id' => $item->id, 'error' => $e->getMessage()]);
+        // Also scan ExamQuestion model for stored snapshots
+        ExamQuestion::chunk(200, function ($items) use (&$eqChanged, $dry, $output, $verbose) {
+            foreach ($items as $item) {
+                try {
+                    $changed = $item->applyMojibakeConversion($dry, $verbose, $output);
+                    if ($changed) {
+                        Log::info('convert:mojibake - examquestion updated', ['id' => $item->id]);
+                        $eqChanged++;
                     }
+                } catch (\Throwable $e) {
+                    Log::warning('convert:mojibake - examquestion conversion failed', ['id' => $item->id, 'error' => $e->getMessage()]);
                 }
-            });
-        }
+            }
+        });
 
         if ($output) {
             $output->info("Done. Questions changed: {$qChanged}. Options changed: {$oChanged}. ExamQuestions changed: {$eqChanged}.");
