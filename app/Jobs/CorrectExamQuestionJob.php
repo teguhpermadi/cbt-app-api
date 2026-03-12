@@ -1,0 +1,157 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\ExamResultDetail;
+use App\Models\ExamSession;
+use App\Models\ExamResult;
+use Prism\Prism\Facades\Prism;
+use Prism\Prism\Enums\Provider;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\NumberSchema;
+use Prism\Prism\Schema\StringSchema;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class CorrectExamQuestionJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(
+        public ExamResultDetail $examResultDetail
+    ) {}
+
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        $detail = $this->examResultDetail->load(['examQuestion', 'examSession.exam', 'examSession.user']);
+        $question = $detail->examQuestion;
+        $session = $detail->examSession;
+        $exam = $session->exam;
+        $studentName = $session->user->name;
+
+        $studentAnswer = is_array($detail->student_answer)
+            ? json_encode($detail->student_answer, JSON_UNESCAPED_UNICODE)
+            : $detail->student_answer;
+
+        if (empty($studentAnswer)) {
+            $detail->update([
+                'score_earned' => 0,
+                'is_correct' => false,
+                'correction_notes' => 'Siswa tidak menjawab.',
+            ]);
+            $this->updateSessionTotals($session);
+
+            Log::info("AI Correction (Empty Answer) - Student: {$studentName}, Question: " . strip_tags($question->content) . ", Score: 0/{$question->score_value}");
+
+            return;
+        }
+
+        $keyAnswer = is_array($question->key_answer)
+            ? json_encode($question->key_answer, JSON_UNESCAPED_UNICODE)
+            : $question->key_answer;
+
+        $maxScore = $question->score_value;
+
+        try {
+            // Using gemini-2.0-flash as the latest available model in Prism for Gemini
+            $response = Prism::structured()
+                ->using(Provider::Gemini, 'gemini-2.0-flash')
+                ->withSystemPrompt("Kamu adalah asisten guru pakar yang bertugas mengoreksi jawaban siswa secara adil dan akurat.")
+                ->withPrompt("Koreksi jawaban siswa berikut:
+                
+                Soal: {$question->content}
+                Kunci Jawaban: {$keyAnswer}
+                Jawaban Siswa: {$studentAnswer}
+                Skor Maksimal: {$maxScore}
+                
+                Berikan skor antara 0 sampai {$maxScore}. Jangan melebihi skor maksimal.
+                Berikan catatan singkat (feedback) mengapa skor tersebut diberikan.")
+                ->withSchema(new ObjectSchema(
+                    'correction',
+                    'The correction result',
+                    [
+                        new NumberSchema('score', 'The score earned by the student (0 to ' . $maxScore . ')'),
+                        new StringSchema('notes', 'Brief feedback or explanation for the score'),
+                    ],
+                    ['score', 'notes']
+                ))
+                ->generate();
+
+            $aiScore = (float) ($response->structured['score'] ?? 0);
+            $aiNotes = $response->structured['notes'] ?? 'Koreksi AI selesai.';
+
+            // Ensure score doesn't exceed max score
+            if ($aiScore > $maxScore) {
+                $aiScore = $maxScore;
+            }
+            if ($aiScore < 0) {
+                $aiScore = 0;
+            }
+
+            DB::transaction(function () use ($detail, $aiScore, $aiNotes, $maxScore, $session, $studentName, $question, $studentAnswer) {
+                $detail->update([
+                    'score_earned' => $aiScore,
+                    'is_correct' => ($aiScore >= ($maxScore / 2)),
+                    'correction_notes' => $aiNotes,
+                ]);
+
+                $this->updateSessionTotals($session);
+
+                Log::info("AI Correction Success", [
+                    'student_name' => $studentName,
+                    'question' => strip_tags($question->content),
+                    'student_answer' => $studentAnswer,
+                    'max_score' => $maxScore,
+                    'earned_score' => $aiScore,
+                    'notes' => $aiNotes,
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error("AI Correction failed for Detail ID: {$detail->id}. Error: " . $e->getMessage());
+        }
+    }
+
+    protected function updateSessionTotals(ExamSession $session)
+    {
+        $session->load('examResultDetails.examQuestion');
+
+        $totalEarnedScore = $session->examResultDetails->sum('score_earned');
+        $totalMaxScore = $session->examResultDetails->sum(function ($d) {
+            return $d->examQuestion->score_value ?? 0;
+        });
+
+        $session->update([
+            'total_score' => $totalEarnedScore,
+            'total_max_score' => $totalMaxScore,
+            'is_corrected' => true,
+        ]);
+
+        // Update ExamResult
+        $scorePercent = $totalMaxScore > 0 ? round(($totalEarnedScore / $totalMaxScore) * 100, 1) : 0;
+
+        ExamResult::updateOrCreate(
+            [
+                'exam_id' => $session->exam_id,
+                'user_id' => $session->user_id,
+            ],
+            [
+                'exam_session_id' => $session->id,
+                'total_score' => $totalEarnedScore,
+                'score_percent' => $scorePercent,
+                'is_passed' => $scorePercent >= ($session->exam->passing_score ?? 0),
+                'result_type' => \App\Enums\ExamResultTypeEnum::OFFICIAL,
+            ]
+        );
+    }
+}
