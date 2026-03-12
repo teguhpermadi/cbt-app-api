@@ -432,6 +432,9 @@ class QuestionImportService
             return '';
         }
 
+        // Apply Mojibake fix first
+        $text = $this->fixMojibake($text);
+
         // 1. Convert Latex: $equation$ -> math-component
         $text = preg_replace_callback(
             '/\$([^$]+)\$/',
@@ -770,6 +773,7 @@ class QuestionImportService
         // Remove language tags from key answer for consistency
         // We use a more aggressive replace to ensure no stray tags remain
         $sanitizedKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+        $sanitizedKey = $this->fixMojibake($sanitizedKey);
 
         Option::create([
             'question_id' => $question->id,

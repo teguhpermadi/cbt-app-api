@@ -93,20 +93,15 @@ class ExamQuestion extends Model
 
         $wrapLanguageTags = function (string $text): string {
             if ($text === '') return $text;
-            /*
-            if (strpos($text, '[ara]') === false) {
-                $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
-                if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
-                    $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
-                }
-            }
+
+            // Javanese [jav] tagging
+            $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
             if (strpos($text, '[jav]') === false) {
-                $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
                 if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
                     $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
                 }
             }
-            */
+
             return $text;
         };
 

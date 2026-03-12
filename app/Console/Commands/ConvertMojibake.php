@@ -5,8 +5,11 @@ namespace App\Console\Commands;
 use App\Models\Question;
 use App\Models\Option;
 use App\Models\ExamQuestion;
+use App\Models\ReadingMaterial;
+use App\Models\ExamReadingMaterial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ConvertMojibake extends Command
 {
@@ -142,8 +145,59 @@ class ConvertMojibake extends Command
             }
         });
 
+        $rmChanged = 0;
+        $ermChanged = 0;
+
+        // ReadingMaterial
+        if (Schema::hasTable('reading_materials')) {
+            ReadingMaterial::chunk(100, function ($items) use (&$rmChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
+                foreach ($items as $item) {
+                    $changed = false;
+                    $fields = ['title', 'content'];
+                    foreach ($fields as $field) {
+                        $orig = $item->$field ?? '';
+                        $fixed = $fixMojibake($orig);
+                        $wrapped = ($field === 'content') ? $wrapLanguageTags($fixed) : $fixed;
+                        if ($wrapped !== $orig) {
+                            if (!$dry) $item->$field = $wrapped;
+                            $changed = true;
+                        }
+                    }
+                    if ($changed) {
+                        $rmChanged++;
+                        if (!$dry) $item->save();
+                        if ($verbose && $output) $output->line("ReadingMaterial {$item->id} updated");
+                    }
+                }
+            });
+        }
+
+        // ExamReadingMaterial
+        if (Schema::hasTable('exam_reading_materials')) {
+            ExamReadingMaterial::chunk(100, function ($items) use (&$ermChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
+                foreach ($items as $item) {
+                    $changed = false;
+                    $fields = ['title', 'content'];
+                    foreach ($fields as $field) {
+                        $orig = $item->$field ?? '';
+                        $fixed = $fixMojibake($orig);
+                        $wrapped = ($field === 'content') ? $wrapLanguageTags($fixed) : $fixed;
+                        if ($wrapped !== $orig) {
+                            if (!$dry) $item->$field = $wrapped;
+                            $changed = true;
+                        }
+                    }
+                    if ($changed) {
+                        $ermChanged++;
+                        if (!$dry) $item->save();
+                        if ($verbose && $output) $output->line("ExamReadingMaterial {$item->id} updated");
+                    }
+                }
+            });
+        }
+
         if ($output) {
-            $output->info("Done. Questions changed: {$qChanged}. Options changed: {$oChanged}. ExamQuestions changed: {$eqChanged}.");
+            $output->info("Done. Q: {$qChanged}, O: {$oChanged}, EQ: {$eqChanged}, RM: {$rmChanged}, ERM: {$ermChanged}.");
         }
     }
 }
