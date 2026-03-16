@@ -10,6 +10,7 @@ use Prism\Prism\Enums\Provider;
 use Prism\Prism\Schema\ObjectSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\StringSchema;
+use Prism\Prism\Enums\StructuredMode;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,7 +19,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class CorrectExamQuestionJob implements ShouldQueue
+class CorrectExamQuestionOpenRouterJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -66,7 +67,7 @@ class CorrectExamQuestionJob implements ShouldQueue
             ]);
             $this->updateSessionTotals($session);
 
-            Log::info("AI Correction (Empty Answer) - Student: {$studentName}, Question: " . strip_tags($question->content) . ", Score: 0/{$question->score_value}");
+            Log::info("OpenRouter Correction (Empty Answer) - Student: {$studentName}, Question: " . strip_tags($question->content) . ", Score: 0/{$question->score_value}");
 
             return;
         }
@@ -78,10 +79,11 @@ class CorrectExamQuestionJob implements ShouldQueue
         $maxScore = $question->score_value;
 
         try {
-            // Using gemini-2.0-flash as the latest available model in Prism for Gemini
+            // Using openrouter/free as requested by user via OpenRouter
             $response = Prism::structured()
-                ->using(Provider::Gemini, 'gemini-2.0-flash')
-                ->withSystemPrompt("Kamu adalah asisten guru pakar yang bertugas mengoreksi jawaban siswa secara adil dan akurat.")
+                ->using(Provider::OpenRouter, 'openrouter/free')
+                ->usingStructuredMode(StructuredMode::Json)
+                ->withSystemPrompt("Kamu adalah asisten guru pakar. Kamu HARUS merespon HANYA dalam format JSON yang valid sesuai skema yang diberikan. Jangan sertakan teks penjelasan lain diluar JSON.")
                 ->withPrompt("Koreksi jawaban siswa berikut:
                 
                 Soal: {$question->content}
@@ -100,6 +102,7 @@ class CorrectExamQuestionJob implements ShouldQueue
                     ],
                     ['score', 'notes']
                 ))
+                ->withClientOptions(['timeout' => 120])
                 ->asStructured();
 
             $aiScore = (float) ($response->structured['score'] ?? 0);
@@ -122,8 +125,9 @@ class CorrectExamQuestionJob implements ShouldQueue
 
                 $this->updateSessionTotals($session);
 
-                Log::info("AI Correction Success", [
+                Log::info("OpenRouter Correction Success", [
                     'student_name' => $studentName,
+                    'model' => 'openrouter/free',
                     'question' => strip_tags($question->content),
                     'student_answer' => $studentAnswer,
                     'max_score' => $maxScore,
@@ -132,11 +136,11 @@ class CorrectExamQuestionJob implements ShouldQueue
                 ]);
             });
         } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), 'rate limit')) {
+            if (str_contains($e->getMessage(), 'rate limit') || str_contains($e->getMessage(), 'timed out') || str_contains($e->getMessage(), 'cURL error 28')) {
                 $this->release(30);
                 return;
             }
-            Log::error("AI Correction failed for Detail ID: {$detail->id}. Error: " . $e->getMessage());
+            Log::error("OpenRouter Correction failed for Detail ID: {$detail->id}. Error: " . $e->getMessage());
             throw $e;
         }
     }

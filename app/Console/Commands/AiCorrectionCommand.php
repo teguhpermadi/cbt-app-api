@@ -11,21 +11,47 @@ class AiCorrectionCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'exam:ai-correct {exam_id?}';
+    protected $signature = 'exam:ai-correct {exam_id?} {--provider=gemini : The AI provider to use (gemini or openrouter)} {--detail_id= : Specific ExamResultDetail ID to correct}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Correct exam results (Short Answer and Essay) using Gemini AI';
+    protected $description = 'Correct exam results (Short Answer and Essay) using AI (Gemini or OpenRouter)';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $examId = $this->argument('exam_id') ?: $this->ask('Please enter the Exam ID');
+        $examId = $this->argument('exam_id');
+        $provider = $this->option('provider');
+        $detailId = $this->option('detail_id');
+
+        if (!in_array($provider, ['gemini', 'openrouter'])) {
+            $this->error('Invalid provider. Supported providers are: gemini, openrouter');
+            return;
+        }
+
+        if ($detailId) {
+            $detail = \App\Models\ExamResultDetail::find($detailId);
+            if (!$detail) {
+                $this->error("ExamResultDetail with ID {$detailId} not found.");
+                return;
+            }
+
+            $this->info("Dispatching correction for Detail ID: {$detailId} using {$provider}");
+            if ($provider === 'openrouter') {
+                \App\Jobs\CorrectExamQuestionOpenRouterJob::dispatch($detail);
+            } else {
+                \App\Jobs\CorrectExamQuestionJob::dispatch($detail);
+            }
+            $this->info('Job dispatched.');
+            return;
+        }
+
+        $examId = $examId ?: $this->ask('Please enter the Exam ID');
 
         if (!$examId) {
             $this->error('Exam ID is required.');
@@ -39,7 +65,7 @@ class AiCorrectionCommand extends Command
             return;
         }
 
-        $this->info("Starting AI correction for Exam: {$exam->title}");
+        $this->info("Starting AI correction for Exam: {$exam->title} using {$provider}");
 
         $resultDetails = \App\Models\ExamResultDetail::whereHas('examSession', function ($query) use ($examId) {
             $query->where('exam_id', $examId);
@@ -63,12 +89,17 @@ class AiCorrectionCommand extends Command
         $bar->start();
 
         foreach ($resultDetails as $detail) {
-            \App\Jobs\CorrectExamQuestionJob::dispatch($detail);
+            if ($provider === 'openrouter') {
+                \App\Jobs\CorrectExamQuestionOpenRouterJob::dispatch($detail);
+            } else {
+                \App\Jobs\CorrectExamQuestionJob::dispatch($detail);
+            }
+            usleep(500000); // 0.5 seconds delay to prevent immediate rate limit
             $bar->advance();
         }
 
         $bar->finish();
         $this->newLine();
-        $this->info('Correction jobs have been dispatched to the queue.');
+        $this->info("Correction jobs ({$provider}) have been dispatched to the queue.");
     }
 }
