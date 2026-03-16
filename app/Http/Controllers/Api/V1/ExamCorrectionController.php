@@ -154,6 +154,31 @@ class ExamCorrectionController extends ApiController
     }
 
     /**
+     * Update the student's answer for a specific question.
+     */
+    public function updateAnswer(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        // Ensure detail belongs to session
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        $validated = $request->validate([
+            'student_answer' => 'required', // can be string or array/json
+        ]);
+
+        $examResultDetail->update([
+            'student_answer' => $validated['student_answer'],
+            'answered_at' => now(), // update timestamp as if student answered it
+        ]);
+
+        return $this->success(
+            new ExamCorrectionResource($examResultDetail),
+            'Student answer updated successfully'
+        );
+    }
+
+    /**
      * Bulk update scores for multiple answers.
      */
     public function bulkUpdate(Request $request, Exam $exam)
