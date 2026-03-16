@@ -179,6 +179,53 @@ class ExamCorrectionController extends ApiController
     }
 
     /**
+     * Reopen a finished exam session based on a detail ID.
+     */
+    public function reopenByDetail(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        // Ensure detail belongs to session
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        if (!$examSession->is_finished) {
+            return $this->error('Session is already active.', 400);
+        }
+
+        $request->validate([
+            'minutes' => 'nullable|integer|min:0',
+        ]);
+
+        // Smart Reopen Logic (from ExamController)
+        $now = now();
+        $startTime = \Carbon\Carbon::parse($examSession->start_time);
+        $minutesSinceStart = $now->diffInMinutes($startTime);
+        $requestedMinutes = $request->minutes ?? 15; // Default to 15 mins if not provided
+        $exam = $examSession->exam;
+        $neededExtraTime = ($minutesSinceStart + $requestedMinutes) - $exam->duration;
+
+        $newExtraTime = max($examSession->extra_time ?? 0, (int) $neededExtraTime);
+
+        $examSession->update([
+            'is_finished' => false,
+            'finish_time' => null,
+            'extra_time' => $newExtraTime,
+        ]);
+
+        // Dispatch TimerSynchronized event
+        $remainingSeconds = $examSession->getRemainingSeconds();
+        event(new \App\Events\TimerSynchronized($exam->id, $examSession->user_id, $remainingSeconds));
+
+        // Dispatch LiveScoreUpdated event
+        event(new \App\Events\LiveScoreUpdated($exam->id, $examSession->getBroadcastData()));
+
+        return $this->success(
+            new \App\Http\Resources\Student\ExamSessionResource($examSession),
+            'Exam session reopened successfully.'
+        );
+    }
+
+    /**
      * Bulk update scores for multiple answers.
      */
     public function bulkUpdate(Request $request, Exam $exam)
