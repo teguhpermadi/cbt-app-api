@@ -13,6 +13,13 @@ use Illuminate\Support\Str;
 use App\Enums\UserTypeEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\ExamQuestionCorrection;
+use App\Enums\CorrectionStatusEnum;
+use App\Enums\QuestionTypeEnum;
+use App\Events\AiCorrectionFinished;
+use App\Notifications\AiCorrectionFinishedNotification;
+use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 
 class ExamCorrectionController extends ApiController
 {
@@ -31,10 +38,15 @@ class ExamCorrectionController extends ApiController
             ->orderBy('question_number', 'asc')
             ->get();
 
+        $correctionStatuses = ExamQuestionCorrection::query()
+            ->where('exam_id', $exam->id)
+            ->get();
+
         return $this->success([
             'exam' => $exam,
             'sessions' => \App\Http\Resources\Student\ExamSessionResource::collection($sessions),
-            'questions' => $questions
+            'questions' => $questions,
+            'correction_statuses' => $correctionStatuses
         ]);
     }
 
@@ -570,5 +582,80 @@ class ExamCorrectionController extends ApiController
         });
 
         return $this->success(null, 'Exam session deleted successfully.');
+    }
+
+    /**
+     * Trigger AI correction for all student answers in an exam.
+     */
+    public function aiCorrect(Request $request, Exam $exam)
+    {
+        $provider = $request->input('provider', 'gemini');
+        $userId = Auth::id();
+
+        if (!in_array($provider, ['gemini', 'openrouter'])) {
+            return $this->error('Invalid provider. Supported providers are: gemini, openrouter', 422);
+        }
+
+        $resultDetails = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
+            $query->where('exam_id', $exam->id);
+        })->whereHas('examQuestion', function ($query) {
+            $query->whereIn('question_type', [
+                // QuestionTypeEnum::SHORT_ANSWER->value,
+                QuestionTypeEnum::ESSAY->value,
+                QuestionTypeEnum::ARABIC_RESPONSE->value,
+                QuestionTypeEnum::JAVANESE_RESPONSE->value,
+            ]);
+        })->get();
+
+        if ($resultDetails->isEmpty()) {
+            return $this->error('No essay or open-ended questions found for this exam.', 404);
+        }
+
+        // Group by question to initialize tracking
+        $questionsToTrack = $resultDetails->groupBy('exam_question_id');
+        foreach ($questionsToTrack as $questionId => $details) {
+            ExamQuestionCorrection::updateOrCreate(
+                ['exam_id' => $exam->id, 'exam_question_id' => $questionId],
+                [
+                    'status' => CorrectionStatusEnum::PROCESSING,
+                    'total_to_correct' => $details->count(),
+                    'corrected_count' => 0,
+                ]
+            );
+        }
+
+        $jobs = [];
+        foreach ($resultDetails as $detail) {
+            if ($provider === 'openrouter') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail);
+            } else {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail);
+            }
+        }
+
+        $batchName = "AI Correction: {$exam->title}";
+        $batch = Bus::batch($jobs)
+            ->then(function (\Illuminate\Bus\Batch $batch) use ($exam, $userId) {
+                if ($userId) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
+                        
+                        // Database Notification
+                        $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
+                        
+                        // Real-time Event
+                        event(new AiCorrectionFinished($exam->id, (string) $userId, $message));
+                    }
+                }
+            })
+            ->name($batchName)
+            ->dispatch();
+
+        return $this->success([
+            'batch_id' => $batch->id,
+            'total_jobs' => $batch->totalJobs,
+            'pending_jobs' => $batch->pendingJobs,
+        ], "AI correction jobs for '{$exam->title}' have been dispatched.");
     }
 }

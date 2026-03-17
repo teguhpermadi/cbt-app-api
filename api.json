@@ -6,7 +6,7 @@
     },
     "servers": [
         {
-            "url": "http://192.168.1.2:8000/api"
+            "url": "http://localhost:8000/api"
         }
     ],
     "security": [
@@ -4767,12 +4767,16 @@
                                                 },
                                                 "questions": {
                                                     "type": "string"
+                                                },
+                                                "correction_statuses": {
+                                                    "type": "string"
                                                 }
                                             },
                                             "required": [
                                                 "exam",
                                                 "sessions",
-                                                "questions"
+                                                "questions",
+                                                "correction_statuses"
                                             ]
                                         }
                                     },
@@ -5015,6 +5019,260 @@
                 }
             }
         },
+        "/v1/exams/{exam}/item-analysis": {
+            "get": {
+                "operationId": "v1.exams.correction.item-analysis",
+                "summary": "Telaah Soal (Item Analysis)",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Success"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "exam_id": {
+                                                    "type": "string"
+                                                },
+                                                "total_students": {
+                                                    "type": "string"
+                                                },
+                                                "top_group_size": {
+                                                    "type": "string"
+                                                },
+                                                "bottom_group_size": {
+                                                    "type": "string"
+                                                },
+                                                "summary": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total_questions": {
+                                                            "type": "string"
+                                                        },
+                                                        "accepted": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "revised": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "rejected": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "general_recommendation": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "Sebagian besar butir soal kurang relevan atau membingungkan. Sangat disarankan untuk merombak ulang instrumen tes."
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total_questions",
+                                                        "accepted",
+                                                        "revised",
+                                                        "rejected",
+                                                        "general_recommendation"
+                                                    ]
+                                                },
+                                                "item_analysis": {
+                                                    "type": "array",
+                                                    "prefixItems": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "question_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "question_number": {
+                                                                    "type": "string"
+                                                                },
+                                                                "question_type": {
+                                                                    "type": "string"
+                                                                },
+                                                                "content": {
+                                                                    "type": "string"
+                                                                },
+                                                                "difficulty": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "score": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "category": {
+                                                                            "type": "string",
+                                                                            "enum": [
+                                                                                "Mudah"
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "score",
+                                                                        "category"
+                                                                    ]
+                                                                },
+                                                                "discrimination": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "score": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "category": {
+                                                                            "type": "string",
+                                                                            "enum": [
+                                                                                "Sangat Baik"
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "score",
+                                                                        "category"
+                                                                    ]
+                                                                },
+                                                                "distractor": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "status": {
+                                                                            "type": "string",
+                                                                            "enum": [
+                                                                                "Kurang Berfungsi"
+                                                                            ]
+                                                                        },
+                                                                        "details": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "status",
+                                                                        "details"
+                                                                    ]
+                                                                },
+                                                                "conclusion": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "status": {
+                                                                            "type": "string",
+                                                                            "enum": [
+                                                                                "Direvisi"
+                                                                            ]
+                                                                        },
+                                                                        "recommendation": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "status",
+                                                                        "recommendation"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "question_id",
+                                                                "question_number",
+                                                                "question_type",
+                                                                "content",
+                                                                "difficulty",
+                                                                "discrimination",
+                                                                "distractor",
+                                                                "conclusion"
+                                                            ]
+                                                        }
+                                                    ],
+                                                    "minItems": 1,
+                                                    "maxItems": 1,
+                                                    "additionalItems": false
+                                                }
+                                            },
+                                            "required": [
+                                                "exam_id",
+                                                "total_students",
+                                                "top_group_size",
+                                                "bottom_group_size",
+                                                "summary",
+                                                "item_analysis"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak cukup untuk melakukan telaah soal. Minimal 3 siswa diperlukan."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/exams/{exam}/bulk-correction": {
             "post": {
                 "operationId": "v1.exams.correction.bulk-update",
@@ -5185,6 +5443,186 @@
                 }
             }
         },
+        "/v1/exams/{exam}/ai-correct": {
+            "post": {
+                "operationId": "v1.exams.correction.ai-correct",
+                "summary": "Trigger AI correction for all student answers in an exam",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "provider": {
+                                        "type": "string",
+                                        "default": "gemini"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "batch_id": {
+                                                    "type": "string"
+                                                },
+                                                "total_jobs": {
+                                                    "type": "string"
+                                                },
+                                                "pending_jobs": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "batch_id",
+                                                "total_jobs",
+                                                "pending_jobs"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Invalid provider. Supported providers are: gemini, openrouter"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/sessions/{examSession}": {
+            "delete": {
+                "operationId": "v1.exams.correction.destroy",
+                "summary": "Delete a specific exam session",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Exam session deleted successfully."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/sessions/{examSession}/details/{examResultDetail}": {
             "put": {
                 "operationId": "v1.exams.correction.update",
@@ -5288,6 +5726,209 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/sessions/{examSession}/details/{examResultDetail}/answer": {
+            "put": {
+                "operationId": "v1.exams.correction.update-answer",
+                "summary": "Update the student's answer for a specific question",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "student_answer": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "student_answer"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Student answer updated successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExamCorrectionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/sessions/{examSession}/details/{examResultDetail}/reopen": {
+            "post": {
+                "operationId": "v1.exams.correction.reopen-by-detail",
+                "summary": "Reopen a finished exam session based on a detail ID",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "minutes": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 0
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Exam session reopened successfully."
+                                            ]
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExamSessionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Session is already active."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -6058,7 +6699,6 @@
         "/v1/students/exam-results/leaderboard": {
             "get": {
                 "operationId": "v1.student.exam-results.leaderboard",
-                "summary": "Get leaderboard of exam results",
                 "tags": [
                     "ExamResult"
                 ],
@@ -6085,6 +6725,16 @@
                     },
                     {
                         "name": "classroom_id",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "user_id",
                         "in": "query",
                         "schema": {
                             "type": [
@@ -7825,6 +8475,40 @@
                                         "message",
                                         "errors"
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/question-banks/{id}/export": {
+            "get": {
+                "operationId": "v1.question-banks.export",
+                "summary": "Export questions to Word document",
+                "tags": [
+                    "QuestionBank"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
                                 }
                             }
                         }
@@ -11872,6 +12556,59 @@
                 }
             }
         },
+        "/v1/tags": {
+            "get": {
+                "operationId": "v1.tags.index",
+                "summary": "Display a listing of tags",
+                "tags": [
+                    "Tag"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Tags retrieved successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/teachers/import": {
             "post": {
                 "operationId": "v1.teachers.import",
@@ -12795,6 +13532,7 @@
                         "description": "Added pdf",
                         "enum": [
                             "reading_materials",
+                            "reading_images",
                             "question_content",
                             "option_media"
                         ]
@@ -12860,6 +13598,9 @@
                     },
                     "exam": {
                         "$ref": "#/components/schemas/ExamResource"
+                    },
+                    "exam_reading_material": {
+                        "$ref": "#/components/schemas/ExamReadingMaterialResource"
                     },
                     "original_question": {
                         "$ref": "#/components/schemas/QuestionResource"
@@ -13621,9 +14362,25 @@
                     "options": {
                         "type": "string"
                     },
+                    "tags": {
+                        "description": "Context for MC/Multiple Answer",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 0,
+                                "maxItems": 0,
+                                "additionalItems": false
+                            }
+                        ]
+                    },
                     "session": {
                         "type": "object",
-                        "description": "Context for MC/Multiple Answer",
                         "properties": {
                             "id": {
                                 "type": "string"
@@ -13671,7 +14428,8 @@
                     "is_correct",
                     "correction_notes",
                     "answered_at",
-                    "options"
+                    "options",
+                    "tags"
                 ],
                 "title": "ExamCorrectionResource"
             },
@@ -13686,6 +14444,12 @@
                     },
                     "question_id": {
                         "type": "string"
+                    },
+                    "exam_reading_material_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "question_number": {
                         "type": "integer"
@@ -13741,6 +14505,7 @@
                     "id",
                     "exam_id",
                     "question_id",
+                    "exam_reading_material_id",
                     "question_number",
                     "content",
                     "options",
@@ -13805,6 +14570,9 @@
                             "null"
                         ]
                     },
+                    "exam_reading_material": {
+                        "$ref": "#/components/schemas/ExamReadingMaterialResource"
+                    },
                     "created_at": {
                         "type": "string"
                     },
@@ -13830,6 +14598,58 @@
                     "updated_at"
                 ],
                 "title": "ExamQuestionResource"
+            },
+            "ExamReadingMaterialResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "exam_id": {
+                        "type": "string"
+                    },
+                    "reading_material_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "media_path": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "exam_id",
+                    "reading_material_id",
+                    "title",
+                    "content",
+                    "media_path",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ExamReadingMaterialResource"
             },
             "ExamResource": {
                 "type": "object",
@@ -13919,6 +14739,12 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ClassroomResource"
+                        }
+                    },
+                    "exam_reading_materials": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExamReadingMaterialResource"
                         }
                     },
                     "attempts_count": {
@@ -14491,6 +15317,15 @@
                             }
                         ]
                     },
+                    "question_bank_id": {
+                        "type": "string"
+                    },
+                    "reading_material_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "reading_material": {
                         "anyOf": [
                             {
@@ -14512,7 +15347,10 @@
                         "$ref": "#/components/schemas/QuestionTimeEnum"
                     },
                     "content": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "score": {
                         "$ref": "#/components/schemas/QuestionScoreEnum"
@@ -14574,6 +15412,8 @@
                 "required": [
                     "id",
                     "user",
+                    "question_bank_id",
+                    "reading_material_id",
                     "reading_material",
                     "type",
                     "difficulty",
@@ -14723,7 +15563,10 @@
                         ]
                     },
                     "content": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "created_at": {
                         "type": [
@@ -14745,6 +15588,12 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "question_bank_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -14754,7 +15603,8 @@
                     "content",
                     "created_at",
                     "updated_at",
-                    "deleted_at"
+                    "deleted_at",
+                    "question_bank_id"
                 ],
                 "title": "ReadingMaterial"
             },
@@ -14767,6 +15617,12 @@
                     "user": {
                         "$ref": "#/components/schemas/UserResource"
                     },
+                    "question_bank_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "title": {
                         "type": [
                             "string",
@@ -14774,17 +15630,24 @@
                         ]
                     },
                     "content": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "media": {
                         "type": "object",
                         "properties": {
                             "reading_materials": {
                                 "type": "string"
+                            },
+                            "reading_images": {
+                                "type": "string"
                             }
                         },
                         "required": [
-                            "reading_materials"
+                            "reading_materials",
+                            "reading_images"
                         ]
                     },
                     "questions": {
@@ -14820,6 +15683,7 @@
                 },
                 "required": [
                     "id",
+                    "question_bank_id",
                     "title",
                     "content",
                     "media",
@@ -15333,6 +16197,34 @@
                             "null"
                         ]
                     },
+                    "arrange_words_sentence": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_delimiter": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_is_arabic": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_shuffle_mode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "phrase",
+                            "alphabet"
+                        ]
+                    },
                     "tags": {
                         "type": [
                             "array",
@@ -15489,6 +16381,12 @@
                     "content": {
                         "type": [
                             "string",
+                            "null"
+                        ]
+                    },
+                    "question_bank_id": {
+                        "type": [
+                            "integer",
                             "null"
                         ]
                     }
@@ -15705,22 +16603,13 @@
                         ]
                     },
                     "user_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "academic_year_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "classroom_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "user": {
                         "$ref": "#/components/schemas/UserResource"
@@ -16177,6 +17066,12 @@
                             "null"
                         ]
                     },
+                    "tag_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "question_image": {
                         "type": [
                             "string",
@@ -16209,6 +17104,34 @@
                         "type": [
                             "string",
                             "null"
+                        ]
+                    },
+                    "arrange_words_sentence": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_delimiter": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_is_arabic": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "arrange_words_shuffle_mode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "phrase",
+                            "alphabet"
                         ]
                     },
                     "tags": {

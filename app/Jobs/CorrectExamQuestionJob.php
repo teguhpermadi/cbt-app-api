@@ -5,11 +5,14 @@ namespace App\Jobs;
 use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use App\Models\ExamResult;
+use App\Models\ExamQuestionCorrection;
+use App\Enums\CorrectionStatusEnum;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Schema\ObjectSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\StringSchema;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +23,7 @@ use Illuminate\Support\Facades\Log;
 
 class CorrectExamQuestionJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * The number of times the job may be attempted.
@@ -120,6 +123,8 @@ class CorrectExamQuestionJob implements ShouldQueue
                     'correction_notes' => $aiNotes,
                 ]);
 
+                $this->updateQuestionCorrectionProgress($question->exam_id, $question->id);
+
                 $this->updateSessionTotals($session);
 
                 Log::info("AI Correction Success", [
@@ -172,5 +177,20 @@ class CorrectExamQuestionJob implements ShouldQueue
                 'result_type' => \App\Enums\ExamResultTypeEnum::OFFICIAL,
             ]
         );
+    }
+
+    protected function updateQuestionCorrectionProgress($examId, $questionId)
+    {
+        $correction = ExamQuestionCorrection::where('exam_id', $examId)
+            ->where('exam_question_id', $questionId)
+            ->first();
+
+        if ($correction) {
+            $correction->increment('corrected_count');
+
+            if ($correction->corrected_count >= $correction->total_to_correct) {
+                $correction->update(['status' => CorrectionStatusEnum::COMPLETED]);
+            }
+        }
     }
 }

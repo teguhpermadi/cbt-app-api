@@ -3,6 +3,13 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Models\ExamQuestionCorrection;
+use App\Enums\CorrectionStatusEnum;
+use App\Enums\QuestionTypeEnum;
+use Illuminate\Support\Facades\Bus;
+use App\Models\User;
+use App\Events\AiCorrectionFinished;
+use App\Notifications\AiCorrectionFinishedNotification;
 
 class AiCorrectionCommand extends Command
 {
@@ -11,7 +18,7 @@ class AiCorrectionCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'exam:ai-correct {exam_id?} {--provider=gemini : The AI provider to use (gemini or openrouter)} {--detail_id= : Specific ExamResultDetail ID to correct}';
+    protected $signature = 'exam:ai-correct {exam_id?} {--provider=gemini : The AI provider to use (gemini or openrouter)} {--detail_id= : Specific ExamResultDetail ID to correct} {--user_id= : User ID to notify when finished}';
 
     /**
      * The console command description.
@@ -71,7 +78,7 @@ class AiCorrectionCommand extends Command
             $query->where('exam_id', $examId);
         })->whereHas('examQuestion', function ($query) {
             $query->whereIn('question_type', [
-                \App\Enums\QuestionTypeEnum::SHORT_ANSWER->value,
+                // \App\Enums\QuestionTypeEnum::SHORT_ANSWER->value,
                 \App\Enums\QuestionTypeEnum::ESSAY->value,
                 \App\Enums\QuestionTypeEnum::ARABIC_RESPONSE->value,
                 \App\Enums\QuestionTypeEnum::JAVANESE_RESPONSE->value,
@@ -88,18 +95,51 @@ class AiCorrectionCommand extends Command
         $bar = $this->output->createProgressBar($resultDetails->count());
         $bar->start();
 
-        foreach ($resultDetails as $detail) {
-            if ($provider === 'openrouter') {
-                \App\Jobs\CorrectExamQuestionOpenRouterJob::dispatch($detail);
-            } else {
-                \App\Jobs\CorrectExamQuestionJob::dispatch($detail);
-            }
-            usleep(500000); // 0.5 seconds delay to prevent immediate rate limit
-            $bar->advance();
+        // Group by question to initialize tracking
+        $questionsToTrack = $resultDetails->groupBy('exam_question_id');
+        foreach ($questionsToTrack as $questionId => $details) {
+            ExamQuestionCorrection::updateOrCreate(
+                ['exam_id' => $exam->id, 'exam_question_id' => $questionId],
+                [
+                    'status' => CorrectionStatusEnum::PROCESSING,
+                    'total_to_correct' => $details->count(),
+                    'corrected_count' => 0,
+                ]
+            );
         }
 
         $bar->finish();
         $this->newLine();
-        $this->info("Correction jobs ({$provider}) have been dispatched to the queue.");
+
+        $userId = $this->option('user_id');
+        $jobs = [];
+
+        foreach ($resultDetails as $detail) {
+            if ($provider === 'openrouter') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail);
+            } else {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail);
+            }
+        }
+
+        $batch = Bus::batch($jobs)
+            ->then(function (\Illuminate\Bus\Batch $batch) use ($exam, $userId) {
+                if ($userId) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
+                        
+                        // Database Notification
+                        $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
+                        
+                        // Real-time Event
+                        event(new AiCorrectionFinished($exam->id, $userId, $message));
+                    }
+                }
+            })
+            ->name("AI Correction: {$exam->title}")
+            ->dispatch();
+
+        $this->info("Correction jobs ({$provider}) have been batched and dispatched. Batch ID: {$batch->id}");
     }
 }
