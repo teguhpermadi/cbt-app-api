@@ -615,7 +615,15 @@ class ExamCorrectionController extends ApiController
         $resultDetails = $query->get();
 
         if ($resultDetails->isEmpty()) {
-            return $this->error('No essay questions found for this selection.', 404);
+            $msg = 'No essay questions found for this selection.';
+            if ($examQuestionId && $examSessionId) {
+                $msg = 'Student answer for this essay question not found.';
+            } elseif ($examQuestionId) {
+                $msg = 'No student answers found for this essay question.';
+            } elseif ($examSessionId) {
+                $msg = 'This student has no essay answers to correct.';
+            }
+            return $this->error($msg, 404);
         }
 
         // Group by question to initialize tracking
