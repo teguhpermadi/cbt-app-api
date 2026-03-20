@@ -585,30 +585,37 @@ class ExamCorrectionController extends ApiController
     }
 
     /**
-     * Trigger AI correction for all student answers in an exam.
+     * Trigger AI correction for student answers in an exam.
      */
     public function aiCorrect(Request $request, Exam $exam)
     {
         $provider = $request->input('provider', 'gemini');
+        $examQuestionId = $request->input('exam_question_id');
+        $examSessionId = $request->input('exam_session_id');
         $userId = Auth::id();
 
         if (!in_array($provider, ['gemini', 'openrouter'])) {
             return $this->error('Invalid provider. Supported providers are: gemini, openrouter', 422);
         }
 
-        $resultDetails = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
+        $query = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
             $query->where('exam_id', $exam->id);
         })->whereHas('examQuestion', function ($query) {
-            $query->whereIn('question_type', [
-                // QuestionTypeEnum::SHORT_ANSWER->value,
-                QuestionTypeEnum::ESSAY->value,
-                QuestionTypeEnum::ARABIC_RESPONSE->value,
-                QuestionTypeEnum::JAVANESE_RESPONSE->value,
-            ]);
-        })->get();
+            $query->where('question_type', QuestionTypeEnum::ESSAY->value);
+        });
+
+        if ($examQuestionId) {
+            $query->where('exam_question_id', $examQuestionId);
+        }
+
+        if ($examSessionId) {
+            $query->where('exam_session_id', $examSessionId);
+        }
+
+        $resultDetails = $query->get();
 
         if ($resultDetails->isEmpty()) {
-            return $this->error('No essay or open-ended questions found for this exam.', 404);
+            return $this->error('No essay questions found for this selection.', 404);
         }
 
         // Group by question to initialize tracking
@@ -618,7 +625,7 @@ class ExamCorrectionController extends ApiController
                 ['exam_id' => $exam->id, 'exam_question_id' => $questionId],
                 [
                     'status' => CorrectionStatusEnum::PROCESSING,
-                    'total_to_correct' => $details->count(),
+                    'total_to_correct' => $details->count(), // This might need logic if we want to add to existing total
                     'corrected_count' => 0,
                 ]
             );
@@ -656,6 +663,7 @@ class ExamCorrectionController extends ApiController
             'batch_id' => $batch->id,
             'total_jobs' => $batch->totalJobs,
             'pending_jobs' => $batch->pendingJobs,
+            'correction_statuses' => ExamQuestionCorrection::where('exam_id', $exam->id)->get()
         ], "AI correction jobs for '{$exam->title}' have been dispatched.");
     }
 }

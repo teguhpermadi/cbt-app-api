@@ -7,6 +7,7 @@ use App\Models\ExamSession;
 use App\Models\ExamResult;
 use App\Models\ExamQuestionCorrection;
 use App\Enums\CorrectionStatusEnum;
+use App\Events\AiScoreUpdated;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Schema\ObjectSchema;
@@ -85,8 +86,7 @@ class CorrectExamQuestionOpenRouterJob implements ShouldQueue
             // Using openrouter/free as requested by user via OpenRouter
             $response = Prism::structured()
                 ->using(Provider::OpenRouter, 'openrouter/free')
-                ->usingStructuredMode(StructuredMode::Json)
-                ->withSystemPrompt("Kamu adalah asisten guru pakar. Kamu HARUS merespon HANYA dalam format JSON yang valid sesuai skema yang diberikan. Jangan sertakan teks penjelasan lain diluar JSON.")
+                ->withSystemPrompt("Kamu adalah asisten guru pakar. Kamu HARUS merespon HANYA dalam format JSON yang valid sesuai skema yang diberikan.")
                 ->withPrompt("Koreksi jawaban siswa berikut:
                 
                 Soal: {$question->content}
@@ -120,44 +120,65 @@ class CorrectExamQuestionOpenRouterJob implements ShouldQueue
             }
 
             DB::transaction(function () use ($detail, $aiScore, $aiNotes, $maxScore, $session, $studentName, $question, $studentAnswer) {
-                $detail->update([
-                    'score_earned' => $aiScore,
-                    'is_correct' => ($aiScore >= ($maxScore / 2)),
-                    'correction_notes' => $aiNotes,
-                ]);
+                try {
+                    Log::debug("Transaction Start - Detail ID: {$detail->id}, Session ID: {$session->id}");
 
-                $this->updateQuestionCorrectionProgress($question->exam_id, $question->id);
+                    $detail->update([
+                        'score_earned' => $aiScore,
+                        'is_correct' => ($aiScore > 0),
+                        'correction_notes' => $aiNotes,
+                    ]);
 
-                $this->updateSessionTotals($session);
+                    $this->updateQuestionCorrectionProgress($question->exam_id, $question->id);
+                    $this->updateSessionTotals($session);
 
-                Log::info("OpenRouter Correction Success", [
-                    'student_name' => $studentName,
-                    'model' => 'openrouter/free',
-                    'question' => strip_tags($question->content),
-                    'student_answer' => $studentAnswer,
-                    'max_score' => $maxScore,
-                    'earned_score' => $aiScore,
-                    'notes' => $aiNotes,
-                ]);
+                    Log::info("OpenRouter Correction Success", [
+                        'student_name' => $studentName,
+                        'model' => 'openrouter/free',
+                        'question' => strip_tags($question->content),
+                        'earned_score' => $aiScore,
+                    ]);
+
+                } catch (\Throwable $transactionError) {
+                    Log::error("Transaction Error during AI Correction for Detail ID: {$detail->id}. Class: " . get_class($transactionError) . ". Error: " . $transactionError->getMessage());
+                    throw $transactionError;
+                }
             });
-        } catch (\Exception $e) {
+
+            Log::debug("Transaction committed for Detail ID: {$detail->id}");
+
+            // Dispatch event for real-time frontend update OUTSIDE the transaction
+            try {
+                if (!empty($session->exam_id) && !empty($detail->id)) {
+                    AiScoreUpdated::dispatch((string)$session->exam_id, (string)$detail->id);
+                    Log::debug("AiScoreUpdated dispatched.");
+                } else {
+                    Log::warning("Skipping AiScoreUpdated dispatch due to missing IDs.");
+                }
+            } catch (\Throwable $broadcastError) {
+                Log::warning("AiScoreUpdated broadcast failed but score was saved. Error: " . $broadcastError->getMessage());
+            }
+
+        } catch (\Throwable $e) {
             if (str_contains($e->getMessage(), 'rate limit') || str_contains($e->getMessage(), 'timed out') || str_contains($e->getMessage(), 'cURL error 28')) {
                 $this->release(30);
                 return;
             }
-            Log::error("OpenRouter Correction failed for Detail ID: {$detail->id}. Error: " . $e->getMessage());
+            Log::error("OpenRouter Correction FAILED for Detail ID: {$detail->id}. Error: " . $e->getMessage());
             throw $e;
         }
     }
 
     protected function updateSessionTotals(ExamSession $session)
     {
-        $session->load('examResultDetails.examQuestion');
+        // Use direct DB queries to avoid stale collection data
+        $totalEarnedScore = ExamResultDetail::where('exam_session_id', $session->id)->sum('score_earned');
+        
+        $totalMaxScore = ExamResultDetail::join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')
+            ->where('exam_result_details.exam_session_id', $session->id)
+            ->sum('exam_questions.score_value');
 
-        $totalEarnedScore = $session->examResultDetails->sum('score_earned');
-        $totalMaxScore = $session->examResultDetails->sum(function ($d) {
-            return $d->examQuestion->score_value ?? 0;
-        });
+        Log::debug("Recalculated Totals - Session ID: {$session->id}, Total Earned: {$totalEarnedScore}, Total Max: {$totalMaxScore}");
 
         $session->update([
             'total_score' => $totalEarnedScore,
