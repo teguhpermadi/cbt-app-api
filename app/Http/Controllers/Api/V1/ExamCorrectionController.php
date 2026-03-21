@@ -38,6 +38,11 @@ class ExamCorrectionController extends ApiController
             ->orderBy('question_number', 'asc')
             ->get();
 
+        // Ensure correction statuses are up to date for all questions
+        foreach ($questions as $question) {
+            $this->syncQuestionCorrectionProgress($exam, $question);
+        }
+
         $correctionStatuses = ExamQuestionCorrection::query()
             ->where('exam_id', $exam->id)
             ->get();
@@ -159,6 +164,9 @@ class ExamCorrectionController extends ApiController
             'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
         ]);
 
+        // Sync progress
+        $this->syncQuestionCorrectionProgress($examSession->exam, $examResultDetail->examQuestion);
+
         return $this->success(
             new ExamCorrectionResource($examResultDetail),
             'Correction updated successfully'
@@ -253,7 +261,7 @@ class ExamCorrectionController extends ApiController
 
         $updatedCount = 0;
 
-        DB::transaction(function () use ($validated, &$updatedCount) {
+        DB::transaction(function () use ($validated, $exam, &$updatedCount) {
             foreach ($validated['updates'] as $updateData) {
                 $detail = ExamResultDetail::with('examQuestion')->find($updateData['id']);
 
@@ -279,11 +287,67 @@ class ExamCorrectionController extends ApiController
                     'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
                 ]);
 
+                // Sync progress for this question
+                $this->syncQuestionCorrectionProgress($exam, $detail->examQuestion);
+
                 $updatedCount++;
             }
         });
 
         return $this->success(null, "Successfully updated {$updatedCount} answers.");
+    }
+
+    /**
+     * Sync correction progress for a specific question.
+     */
+    public function syncQuestionCorrectionProgress(Exam $exam, ExamQuestion $question)
+    {
+        // For non-essay/short-answer questions, they are usually auto-corrected
+        // But we might want to track them anyway.
+        
+        $totalToCorrect = ExamResultDetail::where('exam_question_id', $question->id)
+            ->whereHas('examSession', function($q) {
+                $q->where('is_finished', true);
+            })
+            ->count();
+
+        if ($totalToCorrect === 0) return null;
+
+        $correctedCount = ExamResultDetail::where('exam_question_id', $question->id)
+            ->whereHas('examSession', function($q) {
+                $q->where('is_finished', true);
+            })
+            ->whereNotNull('score_earned')
+            ->count();
+
+        $status = CorrectionStatusEnum::PENDING;
+        if ($correctedCount >= $totalToCorrect) {
+            $status = CorrectionStatusEnum::COMPLETED;
+        }
+
+        // Check if there's an existing record (perhaps marked as processing by AI)
+        $correction = ExamQuestionCorrection::where('exam_id', $exam->id)
+            ->where('exam_question_id', $question->id)
+            ->first();
+
+        if ($correction && $correction->status === CorrectionStatusEnum::PROCESSING) {
+            // Keep processing status if AI is currently working, but update counts
+            $correction->update([
+                'total_to_correct' => $totalToCorrect,
+                'corrected_count' => $correctedCount,
+            ]);
+        } else {
+            $correction = ExamQuestionCorrection::updateOrCreate(
+                ['exam_id' => $exam->id, 'exam_question_id' => $question->id],
+                [
+                    'status' => $status,
+                    'total_to_correct' => $totalToCorrect,
+                    'corrected_count' => $correctedCount,
+                ]
+            );
+        }
+
+        return $correction;
     }
 
     /**

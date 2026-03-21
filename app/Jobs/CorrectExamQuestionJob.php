@@ -186,11 +186,20 @@ class CorrectExamQuestionJob implements ShouldQueue
             ->first();
 
         if ($correction) {
-            $correction->increment('corrected_count');
+            $correctedCount = ExamResultDetail::where('exam_question_id', $questionId)
+                ->whereHas('examSession', function($q) {
+                    $q->where('is_finished', true);
+                })
+                ->whereNotNull('score_earned')
+                ->count();
 
-            if ($correction->corrected_count >= $correction->total_to_correct) {
-                $correction->update(['status' => CorrectionStatusEnum::COMPLETED]);
+            $updateData = ['corrected_count' => $correctedCount];
+
+            if ($correctedCount >= $correction->total_to_correct) {
+                $updateData['status'] = CorrectionStatusEnum::COMPLETED;
             }
+
+            $correction->update($updateData);
         }
     }
 }
