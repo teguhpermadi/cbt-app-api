@@ -28,6 +28,21 @@ describe('Subject Management', function () {
             ->assertJsonCount(3, 'data.data');
     });
 
+    it('can only list own subjects for teacher', function () {
+        $teacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+        $otherTeacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+
+        Subject::factory()->count(2)->create(['user_id' => $teacher->id]);
+        Subject::factory()->count(3)->create(['user_id' => $otherTeacher->id]);
+
+        $this->actingAs($teacher, 'sanctum');
+
+        $response = $this->getJson('/api/v1/subjects');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    });
+
     it('can show a subject', function () {
         $subject = Subject::factory()->create();
 
