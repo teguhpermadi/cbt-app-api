@@ -11,10 +11,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use romanzipp\QueueMonitor\Traits\IsMonitored;
 
 class CalculateExamScoreJob implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, IsMonitored;
 
     private $session;
     private $questionTypes; // Changed from singular to plural conceptual usage, but can be array
