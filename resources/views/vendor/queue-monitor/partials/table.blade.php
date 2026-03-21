@@ -80,7 +80,7 @@
                         <div class="w-32">
 
                             <div class="flex items-stretch h-3 rounded-full bg-gray-300 overflow-hidden">
-                                <div class="h-full bg-green-500" style="width: {{ $job->progress }}%"></div>
+                                <div class="h-full bg-green-500" @style(['width' => ($job->progress ?? 0) . '%'])></div>
                             </div>
 
                             <div class="flex justify-center mt-1 text-xs text-gray-800 dark:text-gray-300 font-semibold">
