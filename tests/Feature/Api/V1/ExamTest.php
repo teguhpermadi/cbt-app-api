@@ -32,6 +32,21 @@ describe('Exam Management', function () {
             ->assertJsonCount(3, 'data.data');
     });
 
+    it('can only list own exams for teacher', function () {
+        $teacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+        $otherTeacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+
+        Exam::factory()->count(2)->create(['user_id' => $teacher->id]);
+        Exam::factory()->count(3)->create(['user_id' => $otherTeacher->id]);
+
+        $this->actingAs($teacher, 'sanctum');
+
+        $response = $this->getJson('/api/v1/exams');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    });
+
     it('can show an exam', function () {
         $exam = Exam::factory()->create();
 
