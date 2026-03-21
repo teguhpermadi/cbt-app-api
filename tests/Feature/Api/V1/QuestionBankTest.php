@@ -36,6 +36,27 @@ describe('Question Bank Management', function () {
             ]);
     });
 
+    it('can only list own question banks for teacher', function () {
+        $teacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+        $otherTeacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+
+        QuestionBank::factory()->count(2)->create([
+            'subject_id' => $this->subject->id,
+            'user_id' => $teacher->id,
+        ]);
+        QuestionBank::factory()->count(3)->create([
+            'subject_id' => $this->subject->id,
+            'user_id' => $otherTeacher->id,
+        ]);
+
+        $this->actingAs($teacher, 'sanctum');
+
+        $response = $this->getJson('/api/v1/question-banks');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    });
+
     it('can show a question bank', function () {
         $bank = QuestionBank::factory()->create([
             'subject_id' => $this->subject->id,
