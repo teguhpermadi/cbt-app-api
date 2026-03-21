@@ -121,4 +121,20 @@ class Exam extends Model
 
         return $query;
     }
+
+    /**
+     * Scope a query to only include exams available to the student based on their classroom.
+     */
+    public function scopeForStudent($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+
+        if (! $user) {
+            return $query;
+        }
+
+        return $query->whereHas('classrooms.students', function ($q) use ($user) {
+            $q->where('users.id', $user->id);
+        });
+    }
 }
