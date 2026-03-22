@@ -42,6 +42,11 @@ class Subject extends Model
         return $this->belongsTo(Classroom::class);
     }
 
+    public function learningPaths()
+    {
+        return $this->hasMany(LearningPath::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
