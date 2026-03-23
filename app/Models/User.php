@@ -115,6 +115,24 @@ final class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(QuestionSuggestion::class);
     }
 
+    public function gamificationStats()
+    {
+        return $this->hasOne(UserGamificationStats::class);
+    }
+
+    public function learningProgress()
+    {
+        return $this->hasMany(UserLearningProgress::class);
+    }
+
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+            ->using(UserBadge::class)
+            ->withPivot('awarded_at')
+            ->withTimestamps();
+    }
+
     public function isAdmin(): bool
     {
         return $this->user_type === UserTypeEnum::ADMIN;

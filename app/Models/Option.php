@@ -49,25 +49,52 @@ class Option extends Model implements HasMedia
      */
     public function applyMojibakeConversion(bool $dry = false, bool $verbose = false, $output = null): bool
     {
-        $orig = $this->content ?? '';
-        $fixed = self::fixMojibakeStatic($orig);
-        $wrapped = self::wrapLanguageTagsStatic($fixed);
+        $origContent = $this->content ?? '';
+        $fixedContent = self::fixMojibakeStatic($origContent);
+        $wrappedContent = self::wrapLanguageTagsStatic($fixedContent);
 
-        if ($wrapped === $orig) {
+        $origMetadata = $this->metadata ?? [];
+        $fixedMetadata = $this->fixMojibakeInMetadata($origMetadata);
+
+        $changed = false;
+        if ($wrappedContent !== $origContent) {
+            if (!$dry) $this->content = $wrappedContent;
+            $changed = true;
+        }
+
+        if ($fixedMetadata !== $origMetadata) {
+            if (!$dry) $this->metadata = $fixedMetadata;
+            $changed = true;
+        }
+
+        if (!$changed) {
             return false;
         }
 
         if ($verbose && $output) {
-            $output->line("Option {$this->id}: before => " . substr($orig, 0, 200));
-            $output->line("Option {$this->id}: after  => " . substr($wrapped, 0, 200));
+            $output->line("Option {$this->id}: content/metadata updated");
         }
 
         if (!$dry) {
-            $this->content = $wrapped;
             $this->save();
         }
 
         return true;
+    }
+
+    /**
+     * Recursively fix mojibake in metadata array.
+     */
+    protected function fixMojibakeInMetadata(array $metadata): array
+    {
+        foreach ($metadata as $key => $value) {
+            if (is_array($value)) {
+                $metadata[$key] = $this->fixMojibakeInMetadata($value);
+            } elseif (is_string($value)) {
+                $metadata[$key] = self::fixMojibakeStatic($value);
+            }
+        }
+        return $metadata;
     }
 
     /**

@@ -17,6 +17,7 @@ class ExamCorrectionResource extends JsonResource
         return [
             'id' => $this->id,
             'exam_session_id' => $this->exam_session_id,
+            'exam_question_id' => $this->exam_question_id,
             'question_number' => $this->question_number,
             'question_type' => $this->examQuestion->question_type,
             'question_content' => $this->examQuestion->content,

@@ -106,4 +106,35 @@ class Exam extends Model
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => "Exam has been {$eventName}");
     }
+
+    /**
+     * Scope a query to only include exams belonging to the authenticated user,
+     * unless the user is an admin, in which case all exams are included.
+     */
+    public function scopeForUser($query)
+    {
+        $user = auth()->user();
+
+        if ($user && ! $user->isAdmin()) {
+            return $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope a query to only include exams available to the student based on their classroom.
+     */
+    public function scopeForStudent($query, $user = null)
+    {
+        $user = $user ?: auth()->user();
+
+        if (! $user) {
+            return $query;
+        }
+
+        return $query->whereHas('classrooms.students', function ($q) use ($user) {
+            $q->where('users.id', $user->id);
+        });
+    }
 }

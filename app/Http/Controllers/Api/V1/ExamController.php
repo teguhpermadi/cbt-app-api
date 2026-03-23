@@ -32,6 +32,7 @@ final class ExamController extends ApiController
         $academicYearId = $request->input('academic_year_id');
 
         $exams = Exam::query()
+            ->forUser()
             ->with(['academicYear', 'subject', 'questionBank', 'user'])
             ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->when($search, function ($query) use ($search) {

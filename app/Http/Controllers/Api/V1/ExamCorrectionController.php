@@ -13,6 +13,13 @@ use Illuminate\Support\Str;
 use App\Enums\UserTypeEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Models\ExamQuestionCorrection;
+use App\Enums\CorrectionStatusEnum;
+use App\Enums\QuestionTypeEnum;
+use App\Events\AiCorrectionFinished;
+use App\Notifications\AiCorrectionFinishedNotification;
+use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 
 class ExamCorrectionController extends ApiController
 {
@@ -31,10 +38,20 @@ class ExamCorrectionController extends ApiController
             ->orderBy('question_number', 'asc')
             ->get();
 
+        // Ensure correction statuses are up to date for all questions
+        foreach ($questions as $question) {
+            $this->syncQuestionCorrectionProgress($exam, $question);
+        }
+
+        $correctionStatuses = ExamQuestionCorrection::query()
+            ->where('exam_id', $exam->id)
+            ->get();
+
         return $this->success([
             'exam' => $exam,
             'sessions' => \App\Http\Resources\Student\ExamSessionResource::collection($sessions),
-            'questions' => $questions
+            'questions' => $questions,
+            'correction_statuses' => $correctionStatuses
         ]);
     }
 
@@ -147,9 +164,84 @@ class ExamCorrectionController extends ApiController
             'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
         ]);
 
+        // Sync progress
+        $this->syncQuestionCorrectionProgress($examSession->exam, $examResultDetail->examQuestion);
+
         return $this->success(
             new ExamCorrectionResource($examResultDetail),
             'Correction updated successfully'
+        );
+    }
+
+    /**
+     * Update the student's answer for a specific question.
+     */
+    public function updateAnswer(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        // Ensure detail belongs to session
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        $validated = $request->validate([
+            'student_answer' => 'required', // can be string or array/json
+        ]);
+
+        $examResultDetail->update([
+            'student_answer' => $validated['student_answer'],
+            'answered_at' => now(), // update timestamp as if student answered it
+        ]);
+
+        return $this->success(
+            new ExamCorrectionResource($examResultDetail),
+            'Student answer updated successfully'
+        );
+    }
+
+    /**
+     * Reopen a finished exam session based on a detail ID.
+     */
+    public function reopenByDetail(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        // Ensure detail belongs to session
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        if (!$examSession->is_finished) {
+            return $this->error('Session is already active.', 400);
+        }
+
+        $request->validate([
+            'minutes' => 'nullable|integer|min:0',
+        ]);
+
+        // Smart Reopen Logic (from ExamController)
+        $now = now();
+        $startTime = \Carbon\Carbon::parse($examSession->start_time);
+        $minutesSinceStart = $now->diffInMinutes($startTime);
+        $requestedMinutes = $request->minutes ?? 15; // Default to 15 mins if not provided
+        $exam = $examSession->exam;
+        $neededExtraTime = ($minutesSinceStart + $requestedMinutes) - $exam->duration;
+
+        $newExtraTime = max($examSession->extra_time ?? 0, (int) $neededExtraTime);
+
+        $examSession->update([
+            'is_finished' => false,
+            'finish_time' => null,
+            'extra_time' => $newExtraTime,
+        ]);
+
+        // Dispatch TimerSynchronized event
+        $remainingSeconds = $examSession->getRemainingSeconds();
+        event(new \App\Events\TimerSynchronized($exam->id, $examSession->user_id, $remainingSeconds));
+
+        // Dispatch LiveScoreUpdated event
+        event(new \App\Events\LiveScoreUpdated($exam->id, $examSession->getBroadcastData()));
+
+        return $this->success(
+            new \App\Http\Resources\Student\ExamSessionResource($examSession),
+            'Exam session reopened successfully.'
         );
     }
 
@@ -169,7 +261,7 @@ class ExamCorrectionController extends ApiController
 
         $updatedCount = 0;
 
-        DB::transaction(function () use ($validated, &$updatedCount) {
+        DB::transaction(function () use ($validated, $exam, &$updatedCount) {
             foreach ($validated['updates'] as $updateData) {
                 $detail = ExamResultDetail::with('examQuestion')->find($updateData['id']);
 
@@ -195,11 +287,67 @@ class ExamCorrectionController extends ApiController
                     'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
                 ]);
 
+                // Sync progress for this question
+                $this->syncQuestionCorrectionProgress($exam, $detail->examQuestion);
+
                 $updatedCount++;
             }
         });
 
         return $this->success(null, "Successfully updated {$updatedCount} answers.");
+    }
+
+    /**
+     * Sync correction progress for a specific question.
+     */
+    public function syncQuestionCorrectionProgress(Exam $exam, ExamQuestion $question)
+    {
+        // For non-essay/short-answer questions, they are usually auto-corrected
+        // But we might want to track them anyway.
+        
+        $totalToCorrect = ExamResultDetail::where('exam_question_id', $question->id)
+            ->whereHas('examSession', function($q) {
+                $q->where('is_finished', true);
+            })
+            ->count();
+
+        if ($totalToCorrect === 0) return null;
+
+        $correctedCount = ExamResultDetail::where('exam_question_id', $question->id)
+            ->whereHas('examSession', function($q) {
+                $q->where('is_finished', true);
+            })
+            ->whereNotNull('score_earned')
+            ->count();
+
+        $status = CorrectionStatusEnum::PENDING;
+        if ($correctedCount >= $totalToCorrect) {
+            $status = CorrectionStatusEnum::COMPLETED;
+        }
+
+        // Check if there's an existing record (perhaps marked as processing by AI)
+        $correction = ExamQuestionCorrection::where('exam_id', $exam->id)
+            ->where('exam_question_id', $question->id)
+            ->first();
+
+        if ($correction && $correction->status === CorrectionStatusEnum::PROCESSING) {
+            // Keep processing status if AI is currently working, but update counts
+            $correction->update([
+                'total_to_correct' => $totalToCorrect,
+                'corrected_count' => $correctedCount,
+            ]);
+        } else {
+            $correction = ExamQuestionCorrection::updateOrCreate(
+                ['exam_id' => $exam->id, 'exam_question_id' => $question->id],
+                [
+                    'status' => $status,
+                    'total_to_correct' => $totalToCorrect,
+                    'corrected_count' => $correctedCount,
+                ]
+            );
+        }
+
+        return $correction;
     }
 
     /**
@@ -498,5 +646,96 @@ class ExamCorrectionController extends ApiController
         });
 
         return $this->success(null, 'Exam session deleted successfully.');
+    }
+
+    /**
+     * Trigger AI correction for student answers in an exam.
+     */
+    public function aiCorrect(Request $request, Exam $exam)
+    {
+        $provider = $request->input('provider', 'gemini');
+        $examQuestionId = $request->input('exam_question_id');
+        $examSessionId = $request->input('exam_session_id');
+        $userId = Auth::id();
+
+        if (!in_array($provider, ['gemini', 'openrouter'])) {
+            return $this->error('Invalid provider. Supported providers are: gemini, openrouter', 422);
+        }
+
+        $query = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
+            $query->where('exam_id', $exam->id);
+        })->whereHas('examQuestion', function ($query) {
+            $query->where('question_type', QuestionTypeEnum::ESSAY->value);
+        });
+
+        if ($examQuestionId) {
+            $query->where('exam_question_id', $examQuestionId);
+        }
+
+        if ($examSessionId) {
+            $query->where('exam_session_id', $examSessionId);
+        }
+
+        $resultDetails = $query->get();
+
+        if ($resultDetails->isEmpty()) {
+            $msg = 'No essay questions found for this selection.';
+            if ($examQuestionId && $examSessionId) {
+                $msg = 'Student answer for this essay question not found.';
+            } elseif ($examQuestionId) {
+                $msg = 'No student answers found for this essay question.';
+            } elseif ($examSessionId) {
+                $msg = 'This student has no essay answers to correct.';
+            }
+            return $this->error($msg, 404);
+        }
+
+        // Group by question to initialize tracking
+        $questionsToTrack = $resultDetails->groupBy('exam_question_id');
+        foreach ($questionsToTrack as $questionId => $details) {
+            ExamQuestionCorrection::updateOrCreate(
+                ['exam_id' => $exam->id, 'exam_question_id' => $questionId],
+                [
+                    'status' => CorrectionStatusEnum::PROCESSING,
+                    'total_to_correct' => $details->count(), // This might need logic if we want to add to existing total
+                    'corrected_count' => 0,
+                ]
+            );
+        }
+
+        $jobs = [];
+        foreach ($resultDetails as $detail) {
+            if ($provider === 'openrouter') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail);
+            } else {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail);
+            }
+        }
+
+        $batchName = "AI Correction: {$exam->title}";
+        $batch = Bus::batch($jobs)
+            ->then(function (\Illuminate\Bus\Batch $batch) use ($exam, $userId) {
+                if ($userId) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
+                        
+                        // Database Notification
+                        $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
+                        
+                        // Real-time Event
+                        event(new AiCorrectionFinished($exam->id, (string) $userId, $message));
+                    }
+                }
+            })
+            ->name($batchName)
+            ->dispatch();
+
+        return $this->success([
+            'batch_id' => $batch->id,
+            'total_jobs' => $batch->totalJobs,
+            'pending_jobs' => $batch->pendingJobs,
+            'correction_statuses' => ExamQuestionCorrection::where('exam_id', $exam->id)->get()
+        ], "AI correction jobs for '{$exam->title}' have been dispatched.");
     }
 }

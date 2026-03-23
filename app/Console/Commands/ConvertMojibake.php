@@ -4,8 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Question;
 use App\Models\Option;
+use App\Models\ExamQuestion;
+use App\Models\ReadingMaterial;
+use App\Models\ExamReadingMaterial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ConvertMojibake extends Command
 {
@@ -81,19 +85,30 @@ class ConvertMojibake extends Command
 
         Question::chunk(100, function ($questions) use (&$qChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
             foreach ($questions as $q) {
-                $orig = $q->content ?? '';
-                $fixed = $fixMojibake($orig);
-                $wrapped = $wrapLanguageTags($fixed);
+                $contentOrig = $q->content ?? '';
+                $contentFixed = $fixMojibake($contentOrig);
+                $contentWrapped = $wrapLanguageTags($contentFixed);
 
-                if ($wrapped !== $orig) {
+                $hintOrig = $q->hint ?? '';
+                $hintFixed = $fixMojibake($hintOrig);
+
+                $changed = false;
+                if ($contentWrapped !== $contentOrig) {
+                    if (!$dry) $q->content = $contentWrapped;
+                    $changed = true;
+                }
+                if ($hintFixed !== $hintOrig) {
+                    if (!$dry) $q->hint = $hintFixed;
+                    $changed = true;
+                }
+
+                if ($changed) {
                     Log::info('convert:mojibake - question updated', ['id' => $q->id]);
                     $qChanged++;
                     if ($verbose && $output) {
-                        $output->line("Question {$q->id}: before => " . substr($orig, 0, 200));
-                        $output->line("Question {$q->id}: after  => " . substr($wrapped, 0, 200));
+                        $output->line("Question {$q->id}: content updated" . ($contentWrapped !== $contentOrig ? " (content changed)" : "") . ($hintFixed !== $hintOrig ? " (hint changed)" : ""));
                     }
                     if (!$dry) {
-                        $q->content = $wrapped;
                         $q->save();
                     }
                 }
@@ -115,25 +130,74 @@ class ConvertMojibake extends Command
             }
         });
 
-        // Also scan ExamQuestion model for stored snapshots - use model helper
-        if (class_exists('\App\\Models\\ExamQuestion')) {
-            \App\Models\ExamQuestion::chunk(200, function ($items) use (&$eqChanged, $dry, $output, $verbose) {
+        // Also scan ExamQuestion model for stored snapshots
+        ExamQuestion::chunk(200, function ($items) use (&$eqChanged, $dry, $output, $verbose) {
+            foreach ($items as $item) {
+                try {
+                    $changed = $item->applyMojibakeConversion($dry, $verbose, $output);
+                    if ($changed) {
+                        Log::info('convert:mojibake - examquestion updated', ['id' => $item->id]);
+                        $eqChanged++;
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('convert:mojibake - examquestion conversion failed', ['id' => $item->id, 'error' => $e->getMessage()]);
+                }
+            }
+        });
+
+        $rmChanged = 0;
+        $ermChanged = 0;
+
+        // ReadingMaterial
+        if (Schema::hasTable('reading_materials')) {
+            ReadingMaterial::chunk(100, function ($items) use (&$rmChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
                 foreach ($items as $item) {
-                    try {
-                        $changed = $item->applyMojibakeConversion($dry, $verbose, $output);
-                        if ($changed) {
-                            Log::info('convert:mojibake - examquestion updated', ['id' => $item->id]);
-                            $eqChanged++;
+                    $changed = false;
+                    $fields = ['title', 'content'];
+                    foreach ($fields as $field) {
+                        $orig = $item->$field ?? '';
+                        $fixed = $fixMojibake($orig);
+                        $wrapped = ($field === 'content') ? $wrapLanguageTags($fixed) : $fixed;
+                        if ($wrapped !== $orig) {
+                            if (!$dry) $item->$field = $wrapped;
+                            $changed = true;
                         }
-                    } catch (\Throwable $e) {
-                        Log::warning('convert:mojibake - examquestion conversion failed', ['id' => $item->id, 'error' => $e->getMessage()]);
+                    }
+                    if ($changed) {
+                        $rmChanged++;
+                        if (!$dry) $item->save();
+                        if ($verbose && $output) $output->line("ReadingMaterial {$item->id} updated");
+                    }
+                }
+            });
+        }
+
+        // ExamReadingMaterial
+        if (Schema::hasTable('exam_reading_materials')) {
+            ExamReadingMaterial::chunk(100, function ($items) use (&$ermChanged, $dry, $fixMojibake, $wrapLanguageTags, $output, $verbose) {
+                foreach ($items as $item) {
+                    $changed = false;
+                    $fields = ['title', 'content'];
+                    foreach ($fields as $field) {
+                        $orig = $item->$field ?? '';
+                        $fixed = $fixMojibake($orig);
+                        $wrapped = ($field === 'content') ? $wrapLanguageTags($fixed) : $fixed;
+                        if ($wrapped !== $orig) {
+                            if (!$dry) $item->$field = $wrapped;
+                            $changed = true;
+                        }
+                    }
+                    if ($changed) {
+                        $ermChanged++;
+                        if (!$dry) $item->save();
+                        if ($verbose && $output) $output->line("ExamReadingMaterial {$item->id} updated");
                     }
                 }
             });
         }
 
         if ($output) {
-            $output->info("Done. Questions changed: {$qChanged}. Options changed: {$oChanged}. ExamQuestions changed: {$eqChanged}.");
+            $output->info("Done. Q: {$qChanged}, O: {$oChanged}, EQ: {$eqChanged}, RM: {$rmChanged}, ERM: {$ermChanged}.");
         }
     }
 }

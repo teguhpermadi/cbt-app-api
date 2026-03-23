@@ -93,20 +93,15 @@ class ExamQuestion extends Model
 
         $wrapLanguageTags = function (string $text): string {
             if ($text === '') return $text;
-            /*
-            if (strpos($text, '[ara]') === false) {
-                $arabicPattern = '/([\p{Arabic}\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]+)/u';
-                if (preg_match_all($arabicPattern, $text, $m) && count($m[0]) > 0) {
-                    $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
-                }
-            }
+
+            // Javanese [jav] tagging
+            $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
             if (strpos($text, '[jav]') === false) {
-                $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
                 if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
                     $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
                 }
             }
-            */
+
             return $text;
         };
 
@@ -116,13 +111,15 @@ class ExamQuestion extends Model
         $wrappedContent = $wrapLanguageTags($fixedContent);
         if ($wrappedContent !== $origContent) {
             $changed = true;
-            if ($verbose && $output) {
-                $output->line("ExamQuestion {$this->id} content before => " . substr($origContent, 0, 200));
-                $output->line("ExamQuestion {$this->id} content after  => " . substr($wrappedContent, 0, 200));
-            }
-            if (!$dry) {
-                $this->content = $wrappedContent;
-            }
+            if (!$dry) $this->content = $wrappedContent;
+        }
+
+        // Process hint
+        $origHint = $this->hint ?? '';
+        $fixedHint = $fixMojibake($origHint);
+        if ($fixedHint !== $origHint) {
+            $changed = true;
+            if (!$dry) $this->hint = $fixedHint;
         }
 
         // Process options array (recursive)
@@ -130,15 +127,19 @@ class ExamQuestion extends Model
         $convertedOptions = $this->convertArrayStrings($origOptions, $fixMojibake, $wrapLanguageTags);
         if ($convertedOptions !== $origOptions) {
             $changed = true;
-            if ($verbose && $output) {
-                $output->line("ExamQuestion {$this->id} options changed (showing json snippet)");
-                $output->line(substr(json_encode(array_slice($origOptions, 0, 5), JSON_UNESCAPED_UNICODE), 0, 400));
-                $output->line('->');
-                $output->line(substr(json_encode(array_slice($convertedOptions, 0, 5), JSON_UNESCAPED_UNICODE), 0, 400));
-            }
-            if (!$dry) {
-                $this->options = $convertedOptions;
-            }
+            if (!$dry) $this->options = $convertedOptions;
+        }
+
+        // Process key_answer array (recursive)
+        $origKey = $this->key_answer ?? [];
+        $convertedKey = $this->convertArrayStrings($origKey, $fixMojibake, $wrapLanguageTags);
+        if ($convertedKey !== $origKey) {
+            $changed = true;
+            if (!$dry) $this->key_answer = $convertedKey;
+        }
+
+        if ($changed && $verbose && $output) {
+            $output->line("ExamQuestion {$this->id}: content/hint/options/key_answer updated");
         }
 
         if ($changed && !$dry) {

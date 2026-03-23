@@ -24,6 +24,7 @@ final class QuestionBankController extends ApiController
         $order = $request->string('order', 'desc');
 
         $questionBanks = QuestionBank::query()
+            ->forUser()
             ->with(['user', 'subject'])
             ->withCount('questions')
             ->when($search, function ($query) use ($search) {

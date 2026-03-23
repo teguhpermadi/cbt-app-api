@@ -28,6 +28,7 @@ final class SubjectController extends ApiController
         $order = $request->string('order', 'desc');
 
         $subjects = Subject::query()
+            ->forUser()
             ->with(['user', 'academicYear', 'classroom'])
             ->when($academicYearId, fn($query) => $query->where('academic_year_id', $academicYearId))
             ->when($search, function ($query) use ($search) {

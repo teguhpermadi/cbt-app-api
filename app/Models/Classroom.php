@@ -79,6 +79,11 @@ class Classroom extends Model
         return $this->belongsToMany(Exam::class);
     }
 
+    public function learningPaths()
+    {
+        return $this->hasMany(LearningPath::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

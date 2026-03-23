@@ -201,9 +201,12 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::get('{exam}/item-analysis', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'itemAnalysis'])->name('api.v1.exams.correction.item-analysis');
         Route::post('{exam}/bulk-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'bulkUpdate'])->name('api.v1.exams.correction.bulk-update');
         Route::post('{exam}/recalculate-all', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculateAll'])->name('api.v1.exams.correction.recalculate-all');
+        Route::post('{exam}/ai-correct', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'aiCorrect'])->name('api.v1.exams.correction.ai-correct');
         Route::delete('{exam}/sessions/{examSession}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'destroy'])->name('api.v1.exams.correction.destroy');
     });
     Route::put('sessions/{examSession}/details/{examResultDetail}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
+    Route::put('sessions/{examSession}/details/{examResultDetail}/answer', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'updateAnswer'])->name('api.v1.exams.correction.update-answer');
+    Route::post('sessions/{examSession}/details/{examResultDetail}/reopen', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'reopenByDetail'])->name('api.v1.exams.correction.reopen-by-detail');
     Route::post('sessions/{examSession}/finish-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
     Route::post('sessions/{examSession}/recalculate', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculate'])->name('api.v1.exams.correction.recalculate');
 
