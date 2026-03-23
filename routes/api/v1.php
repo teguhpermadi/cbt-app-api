@@ -3,18 +3,19 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AcademicYearController;
+use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClassroomController;
+use App\Http\Controllers\Api\V1\CurriculumController;
+use App\Http\Controllers\Api\V1\ExamController;
+use App\Http\Controllers\Api\V1\ExamQuestionController;
+use App\Http\Controllers\Api\V1\OptionController;
+use App\Http\Controllers\Api\V1\QuestionBankController;
+use App\Http\Controllers\Api\V1\QuestionController;
+use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TeacherController;
-use App\Http\Controllers\Api\V1\QuestionController;
-use App\Http\Controllers\Api\V1\OptionController;
-use App\Http\Controllers\Api\V1\QuestionBankController;
-use App\Http\Controllers\Api\V1\ReadingMaterialController;
-use App\Http\Controllers\Api\V1\ExamController;
-use App\Http\Controllers\Api\V1\ExamQuestionController;
-use App\Http\Controllers\Api\V1\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -63,22 +64,22 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
         // Student Exams
         Route::prefix('exams')->group(function () {
-            Route::get('history', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'history'])->name('api.v1.student.exams.history');
-            Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'index'])->name('api.v1.student.exams.index');
-            Route::get('{exam}', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'show'])->name('api.v1.student.exams.show');
-            Route::post('{exam}/start', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->name('api.v1.student.exams.start');
-            Route::get('{exam}/take', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'take'])->name('api.v1.student.exams.take');
-            Route::post('{exam}/answer', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])->name('api.v1.student.exams.answer');
-            Route::post('{exam}/finish', [\App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])->name('api.v1.student.exams.finish');
+            Route::get('history', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'history'])->name('api.v1.student.exams.history');
+            Route::get('/', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'index'])->name('api.v1.student.exams.index');
+            Route::get('{exam}', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'show'])->name('api.v1.student.exams.show');
+            Route::post('{exam}/start', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->name('api.v1.student.exams.start');
+            Route::get('{exam}/take', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'take'])->name('api.v1.student.exams.take');
+            Route::post('{exam}/answer', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])->name('api.v1.student.exams.answer');
+            Route::post('{exam}/finish', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])->name('api.v1.student.exams.finish');
         });
 
         // Student Exam Results
         Route::prefix('exam-results')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'index'])->name('api.v1.student.exam-results.index');
-            Route::get('leaderboard', [\App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'leaderboard'])->name('api.v1.student.exam-results.leaderboard');
+            Route::get('/', [App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'index'])->name('api.v1.student.exam-results.index');
+            Route::get('leaderboard', [App\Http\Controllers\Api\V1\Student\ExamResultController::class, 'leaderboard'])->name('api.v1.student.exam-results.leaderboard');
         });
 
-        Route::get('dashboard', [\App\Http\Controllers\Api\V1\Student\DashboardController::class, 'index'])->name('api.v1.student.dashboard');
+        Route::get('dashboard', [App\Http\Controllers\Api\V1\Student\DashboardController::class, 'index'])->name('api.v1.student.dashboard');
     });
     Route::apiResource('students', StudentController::class)->names('api.v1.students');
 
@@ -134,7 +135,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     Route::apiResource('questions', QuestionController::class)->names('api.v1.questions');
 
     // Tags
-    Route::get('tags', [\App\Http\Controllers\Api\V1\TagController::class, 'index'])->name('api.v1.tags.index');
+    Route::get('tags', [App\Http\Controllers\Api\V1\TagController::class, 'index'])->name('api.v1.tags.index');
 
     // Options
     Route::prefix('options')->group(function () {
@@ -171,11 +172,11 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Question Suggestions
     Route::prefix('question-suggestions')->group(function () {
-        Route::get('mine', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'mine'])->name('api.v1.question-suggestions.mine');
-        Route::post('{questionSuggestion}/approve', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'approve'])->name('api.v1.question-suggestions.approve');
-        Route::post('{questionSuggestion}/reject', [\App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'reject'])->name('api.v1.question-suggestions.reject');
+        Route::get('mine', [App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'mine'])->name('api.v1.question-suggestions.mine');
+        Route::post('{questionSuggestion}/approve', [App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'approve'])->name('api.v1.question-suggestions.approve');
+        Route::post('{questionSuggestion}/reject', [App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'reject'])->name('api.v1.question-suggestions.reject');
     });
-    Route::apiResource('question-suggestions', \App\Http\Controllers\Api\V1\QuestionSuggestionController::class)->names('api.v1.question-suggestions');
+    Route::apiResource('question-suggestions', App\Http\Controllers\Api\V1\QuestionSuggestionController::class)->names('api.v1.question-suggestions');
 
     // Exams
     Route::prefix('exams')->group(function () {
@@ -195,20 +196,20 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Exam Correction
     Route::prefix('exams')->group(function () {
-        Route::get('{exam}/sessions', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'index'])->name('api.v1.exams.correction.index');
-        Route::get('{exam}/sessions/{examSession}/correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'show'])->name('api.v1.exams.correction.show');
-        Route::get('{exam}/questions/{examQuestion}/correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'byQuestion'])->name('api.v1.exams.correction.by-question');
-        Route::get('{exam}/item-analysis', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'itemAnalysis'])->name('api.v1.exams.correction.item-analysis');
-        Route::post('{exam}/bulk-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'bulkUpdate'])->name('api.v1.exams.correction.bulk-update');
-        Route::post('{exam}/recalculate-all', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculateAll'])->name('api.v1.exams.correction.recalculate-all');
-        Route::post('{exam}/ai-correct', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'aiCorrect'])->name('api.v1.exams.correction.ai-correct');
-        Route::delete('{exam}/sessions/{examSession}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'destroy'])->name('api.v1.exams.correction.destroy');
+        Route::get('{exam}/sessions', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'index'])->name('api.v1.exams.correction.index');
+        Route::get('{exam}/sessions/{examSession}/correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'show'])->name('api.v1.exams.correction.show');
+        Route::get('{exam}/questions/{examQuestion}/correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'byQuestion'])->name('api.v1.exams.correction.by-question');
+        Route::get('{exam}/item-analysis', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'itemAnalysis'])->name('api.v1.exams.correction.item-analysis');
+        Route::post('{exam}/bulk-correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'bulkUpdate'])->name('api.v1.exams.correction.bulk-update');
+        Route::post('{exam}/recalculate-all', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculateAll'])->name('api.v1.exams.correction.recalculate-all');
+        Route::post('{exam}/ai-correct', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'aiCorrect'])->name('api.v1.exams.correction.ai-correct');
+        Route::delete('{exam}/sessions/{examSession}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'destroy'])->name('api.v1.exams.correction.destroy');
     });
-    Route::put('sessions/{examSession}/details/{examResultDetail}', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
-    Route::put('sessions/{examSession}/details/{examResultDetail}/answer', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'updateAnswer'])->name('api.v1.exams.correction.update-answer');
-    Route::post('sessions/{examSession}/details/{examResultDetail}/reopen', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'reopenByDetail'])->name('api.v1.exams.correction.reopen-by-detail');
-    Route::post('sessions/{examSession}/finish-correction', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
-    Route::post('sessions/{examSession}/recalculate', [\App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculate'])->name('api.v1.exams.correction.recalculate');
+    Route::put('sessions/{examSession}/details/{examResultDetail}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
+    Route::put('sessions/{examSession}/details/{examResultDetail}/answer', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'updateAnswer'])->name('api.v1.exams.correction.update-answer');
+    Route::post('sessions/{examSession}/details/{examResultDetail}/reopen', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'reopenByDetail'])->name('api.v1.exams.correction.reopen-by-detail');
+    Route::post('sessions/{examSession}/finish-correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
+    Route::post('sessions/{examSession}/recalculate', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculate'])->name('api.v1.exams.correction.recalculate');
 
     // Exam Questions
     Route::prefix('exam-questions')->group(function () {
@@ -230,7 +231,18 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('api.v1.activity-logs.index');
 
     // Dashboard
-    Route::get('dashboard', [\App\Http\Controllers\Api\V1\DashboardController::class, 'index'])->name('api.v1.dashboard');
+    Route::get('dashboard', [App\Http\Controllers\Api\V1\DashboardController::class, 'index'])->name('api.v1.dashboard');
+
+    // Curricula (MongoDB)
+    Route::prefix('curricula')->group(function () {
+        Route::get('phases', [CurriculumController::class, 'getPhases'])->name('api.v1.curricula.phases');
+        Route::get('levels', [CurriculumController::class, 'getLevels'])->name('api.v1.curricula.levels');
+        Route::get('grades', [CurriculumController::class, 'getGrades'])->name('api.v1.curricula.grades');
+        Route::get('{curriculum}/subjects', [CurriculumController::class, 'subjects'])->name('api.v1.curricula.subjects');
+        Route::get('{curriculum}/subjects/{subjectCode}/outcomes', [CurriculumController::class, 'subjectOutcomes'])->name('api.v1.curricula.subject-outcomes');
+        Route::get('{curriculum}/subjects/{subjectCode}/objectives', [CurriculumController::class, 'subjectObjectives'])->name('api.v1.curricula.subject-objectives');
+    });
+    Route::apiResource('curricula', CurriculumController::class)->names('api.v1.curricula');
 });
 
 // Password reset routes (public with rate limiting)
