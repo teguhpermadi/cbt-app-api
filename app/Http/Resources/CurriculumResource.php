@@ -18,6 +18,7 @@ final class CurriculumResource extends JsonResource
             'id' => (string) $this->_id,
             'name' => $this->name,
             'code' => $this->code,
+            'curriculum_type' => $this->curriculum_type,
             'description' => $this->description,
             'phase' => $this->phase,
             'level' => $this->level,

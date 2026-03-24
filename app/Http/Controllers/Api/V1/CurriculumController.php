@@ -21,12 +21,17 @@ final class CurriculumController extends ApiController
         $phase = $request->string('phase')->trim();
         $level = $request->string('level')->trim();
         $grade = $request->integer('grade');
+        $curriculumType = $request->string('curriculum_type')->trim();
         $isActive = $request->boolean('is_active');
 
         $query = Curriculum::query();
 
         if ($isActive) {
             $query->active();
+        }
+
+        if ($curriculumType) {
+            $query->byCurriculumType($curriculumType);
         }
 
         if ($phase) {

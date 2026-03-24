@@ -15,6 +15,7 @@ final class Curriculum extends Model
     protected $fillable = [
         'name',
         'code',
+        'curriculum_type',
         'description',
         'phase',
         'level',
@@ -51,6 +52,11 @@ final class Curriculum extends Model
             $q->where('grade_range.min', '<=', $grade)
                 ->where('grade_range.max', '>=', $grade);
         });
+    }
+
+    public function scopeByCurriculumType($query, string $curriculumType)
+    {
+        return $query->where('curriculum_type', $curriculumType);
     }
 
     public function getSubjects(): array
