@@ -27,6 +27,7 @@ final class DatabaseSeeder extends Seeder
             ExamSeeder::class,
             QuestionSuggestionSeeder::class,
             CurriculumSeeder::class,
+            TaxonomySeeder::class,
         ]);
     }
 }
