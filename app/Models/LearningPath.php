@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -7,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class LearningPath extends Model
+final class LearningPath extends Model
 {
     use HasFactory, HasUlids, SoftDeletes;
 
@@ -17,6 +19,7 @@ class LearningPath extends Model
         'user_id',
         'title',
         'description',
+        'order',
         'is_published',
     ];
 
@@ -38,5 +41,17 @@ class LearningPath extends Model
     public function units()
     {
         return $this->hasMany(LearningUnit::class)->orderBy('order');
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order');
+    }
+
+    public function scopeBySubjectAndClassroom($query, string $subjectId, string $classroomId)
+    {
+        return $query->where('subject_id', $subjectId)
+            ->where('classroom_id', $classroomId)
+            ->ordered();
     }
 }
