@@ -1,17 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
+use App\Enums\CorrectionStatusEnum;
+use App\Enums\QuestionTypeEnum;
+use App\Models\ExamQuestionCorrection;
+use App\Models\ExamResult;
 use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
-use App\Models\ExamResult;
-use App\Models\ExamQuestionCorrection;
-use App\Enums\CorrectionStatusEnum;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Enums\Provider;
-use Prism\Prism\Schema\ObjectSchema;
-use Prism\Prism\Schema\NumberSchema;
-use Prism\Prism\Schema\StringSchema;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,11 +19,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Prism\Prism\Enums\Provider;
+use Prism\Prism\Facades\Prism;
+use Prism\Prism\Schema\NumberSchema;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\StringSchema;
 use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class CorrectExamQuestionJob implements ShouldQueue
+final class CorrectExamQuestionJob implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels, IsMonitored;
+    use Batchable, Dispatchable, InteractsWithQueue, IsMonitored, Queueable, SerializesModels;
 
     /**
      * The number of times the job may be attempted.
@@ -70,7 +74,7 @@ class CorrectExamQuestionJob implements ShouldQueue
             ]);
             $this->updateSessionTotals($session);
 
-            Log::info("AI Correction (Empty Answer) - Student: {$studentName}, Question: " . strip_tags($question->content) . ", Score: 0/{$question->score_value}");
+            Log::info("AI Correction (Empty Answer) - Student: {$studentName}, Question: ".strip_tags($question->content).", Score: 0/{$question->score_value}");
 
             return;
         }
@@ -85,7 +89,7 @@ class CorrectExamQuestionJob implements ShouldQueue
             // Using gemini-2.0-flash as the latest available model in Prism for Gemini
             $response = Prism::structured()
                 ->using(Provider::Gemini, 'gemini-2.0-flash')
-                ->withSystemPrompt("Kamu adalah asisten guru pakar yang bertugas mengoreksi jawaban siswa secara adil dan akurat.")
+                ->withSystemPrompt('Kamu adalah asisten guru pakar yang bertugas mengoreksi jawaban siswa secara adil dan akurat.')
                 ->withPrompt("Koreksi jawaban siswa berikut:
                 
                 Soal: {$question->content}
@@ -99,7 +103,7 @@ class CorrectExamQuestionJob implements ShouldQueue
                     'correction',
                     'The correction result',
                     [
-                        new NumberSchema('score', 'The score earned by the student (0 to ' . $maxScore . ')'),
+                        new NumberSchema('score', 'The score earned by the student (0 to '.$maxScore.')'),
                         new StringSchema('notes', 'Brief feedback or explanation for the score'),
                     ],
                     ['score', 'notes']
@@ -128,7 +132,7 @@ class CorrectExamQuestionJob implements ShouldQueue
 
                 $this->updateSessionTotals($session);
 
-                Log::info("AI Correction Success", [
+                Log::info('AI Correction Success', [
                     'student_name' => $studentName,
                     'question' => strip_tags($question->content),
                     'student_answer' => $studentAnswer,
@@ -137,12 +141,13 @@ class CorrectExamQuestionJob implements ShouldQueue
                     'notes' => $aiNotes,
                 ]);
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if (str_contains($e->getMessage(), 'rate limit')) {
                 $this->release(30);
+
                 return;
             }
-            Log::error("AI Correction failed for Detail ID: {$detail->id}. Error: " . $e->getMessage());
+            Log::error("AI Correction failed for Detail ID: {$detail->id}. Error: ".$e->getMessage());
             throw $e;
         }
     }
@@ -156,10 +161,12 @@ class CorrectExamQuestionJob implements ShouldQueue
             return $d->examQuestion->score_value ?? 0;
         });
 
+        $hasEssayOrShortAnswer = $this->hasEssayOrShortAnswerQuestions($session);
+
         $session->update([
             'total_score' => $totalEarnedScore,
             'total_max_score' => $totalMaxScore,
-            'is_corrected' => true,
+            'is_corrected' => ! $hasEssayOrShortAnswer,
         ]);
 
         // Update ExamResult
@@ -188,7 +195,7 @@ class CorrectExamQuestionJob implements ShouldQueue
 
         if ($correction) {
             $correctedCount = ExamResultDetail::where('exam_question_id', $questionId)
-                ->whereHas('examSession', function($q) {
+                ->whereHas('examSession', function ($q) {
                     $q->where('is_finished', true);
                 })
                 ->whereNotNull('score_earned')
@@ -202,5 +209,20 @@ class CorrectExamQuestionJob implements ShouldQueue
 
             $correction->update($updateData);
         }
+    }
+
+    protected function hasEssayOrShortAnswerQuestions(ExamSession $session): bool
+    {
+        return $session->examResultDetails()
+            ->whereHas('examQuestion', function ($q) {
+                $q->whereIn('question_type', [
+                    QuestionTypeEnum::SHORT_ANSWER->value,
+                    QuestionTypeEnum::ESSAY->value,
+                    QuestionTypeEnum::MATH_INPUT->value,
+                    QuestionTypeEnum::ARABIC_RESPONSE->value,
+                    QuestionTypeEnum::JAVANESE_RESPONSE->value,
+                ]);
+            })
+            ->exists();
     }
 }
