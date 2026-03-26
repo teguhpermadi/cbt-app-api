@@ -243,6 +243,16 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::get('{curriculum}/subjects/{subjectCode}/objectives', [CurriculumController::class, 'subjectObjectives'])->name('api.v1.curricula.subject-objectives');
     });
     Route::apiResource('curricula', CurriculumController::class)->names('api.v1.curricula');
+
+    // Queue Monitor
+    Route::prefix('queue-monitor')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'index'])->name('api.v1.queue-monitor.index');
+        Route::get('{monitor}', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'show'])->name('api.v1.queue-monitor.show');
+        Route::post('{monitor}/retry', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'retry'])->name('api.v1.queue-monitor.retry');
+        Route::post('{monitor}/cancel', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'cancel'])->name('api.v1.queue-monitor.cancel');
+        Route::delete('{monitor}', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'destroy'])->name('api.v1.queue-monitor.destroy');
+        Route::post('purge', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'purge'])->name('api.v1.queue-monitor.purge');
+    });
 });
 
 // Password reset routes (public with rate limiting)

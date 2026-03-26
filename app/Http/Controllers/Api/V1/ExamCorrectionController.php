@@ -657,6 +657,7 @@ class ExamCorrectionController extends ApiController
         $examQuestionId = $request->input('exam_question_id');
         $examSessionId = $request->input('exam_session_id');
         $userId = Auth::id();
+        $userName = Auth::user()?->name;
 
         if (!in_array($provider, ['gemini', 'openrouter'])) {
             return $this->error('Invalid provider. Supported providers are: gemini, openrouter', 422);
@@ -706,9 +707,9 @@ class ExamCorrectionController extends ApiController
         $jobs = [];
         foreach ($resultDetails as $detail) {
             if ($provider === 'openrouter') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName);
             } else {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName);
             }
         }
 

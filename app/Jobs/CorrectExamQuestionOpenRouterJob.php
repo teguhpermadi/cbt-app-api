@@ -46,7 +46,8 @@ class CorrectExamQuestionOpenRouterJob implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        public ExamResultDetail $examResultDetail
+        public ExamResultDetail $examResultDetail,
+        public ?string $triggeredBy = null
     ) {}
 
     /**
@@ -59,6 +60,16 @@ class CorrectExamQuestionOpenRouterJob implements ShouldQueue
         $session = $detail->examSession;
         $exam = $session->exam;
         $studentName = $session->user->name;
+
+        $queueDataPayload = [
+            'description' => "Koreksi ujian '{$exam->title}' siswa {$studentName} soal no {$question->question_number}"
+        ];
+        
+        if ($this->triggeredBy) {
+            $queueDataPayload['triggered_by'] = $this->triggeredBy;
+        }
+        
+        $this->queueData($queueDataPayload);
 
         $studentAnswer = is_array($detail->student_answer)
             ? json_encode($detail->student_answer, JSON_UNESCAPED_UNICODE)
