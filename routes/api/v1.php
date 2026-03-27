@@ -9,6 +9,9 @@ use App\Http\Controllers\Api\V1\ClassroomController;
 use App\Http\Controllers\Api\V1\CurriculumController;
 use App\Http\Controllers\Api\V1\ExamController;
 use App\Http\Controllers\Api\V1\ExamQuestionController;
+use App\Http\Controllers\Api\V1\Learning\LearningLessonController;
+use App\Http\Controllers\Api\V1\Learning\LearningPathController;
+use App\Http\Controllers\Api\V1\Learning\LearningUnitController;
 use App\Http\Controllers\Api\V1\OptionController;
 use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\QuestionController;
@@ -246,13 +249,37 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Queue Monitor
     Route::prefix('queue-monitor')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'index'])->name('api.v1.queue-monitor.index');
-        Route::get('{monitor}', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'show'])->name('api.v1.queue-monitor.show');
-        Route::post('{monitor}/retry', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'retry'])->name('api.v1.queue-monitor.retry');
-        Route::post('{monitor}/cancel', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'cancel'])->name('api.v1.queue-monitor.cancel');
-        Route::delete('{monitor}', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'destroy'])->name('api.v1.queue-monitor.destroy');
-        Route::post('purge', [\App\Http\Controllers\Api\V1\QueueMonitorController::class, 'purge'])->name('api.v1.queue-monitor.purge');
+        Route::get('/', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'index'])->name('api.v1.queue-monitor.index');
+        Route::get('{monitor}', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'show'])->name('api.v1.queue-monitor.show');
+        Route::post('{monitor}/retry', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'retry'])->name('api.v1.queue-monitor.retry');
+        Route::post('{monitor}/cancel', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'cancel'])->name('api.v1.queue-monitor.cancel');
+        Route::delete('{monitor}', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'destroy'])->name('api.v1.queue-monitor.destroy');
+        Route::post('purge', [App\Http\Controllers\Api\V1\QueueMonitorController::class, 'purge'])->name('api.v1.queue-monitor.purge');
     });
+
+    // Learning Paths
+    Route::prefix('learning-paths')->group(function () {
+        Route::get('trashed', [LearningPathController::class, 'trashed'])->name('api.v1.learning-paths.trashed');
+        Route::post('{learningPath}/restore', [LearningPathController::class, 'restore'])->name('api.v1.learning-paths.restore');
+        Route::delete('{learningPath}/force-delete', [LearningPathController::class, 'forceDelete'])->name('api.v1.learning-paths.force-delete');
+        Route::post('bulk-delete', [LearningPathController::class, 'bulkDelete'])->name('api.v1.learning-paths.bulk-delete');
+        Route::post('reorder', [LearningPathController::class, 'reorder'])->name('api.v1.learning-paths.reorder');
+    });
+    Route::apiResource('learning-paths', LearningPathController::class)->names('api.v1.learning-paths');
+
+    // Learning Units
+    Route::prefix('learning-units')->group(function () {
+        Route::post('bulk-delete', [LearningUnitController::class, 'bulkDelete'])->name('api.v1.learning-units.bulk-delete');
+        Route::post('reorder', [LearningUnitController::class, 'reorder'])->name('api.v1.learning-units.reorder');
+    });
+    Route::apiResource('learning-units', LearningUnitController::class)->names('api.v1.learning-units');
+
+    // Learning Lessons
+    Route::prefix('learning-lessons')->group(function () {
+        Route::post('bulk-delete', [LearningLessonController::class, 'bulkDelete'])->name('api.v1.learning-lessons.bulk-delete');
+        Route::post('reorder', [LearningLessonController::class, 'reorder'])->name('api.v1.learning-lessons.reorder');
+    });
+    Route::apiResource('learning-lessons', LearningLessonController::class)->names('api.v1.learning-lessons');
 });
 
 // Password reset routes (public with rate limiting)
