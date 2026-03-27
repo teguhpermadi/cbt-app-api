@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Enums\LearningContentType;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class LearningLesson extends Model
+final class LearningLesson extends Model
 {
     use HasFactory, HasUlids, SoftDeletes;
 
@@ -23,6 +26,7 @@ class LearningLesson extends Model
 
     protected $casts = [
         'content_data' => 'json',
+        'content_type' => LearningContentType::class,
     ];
 
     public function unit()

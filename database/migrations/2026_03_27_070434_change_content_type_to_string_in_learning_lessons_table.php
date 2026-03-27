@@ -10,15 +10,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('learning_paths', function (Blueprint $table) {
-            $table->unsignedInteger('order')->default(0)->after('description');
+        Schema::table('learning_lessons', function (Blueprint $table) {
+            $table->string('content_type', 50)->change();
         });
     }
 
     public function down(): void
     {
-        Schema::table('learning_paths', function (Blueprint $table) {
-            $table->dropColumn('order');
+        Schema::table('learning_lessons', function (Blueprint $table) {
+            $table->enum('content_type', ['reading', 'video', 'web_link', 'quiz'])->change();
         });
     }
 };
