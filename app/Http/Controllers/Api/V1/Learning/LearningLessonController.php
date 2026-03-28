@@ -25,10 +25,13 @@ final class LearningLessonController extends ApiController
         $sortBy = $request->string('sort_by', 'order');
         $order = $request->string('order', 'asc');
 
+        $isPublished = $request->boolean('is_published');
+
         $lessons = LearningLesson::query()
             ->with(['unit', 'questionBank'])
             ->when($learningUnitId, fn ($q) => $q->where('learning_unit_id', $learningUnitId))
             ->when($search, fn ($q) => $q->where('title', 'like', "%{$search}%"))
+            ->when($isPublished !== null, fn ($q) => $q->where('is_published', $isPublished))
             ->orderBy($sortBy, $order)
             ->paginate($perPage);
 
