@@ -25,6 +25,7 @@ final class LearningLessonResource extends JsonResource
             'content_data' => $this->content_data,
             'order' => $this->order,
             'xp_reward' => $this->xp_reward,
+            'is_published' => $this->is_published,
             'unit' => new LearningUnitResource($this->whenLoaded('unit')),
             'question_bank' => new QuestionBankResource($this->whenLoaded('questionBank')),
             'created_at' => $this->created_at?->toIso8601String(),

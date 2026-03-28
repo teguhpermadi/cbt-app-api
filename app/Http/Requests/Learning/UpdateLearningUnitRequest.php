@@ -20,6 +20,7 @@ final class UpdateLearningUnitRequest extends FormRequest
             'title' => ['string', 'max:255'],
             'xp_reward' => ['nullable', 'integer', 'min:0'],
             'order' => ['integer'],
+            'is_published' => ['boolean'],
         ];
     }
 }

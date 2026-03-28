@@ -25,6 +25,7 @@ final class UpdateLearningLessonRequest extends FormRequest
             'content_data' => ['nullable', 'array'],
             'xp_reward' => ['nullable', 'integer', 'min:0'],
             'order' => ['integer'],
+            'is_published' => ['boolean'],
         ];
     }
 }

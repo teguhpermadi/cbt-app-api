@@ -24,6 +24,7 @@ final class StoreLearningLessonRequest extends FormRequest
             'content_type' => ['required', Rule::enum(LearningContentType::class)],
             'content_data' => ['nullable', 'array'],
             'xp_reward' => ['nullable', 'integer', 'min:0'],
+            'is_published' => ['boolean'],
         ];
     }
 }

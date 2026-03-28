@@ -19,6 +19,7 @@ final class StoreLearningUnitRequest extends FormRequest
             'learning_path_id' => ['required', 'ulid'],
             'title' => ['required', 'string', 'max:255'],
             'xp_reward' => ['nullable', 'integer', 'min:0'],
+            'is_published' => ['boolean'],
         ];
     }
 }

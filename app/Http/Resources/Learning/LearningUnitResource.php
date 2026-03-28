@@ -21,6 +21,7 @@ final class LearningUnitResource extends JsonResource
             'title' => $this->title,
             'order' => $this->order,
             'xp_reward' => $this->xp_reward,
+            'is_published' => $this->is_published,
             'learning_path' => new LearningPathResource($this->whenLoaded('learningPath')),
             'lessons' => LearningLessonResource::collection($this->whenLoaded('lessons')),
             'created_at' => $this->created_at?->toIso8601String(),

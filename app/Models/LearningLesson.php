@@ -22,12 +22,19 @@ final class LearningLesson extends Model
         'content_data',
         'order',
         'xp_reward',
+        'is_published',
     ];
 
     protected $casts = [
         'content_data' => 'json',
         'content_type' => LearningContentType::class,
+        'is_published' => 'boolean',
     ];
+
+    public function scopePublished($query)
+    {
+        return $query->where('is_published', true);
+    }
 
     public function unit()
     {
