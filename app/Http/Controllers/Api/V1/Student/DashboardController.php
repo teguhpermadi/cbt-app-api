@@ -28,28 +28,8 @@ final class DashboardController extends Controller
         // Streak calculation
         $streak = $this->calculateStreak($user->id);
 
-        /**
-         * 2. Active Exams (Exams that need to be taken)
-         * Precision matching: Student Classroom + Academic Year combo
-         */
-        $enrollments = DB::table('classroom_users')
-            ->where('user_id', $user->id)
-            ->get(['classroom_id', 'academic_year_id']);
-
         $activeExams = Exam::where('is_published', true)
-            ->where(function ($query) use ($enrollments) {
-                if ($enrollments->isEmpty()) {
-                    $query->whereRaw('1 = 0'); // No access if no enrollments
-                    return;
-                }
-
-                foreach ($enrollments as $enrollment) {
-                    $query->orWhere(function ($q) use ($enrollment) {
-                        $q->where('academic_year_id', $enrollment->academic_year_id)
-                            ->whereHas('classrooms', fn($c) => $c->where('classrooms.id', $enrollment->classroom_id));
-                    });
-                }
-            })
+            ->forStudent($user)
             ->where(function ($q) use ($now) {
                 $q->whereNull('start_time')->orWhere('start_time', '<=', $now);
             })
@@ -83,19 +63,7 @@ final class DashboardController extends Controller
 
         // 3. Upcoming Exams
         $upcomingExams = Exam::where('is_published', true)
-            ->where(function ($query) use ($enrollments) {
-                if ($enrollments->isEmpty()) {
-                    $query->whereRaw('1 = 0');
-                    return;
-                }
-
-                foreach ($enrollments as $enrollment) {
-                    $query->orWhere(function ($q) use ($enrollment) {
-                        $q->where('academic_year_id', $enrollment->academic_year_id)
-                            ->whereHas('classrooms', fn($c) => $c->where('classrooms.id', $enrollment->classroom_id));
-                    });
-                }
-            })
+            ->forStudent($user)
             ->where('start_time', '>', $now)
             ->with(['subject'])
             ->orderBy('start_time', 'asc')
@@ -109,7 +77,7 @@ final class DashboardController extends Controller
                     'start_time' => $exam->start_time ? $exam->start_time->toIso8601String() : null,
                     'end_time' => $exam->end_time ? $exam->end_time->toIso8601String() : null,
                     'time_label' => $this->getTimeLabel($exam->start_time, $now),
-                    'meta' => ($exam->start_time ? $exam->start_time->format('H:i') : '') . ' • Duration: ' . $exam->duration . 'm',
+                    'meta' => ($exam->start_time ? $exam->start_time->format('H:i') : '').' • Duration: '.$exam->duration.'m',
                     'color' => 'blue',
                     'icon' => 'calendar_month',
                 ];
@@ -143,7 +111,9 @@ final class DashboardController extends Controller
             ->orderBy('date', 'desc')
             ->pluck('date');
 
-        if ($dates->isEmpty()) return 0;
+        if ($dates->isEmpty()) {
+            return 0;
+        }
 
         $streak = 0;
         $currentDate = now()->startOfDay();
@@ -169,41 +139,72 @@ final class DashboardController extends Controller
 
     private function getIconForSubject(string $name): string
     {
-        $name = strtolower($name);
-        if (str_contains($name, 'design') || str_contains($name, 'art')) return 'brush';
-        if (str_contains($name, 'code') || str_contains($name, 'react') || str_contains($name, 'program')) return 'code';
-        if (str_contains($name, 'math') || str_contains($name, 'calculus')) return 'functions';
+        $name = mb_strtolower($name);
+        if (str_contains($name, 'design') || str_contains($name, 'art')) {
+            return 'brush';
+        }
+        if (str_contains($name, 'code') || str_contains($name, 'react') || str_contains($name, 'program')) {
+            return 'code';
+        }
+        if (str_contains($name, 'math') || str_contains($name, 'calculus')) {
+            return 'functions';
+        }
+
         return 'book';
     }
 
     private function getColorForSubject($subject): string
     {
-        if ($subject && $subject->color) return $subject->color;
+        if ($subject && $subject->color) {
+            return $subject->color;
+        }
 
-        $name = $subject ? strtolower($subject->name) : '';
-        if (str_contains($name, 'design')) return 'blue';
-        if (str_contains($name, 'react')) return 'amber';
-        if (str_contains($name, 'math')) return 'rose';
+        $name = $subject ? mb_strtolower($subject->name) : '';
+        if (str_contains($name, 'design')) {
+            return 'blue';
+        }
+        if (str_contains($name, 'react')) {
+            return 'amber';
+        }
+        if (str_contains($name, 'math')) {
+            return 'rose';
+        }
+
         return 'primary';
     }
 
     private function getTimeLabel($startTime, \Carbon\Carbon $now): string
     {
-        if (!$startTime) return 'Available Now';
+        if (! $startTime) {
+            return 'Available Now';
+        }
 
         if ($startTime->isToday()) {
-            if ($startTime->lte($now)) return 'In Progress';
-            return 'In ' . $startTime->diffInHours($now) . ' Hours';
+            if ($startTime->lte($now)) {
+                return 'In Progress';
+            }
+
+            return 'In '.$startTime->diffInHours($now).' Hours';
         }
-        if ($startTime->isTomorrow()) return 'Tomorrow';
+        if ($startTime->isTomorrow()) {
+            return 'Tomorrow';
+        }
+
         return $startTime->format('l');
     }
 
     private function getNextRank(int $level): string
     {
-        if ($level < 5) return 'Novice';
-        if ($level < 10) return 'Apprentice';
-        if ($level < 15) return 'Master';
+        if ($level < 5) {
+            return 'Novice';
+        }
+        if ($level < 10) {
+            return 'Apprentice';
+        }
+        if ($level < 15) {
+            return 'Master';
+        }
+
         return 'Grandmaster';
     }
 }
