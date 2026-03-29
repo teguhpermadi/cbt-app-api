@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum QuestionTypeEnum: string
@@ -13,15 +15,16 @@ enum QuestionTypeEnum: string
     case MATCHING = 'matching';
     case SEQUENCE = 'sequence';
     case ARRANGE_WORDS = 'arrange_words';
-        // case DRAWING = 'drawing';
-        // case GRAPH = 'graph';
-        // case HOTSPOT = 'hotspot';
-        // case VOICE_RESPONSE = 'voice_response';
-        // case IMAGE_RESPONSE = 'image_response';
-        // case VIDEO_RESPONSE = 'video_response';
+    // case DRAWING = 'drawing';
+    // case GRAPH = 'graph';
+    // case HOTSPOT = 'hotspot';
+    // case VOICE_RESPONSE = 'voice_response';
+    // case IMAGE_RESPONSE = 'image_response';
+    // case VIDEO_RESPONSE = 'video_response';
     case CATEGORIZATION = 'categorization';
     case ARABIC_RESPONSE = 'arabic_response';
     case JAVANESE_RESPONSE = 'javanese_response';
+    case SURVEY = 'survey';
 
     public function description(): string
     {
@@ -44,6 +47,7 @@ enum QuestionTypeEnum: string
             self::CATEGORIZATION => 'Mengelompokkan item ke dalam kategori',
             self::ARABIC_RESPONSE => 'Jawaban berupa teks dalam bahasa Arab',
             self::JAVANESE_RESPONSE => 'Jawaban berupa teks dalam bahasa Jawa',
+            self::SURVEY => 'Pertanyaan survei untuk mengumpulkan respons pengguna',
         };
     }
 
@@ -68,6 +72,7 @@ enum QuestionTypeEnum: string
             self::CATEGORIZATION => 'Categorization',
             self::ARABIC_RESPONSE => 'Arabic Response',
             self::JAVANESE_RESPONSE => 'Javanese Response',
+            self::SURVEY => 'Survey',
         };
     }
 }

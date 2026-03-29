@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum LearningContentType: string
+enum LearningContentTypeEnum: string
 {
     case READING = 'reading';
     case VIDEO = 'video';

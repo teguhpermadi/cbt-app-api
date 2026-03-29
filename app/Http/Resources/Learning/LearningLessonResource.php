@@ -28,8 +28,31 @@ final class LearningLessonResource extends JsonResource
             'is_published' => $this->is_published,
             'unit' => new LearningUnitResource($this->whenLoaded('unit')),
             'question_bank' => new QuestionBankResource($this->whenLoaded('questionBank')),
+            'media' => $this->getMediaStructure(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function getMediaStructure(): array
+    {
+        $collections = ['reading_files', 'videos', 'audios'];
+        $structure = [];
+
+        foreach ($collections as $collection) {
+            $media = $this->getMedia($collection);
+            $structure[$collection] = $media->map(function ($m) {
+                return [
+                    'id' => $m->uuid ?? $m->id,
+                    'url' => $m->getFullUrl(),
+                    'name' => $m->name,
+                    'file_name' => $m->file_name,
+                    'mime_type' => $m->mime_type,
+                    'size' => $m->size,
+                ];
+            });
+        }
+
+        return $structure;
     }
 }

@@ -278,6 +278,9 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     Route::prefix('learning-lessons')->group(function () {
         Route::post('bulk-delete', [LearningLessonController::class, 'bulkDelete'])->name('api.v1.learning-lessons.bulk-delete');
         Route::post('reorder', [LearningLessonController::class, 'reorder'])->name('api.v1.learning-lessons.reorder');
+        Route::post('{learningLesson}/media', [LearningLessonController::class, 'uploadMedia'])->name('api.v1.learning-lessons.media.upload');
+        Route::post('{learningLesson}/media/{media}', [LearningLessonController::class, 'replaceMedia'])->name('api.v1.learning-lessons.media.replace');
+        Route::delete('{learningLesson}/media/{media}', [LearningLessonController::class, 'deleteMedia'])->name('api.v1.learning-lessons.media.delete');
     });
     Route::apiResource('learning-lessons', LearningLessonController::class)->names('api.v1.learning-lessons');
 });

@@ -131,4 +131,71 @@ final class LearningLessonController extends ApiController
 
         return $this->success(message: 'Learning lessons reordered successfully');
     }
+
+    public function uploadMedia(UploadMediaRequest $request, string $id): JsonResponse
+    {
+        $lesson = LearningLesson::findOrFail($id);
+        $collection = $request->get('collection', 'reading_files');
+
+        $media = $lesson->addMediaFromRequest('media')
+            ->toMediaCollection($collection);
+
+        return $this->success([
+            'id' => $media->uuid ?? $media->id,
+            'url' => $media->getFullUrl(),
+            'name' => $media->name,
+            'file_name' => $media->file_name,
+            'mime_type' => $media->mime_type,
+            'size' => $media->size,
+        ], 'Media uploaded successfully');
+    }
+
+    public function replaceMedia(UploadMediaRequest $request, string $id, string $mediaId): JsonResponse
+    {
+        $lesson = LearningLesson::findOrFail($id);
+        $collection = $request->get('collection', 'reading_files');
+
+        $oldMedia = Media::where('model_id', $id)
+            ->where('model_type', LearningLesson::class)
+            ->where(function ($query) use ($mediaId) {
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
+            })
+            ->first();
+
+        if ($oldMedia) {
+            $oldMedia->delete();
+        }
+
+        $media = $lesson->addMediaFromRequest('media')
+            ->toMediaCollection($collection);
+
+        return $this->success([
+            'id' => $media->uuid ?? $media->id,
+            'url' => $media->getFullUrl(),
+            'name' => $media->name,
+            'file_name' => $media->file_name,
+            'mime_type' => $media->mime_type,
+            'size' => $media->size,
+        ], 'Media replaced successfully');
+    }
+
+    public function deleteMedia(string $id, string $mediaId): JsonResponse
+    {
+        $lesson = LearningLesson::findOrFail($id);
+
+        $media = Media::where('model_id', $id)
+            ->where('model_type', LearningLesson::class)
+            ->where(function ($query) use ($mediaId) {
+                $query->where('id', $mediaId)->orWhere('uuid', $mediaId);
+            })
+            ->first();
+
+        if (! $media) {
+            return $this->notFound('Media not found');
+        }
+
+        $media->delete();
+
+        return $this->success(message: 'Media deleted successfully');
+    }
 }

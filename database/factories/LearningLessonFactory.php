@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\LearningContentType;
 use App\Models\LearningLesson;
 use App\Models\LearningUnit;
 use App\Models\QuestionBank;
@@ -23,7 +22,7 @@ final class LearningLessonFactory extends Factory
             'learning_unit_id' => LearningUnit::first()?->id ?? LearningUnit::factory(),
             'question_bank_id' => null,
             'title' => fake()->sentence(3),
-            'content_type' => LearningContentType::READING->value,
+            'content_type' => LearningContentTypeEnum::READING->value,
             'content_data' => [
                 'content' => fake()->paragraph(),
             ],
@@ -35,7 +34,7 @@ final class LearningLessonFactory extends Factory
     public function reading(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::READING->value,
+            'content_type' => LearningContentTypeEnum::READING->value,
             'content_data' => ['content' => fake()->paragraph()],
         ]);
     }
@@ -43,7 +42,7 @@ final class LearningLessonFactory extends Factory
     public function video(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::VIDEO->value,
+            'content_type' => LearningContentTypeEnum::VIDEO->value,
             'content_data' => ['url' => fake()->url(), 'duration' => fake()->numberBetween(60, 3600)],
         ]);
     }
@@ -51,7 +50,7 @@ final class LearningLessonFactory extends Factory
     public function audio(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::AUDIO->value,
+            'content_type' => LearningContentTypeEnum::AUDIO->value,
             'content_data' => ['url' => fake()->url(), 'duration' => fake()->numberBetween(30, 1800)],
         ]);
     }
@@ -59,7 +58,7 @@ final class LearningLessonFactory extends Factory
     public function webLink(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::WEB_LINK->value,
+            'content_type' => LearningContentTypeEnum::WEB_LINK->value,
             'content_data' => ['url' => fake()->url(), 'title' => fake()->sentence(2)],
         ]);
     }
@@ -67,7 +66,7 @@ final class LearningLessonFactory extends Factory
     public function quiz(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::QUIZ->value,
+            'content_type' => LearningContentTypeEnum::QUIZ->value,
             'content_data' => ['question_count' => fake()->numberBetween(5, 20)],
         ]);
     }
@@ -75,7 +74,7 @@ final class LearningLessonFactory extends Factory
     public function survey(): static
     {
         return $this->state(fn (array $attributes) => [
-            'content_type' => LearningContentType::SURVEY->value,
+            'content_type' => LearningContentTypeEnum::SURVEY->value,
             'content_data' => ['questions' => fake()->numberBetween(3, 10)],
         ]);
     }

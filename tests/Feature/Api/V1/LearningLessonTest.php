@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\LearningContentType;
 use App\Enums\UserTypeEnum;
 use App\Models\LearningLesson;
 use App\Models\LearningPath;
@@ -68,7 +67,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Reading Lesson',
-            'content_type' => LearningContentType::READING->value,
+            'content_type' => LearningContentTypeEnum::READING->value,
             'content_data' => [
                 'content' => 'This is the reading content.',
             ],
@@ -80,7 +79,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Reading Lesson',
-            'content_type' => LearningContentType::READING->value,
+            'content_type' => LearningContentTypeEnum::READING->value,
             'order' => 0,
         ]);
     });
@@ -92,7 +91,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Video Lesson',
-            'content_type' => LearningContentType::VIDEO->value,
+            'content_type' => LearningContentTypeEnum::VIDEO->value,
             'content_data' => [
                 'url' => 'https://example.com/video.mp4',
                 'duration' => 300,
@@ -104,7 +103,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Video Lesson',
-            'content_type' => LearningContentType::VIDEO->value,
+            'content_type' => LearningContentTypeEnum::VIDEO->value,
         ]);
     });
 
@@ -115,7 +114,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Audio Lesson',
-            'content_type' => LearningContentType::AUDIO->value,
+            'content_type' => LearningContentTypeEnum::AUDIO->value,
             'content_data' => [
                 'url' => 'https://example.com/audio.mp3',
                 'duration' => 180,
@@ -127,7 +126,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Audio Lesson',
-            'content_type' => LearningContentType::AUDIO->value,
+            'content_type' => LearningContentTypeEnum::AUDIO->value,
         ]);
     });
 
@@ -138,7 +137,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Web Link Lesson',
-            'content_type' => LearningContentType::WEB_LINK->value,
+            'content_type' => LearningContentTypeEnum::WEB_LINK->value,
             'content_data' => [
                 'url' => 'https://example.com/article',
                 'title' => 'External Article',
@@ -150,7 +149,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Web Link Lesson',
-            'content_type' => LearningContentType::WEB_LINK->value,
+            'content_type' => LearningContentTypeEnum::WEB_LINK->value,
         ]);
     });
 
@@ -161,7 +160,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Quiz Lesson',
-            'content_type' => LearningContentType::QUIZ->value,
+            'content_type' => LearningContentTypeEnum::QUIZ->value,
             'content_data' => [
                 'question_count' => 10,
             ],
@@ -172,7 +171,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Quiz Lesson',
-            'content_type' => LearningContentType::QUIZ->value,
+            'content_type' => LearningContentTypeEnum::QUIZ->value,
         ]);
     });
 
@@ -183,7 +182,7 @@ describe('LearningLesson API', function () {
         $data = [
             'learning_unit_id' => $unit->id,
             'title' => 'Survey Lesson',
-            'content_type' => LearningContentType::SURVEY->value,
+            'content_type' => LearningContentTypeEnum::SURVEY->value,
             'content_data' => [
                 'questions' => 5,
             ],
@@ -194,7 +193,7 @@ describe('LearningLesson API', function () {
         $response->assertStatus(201);
         $this->assertDatabaseHas('learning_lessons', [
             'title' => 'Survey Lesson',
-            'content_type' => LearningContentType::SURVEY->value,
+            'content_type' => LearningContentTypeEnum::SURVEY->value,
         ]);
     });
 
@@ -205,13 +204,13 @@ describe('LearningLesson API', function () {
         $lesson1 = $this->postJson('/api/v1/learning-lessons', [
             'learning_unit_id' => $unit->id,
             'title' => 'Lesson 1',
-            'content_type' => LearningContentType::READING->value,
+            'content_type' => LearningContentTypeEnum::READING->value,
         ]);
 
         $lesson2 = $this->postJson('/api/v1/learning-lessons', [
             'learning_unit_id' => $unit->id,
             'title' => 'Lesson 2',
-            'content_type' => LearningContentType::VIDEO->value,
+            'content_type' => LearningContentTypeEnum::VIDEO->value,
         ]);
 
         $lesson1->assertStatus(201);
