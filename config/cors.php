@@ -28,6 +28,7 @@ return [
         'http://192.168.1.52',
         'http://192.168.1.10:5173',
         'http://192.168.1.10',
+        'https://app.cbtmiarridlo.com',
     ],
 
     'allowed_origins_patterns' => [],
