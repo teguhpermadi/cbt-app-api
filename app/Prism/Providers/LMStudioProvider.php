@@ -207,7 +207,25 @@ final class LMStudioProvider extends Provider
         $text = trim($text);
 
         try {
-            return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
+
+            if (is_array($decoded)) {
+                if (isset($decoded['score'], $decoded['notes'])) {
+                    return $decoded;
+                }
+
+                if (isset($decoded['correction']['score'], $decoded['correction']['notes'])) {
+                    return $decoded['correction'];
+                }
+
+                foreach ($decoded as $value) {
+                    if (is_array($value) && isset($value['score'], $value['notes'])) {
+                        return $value;
+                    }
+                }
+            }
+
+            return $decoded;
         } catch (JsonException $e) {
             return null;
         }
