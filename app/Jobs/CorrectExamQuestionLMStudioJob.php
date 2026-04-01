@@ -19,9 +19,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Prism\Prism\Facades\Prism;
-use Prism\Prism\Schema\NumberSchema;
-use Prism\Prism\Schema\ObjectSchema;
-use Prism\Prism\Schema\StringSchema;
 use romanzipp\QueueMonitor\Traits\IsMonitored;
 use Throwable;
 
@@ -86,32 +83,27 @@ final class CorrectExamQuestionLMStudioJob implements ShouldQueue
         $maxScore = $question->score_value;
 
         try {
-            $response = Prism::structured()
+            $response = Prism::text()
                 ->using('lmstudio', $this->model)
-                ->withSystemPrompt('Kamu adalah asisten guru pakar. Kamu HARUS merespon HANYA dalam format JSON yang valid sesuai skema yang diberikan.')
-                ->withPrompt("Koreksi jawaban siswa berikut:
-                
-                Soal: {$question->content}
-                Kunci Jawaban: {$keyAnswer}
-                Jawaban Siswa: {$studentAnswer}
-                Skor Maksimal: {$maxScore}
-                
-                Berikan skor antara 0 sampai {$maxScore}. Jangan melebihi skor maksimal.
-                Berikan catatan singkat (feedback) mengapa skor tersebut diberikan.")
-                ->withSchema(new ObjectSchema(
-                    'correction',
-                    'The correction result',
-                    [
-                        new NumberSchema('score', 'The score earned by the student (0 to '.$maxScore.')'),
-                        new StringSchema('notes', 'Brief feedback or explanation for the score'),
-                    ],
-                    ['score', 'notes']
-                ))
-                ->withClientOptions(['timeout' => 180])
-                ->asStructured();
+                ->withSystemPrompt('Kamu adalah asisten guru pakar. Selalu balas HANYA dengan JSON valid. JSON WAJIB memiliki field "score" (number) dan "notes" (string). Contoh: {"score": 8, "notes": "Jawaban sangat baik karena..."}')
+                ->withPrompt("Koreksi jawaban siswa berikut dan BALAS HANYA dengan JSON (tanpa markdown, tanpa penjelasan lain):
 
-            $aiScore = (float) ($response->structured['score'] ?? 0);
-            $aiNotes = $response->structured['notes'] ?? 'Koreksi AI selesai.';
+Soal: {$question->content}
+Kunci Jawaban: {$keyAnswer}
+Jawaban Siswa: {$studentAnswer}
+Skor Maksimal: {$maxScore}
+
+JSON WAJIB format: {\"score\": <angka>, \"notes\": \"<catatan singkat dalam bahasa Indonesia>\"}")
+                ->withClientOptions(['timeout' => 180])
+                ->asText();
+
+            Log::debug('LM Studio Raw Response', [
+                'detail_id' => $detail->id,
+                'text' => $response->text,
+            ]);
+
+            $aiScore = $this->extractScoreFromText($response->text, $maxScore);
+            $aiNotes = $this->extractNotesFromText($response->text);
 
             if ($aiScore > $maxScore) {
                 $aiScore = $maxScore;
@@ -201,6 +193,84 @@ final class CorrectExamQuestionLMStudioJob implements ShouldQueue
                 'result_type' => \App\Enums\ExamResultTypeEnum::OFFICIAL,
             ]
         );
+    }
+
+    protected function extractScoreFromText(string $text, float $maxScore): float
+    {
+        $text = trim($text);
+
+        if (str_starts_with($text, '```json')) {
+            $text = mb_substr($text, 7);
+        }
+        if (str_starts_with($text, '```')) {
+            $text = mb_substr($text, 3);
+        }
+        if (str_ends_with(trim($text), '```')) {
+            $text = mb_substr(trim($text), 0, -3);
+        }
+        $text = trim($text);
+
+        $decoded = json_decode($text, true);
+        if (is_array($decoded) && isset($decoded['score'])) {
+            return (float) $decoded['score'];
+        }
+
+        if (is_array($decoded) && isset($decoded['correction']['score'])) {
+            return (float) $decoded['correction']['score'];
+        }
+
+        if (preg_match('/"score"\s*:\s*([0-9]+(?:\.[0-9]+)?)/', $text, $matches)) {
+            return (float) $matches[1];
+        }
+
+        if (preg_match('/score["\s:]+([0-9]+(?:\.[0-9]+)?)/i', $text, $matches)) {
+            return (float) $matches[1];
+        }
+
+        Log::warning('Failed to extract score from LM Studio response', [
+            'text' => $text,
+        ]);
+
+        return 0;
+    }
+
+    protected function extractNotesFromText(string $text): string
+    {
+        $text = trim($text);
+
+        if (str_starts_with($text, '```json')) {
+            $text = mb_substr($text, 7);
+        }
+        if (str_starts_with($text, '```')) {
+            $text = mb_substr($text, 3);
+        }
+        if (str_ends_with(trim($text), '```')) {
+            $text = mb_substr(trim($text), 0, -3);
+        }
+        $text = trim($text);
+
+        $decoded = json_decode($text, true);
+        if (is_array($decoded) && isset($decoded['notes'])) {
+            return (string) $decoded['notes'];
+        }
+
+        if (is_array($decoded) && isset($decoded['correction']['notes'])) {
+            return (string) $decoded['correction']['notes'];
+        }
+
+        if (preg_match('/"notes"\s*:\s*"([^"]+)"/', $text, $matches)) {
+            return $matches[1];
+        }
+
+        if (preg_match('/"feedback"\s*:\s*"([^"]+)"/', $text, $matches)) {
+            return $matches[1];
+        }
+
+        if (preg_match('/"catatan"\s*:\s*"([^"]+)"/', $text, $matches)) {
+            return $matches[1];
+        }
+
+        return 'Koreksi AI selesai.';
     }
 
     protected function updateQuestionCorrectionProgress($examId, $questionId)

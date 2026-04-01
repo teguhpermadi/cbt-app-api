@@ -17,5 +17,3 @@ parameters:
         - config/database.php
 
     level: max
-
-    tmpDir: /tmp/phpstan
