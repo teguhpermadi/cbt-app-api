@@ -205,10 +205,24 @@ final class ExamScoringService
         $correctOrder = $keyAnswer['order'] ?? [];
         $studentOrder = is_array($studentAnswer) ? $studentAnswer : [];
 
-        $isCorrect = ($studentOrder === $correctOrder);
+        $totalItems = count($correctOrder);
+        if ($totalItems === 0) {
+            return ['score' => 0, 'is_correct' => false];
+        }
+
+        $correctPositionCount = 0;
+        foreach ($correctOrder as $index => $value) {
+            if (isset($studentOrder[$index]) && $studentOrder[$index] === $value) {
+                $correctPositionCount++;
+            }
+        }
+
+        $ratio = (float) $correctPositionCount / (float) $totalItems;
+        $scoreEarned = round($ratio * $maxScore, 1);
+        $isCorrect = ($ratio === 1.0);
 
         return [
-            'score' => $isCorrect ? $maxScore : 0,
+            'score' => $scoreEarned,
             'is_correct' => $isCorrect,
         ];
     }
