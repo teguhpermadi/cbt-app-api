@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'prism_server' => [
         // The middleware that will be applied to the Prism Server routes.
@@ -60,6 +62,10 @@ return [
                 'http_referer' => env('OPENROUTER_SITE_HTTP_REFERER', null),
                 'x_title' => env('OPENROUTER_SITE_X_TITLE', null),
             ],
+        ],
+        'lmstudio' => [
+            'url' => env('LMSTUDIO_URL', 'http://localhost:1234/v1'),
+            'api_key' => env('LMSTUDIO_API_KEY', ''),
         ],
     ],
 ];
