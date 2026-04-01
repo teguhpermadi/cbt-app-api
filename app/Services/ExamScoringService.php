@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
-use App\Models\ExamResultDetail;
 use App\Enums\QuestionTypeEnum;
+use App\Models\ExamResultDetail;
 use Illuminate\Support\Facades\Log;
 
-class ExamScoringService
+final class ExamScoringService
 {
     public function calculateDetailScore(ExamResultDetail $detail): array
     {
@@ -79,7 +81,7 @@ class ExamScoringService
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -87,27 +89,50 @@ class ExamScoringService
     {
         $keyVal = strip_tags($keyAnswer['answer'] ?? '');
         $studentVal = is_array($studentAnswer) ? ($studentAnswer[0] ?? '') : $studentAnswer;
-        $studentVal = strip_tags((string)$studentVal);
+        $studentVal = strip_tags((string) $studentVal);
 
         $isCorrect = ($studentVal === $keyVal);
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
     private function scoreTrueFalse($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
         $keyVal = strip_tags($keyAnswer['answer'] ?? '');
-        $studentVal = is_array($studentAnswer) ? ($studentAnswer[0] ?? '') : $studentAnswer;
-        $studentVal = strip_tags((string)$studentVal);
 
+        $studentVal = '';
+
+        if (is_array($studentAnswer)) {
+            if (isset($studentAnswer[0])) {
+                $firstAnswer = $studentAnswer[0];
+                if (is_array($firstAnswer) && isset($firstAnswer['option_key'])) {
+                    $studentVal = $firstAnswer['option_key'];
+                } else {
+                    $studentVal = (string) $firstAnswer;
+                }
+            }
+        } elseif (is_string($studentAnswer)) {
+            $decoded = json_decode($studentAnswer, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                if (isset($decoded['option_key'])) {
+                    $studentVal = $decoded['option_key'];
+                } else {
+                    $studentVal = (string) ($decoded[0] ?? '');
+                }
+            } else {
+                $studentVal = $studentAnswer;
+            }
+        }
+
+        $studentVal = strip_tags((string) $studentVal);
         $isCorrect = ($studentVal === $keyVal);
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -126,15 +151,17 @@ class ExamScoringService
 
         // Net Correct Logic
         $netCorrect = $countRight - $countWrong;
-        if ($netCorrect < 0) $netCorrect = 0;
+        if ($netCorrect < 0) {
+            $netCorrect = 0;
+        }
 
         $ratio = $totalCorrectOptions > 0 ? $netCorrect / $totalCorrectOptions : 0;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio == 1.0);
+        $isCorrect = ($ratio === 1.0);
 
         return [
             'score' => $scoreEarned,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -158,18 +185,18 @@ class ExamScoringService
                 $r = $val;
             }
 
-            if ($l && isset($studentPairs[$l]) && $studentPairs[$l] == $r) {
+            if ($l && isset($studentPairs[$l]) && $studentPairs[$l] === $r) {
                 $correctMatchCount++;
             }
         }
 
         $ratio = $totalPairs > 0 ? $correctMatchCount / $totalPairs : 0;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio == 1.0);
+        $isCorrect = ($ratio === 1.0);
 
         return [
             'score' => $scoreEarned,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -178,27 +205,27 @@ class ExamScoringService
         $correctOrder = $keyAnswer['order'] ?? [];
         $studentOrder = is_array($studentAnswer) ? $studentAnswer : [];
 
-        $isCorrect = ($studentOrder == $correctOrder);
+        $isCorrect = ($studentOrder === $correctOrder);
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
     private function scoreMathInput($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
-        $correctVal = (float)(strip_tags((string)($keyAnswer['answer'] ?? 0)));
-        $tolerance = (float)($keyAnswer['tolerance'] ?? 0);
+        $correctVal = (float) (strip_tags((string) ($keyAnswer['answer'] ?? 0)));
+        $tolerance = (float) ($keyAnswer['tolerance'] ?? 0);
 
         $rawStudentAnswer = is_array($studentAnswer) ? ($studentAnswer[0] ?? 0) : $studentAnswer;
-        $studentVal = (float)strip_tags((string)$rawStudentAnswer);
+        $studentVal = (float) strip_tags((string) $rawStudentAnswer);
 
         $isCorrect = abs($studentVal - $correctVal) <= $tolerance;
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -206,31 +233,31 @@ class ExamScoringService
     {
         $correctAnswers = $keyAnswer['answers'] ?? [];
         // Support legacy single answer format just in case
-        if (isset($keyAnswer['answer']) && !in_array($keyAnswer['answer'], $correctAnswers)) {
+        if (isset($keyAnswer['answer']) && ! in_array($keyAnswer['answer'], $correctAnswers)) {
             $correctAnswers[] = $keyAnswer['answer'];
         }
 
         // Handle if student answer is an array (e.g. from a component that returns an array of inputs)
         $rawStudentAnswer = is_array($studentAnswer) ? (isset($studentAnswer[0]) ? $studentAnswer[0] : '') : $studentAnswer;
-        $studentVal = trim(strtolower(strip_tags((string)$rawStudentAnswer)));
+        $studentVal = trim(mb_strtolower(strip_tags((string) $rawStudentAnswer)));
 
         $isCorrect = false;
 
-        \Illuminate\Support\Facades\Log::info("scoreShortAnswer Checking => Student: '{$studentVal}' | Keys: " . json_encode($correctAnswers) . " | Raw Student Answer: " . json_encode($studentAnswer) . " | Raw Key: " . json_encode($keyAnswer));
+        Log::info("scoreShortAnswer Checking => Student: '{$studentVal}' | Keys: ".json_encode($correctAnswers).' | Raw Student Answer: '.json_encode($studentAnswer).' | Raw Key: '.json_encode($keyAnswer));
 
         foreach ($correctAnswers as $answer) {
-            $keyVal = trim(strtolower(strip_tags((string)$answer)));
-            \Illuminate\Support\Facades\Log::info("  |- Comparing student '{$studentVal}' vs key '{$keyVal}'");
+            $keyVal = trim(mb_strtolower(strip_tags((string) $answer)));
+            Log::info("  |- Comparing student '{$studentVal}' vs key '{$keyVal}'");
             if ($studentVal === $keyVal) {
                 $isCorrect = true;
-                \Illuminate\Support\Facades\Log::info("  |- Result: MATCH");
+                Log::info('  |- Result: MATCH');
                 break;
             }
         }
 
         return [
             'score' => $isCorrect ? $maxScore : 0,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 
@@ -259,12 +286,14 @@ class ExamScoringService
         $correctCount = 0;
         foreach ($options as $opt) {
             $key = is_array($opt) ? ($opt['option_key'] ?? null) : ($opt->option_key ?? null);
-            if (!$key) continue;
+            if (! $key) {
+                continue;
+            }
 
             $metadata = is_array($opt) ? ($opt['metadata'] ?? []) : ($opt->metadata ?? []);
 
             $correctGroupUuid = $metadata['group_uuid']
-                ?? (isset($metadata['group_index']) ? (string)$metadata['group_index'] : null)
+                ?? (isset($metadata['group_index']) ? (string) $metadata['group_index'] : null)
                 ?? $metadata['category_title']
                 ?? null;
 
@@ -275,11 +304,11 @@ class ExamScoringService
 
         $ratio = $correctCount / $totalItems;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio == 1.0);
+        $isCorrect = ($ratio === 1.0);
 
         return [
             'score' => $scoreEarned,
-            'is_correct' => $isCorrect
+            'is_correct' => $isCorrect,
         ];
     }
 }
