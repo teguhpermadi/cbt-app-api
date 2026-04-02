@@ -54,8 +54,12 @@ final class CorrectExamQuestionJob implements ShouldQueue
     public function __construct(
         public ExamResultDetail $examResultDetail,
         public ?string $triggeredBy = null,
-        public ?string $batchId = null
-    ) {}
+        ?string $batchId = null
+    ) {
+        if ($batchId !== null) {
+            $this->batchId = $batchId;
+        }
+    }
 
     /**
      * Execute the job.

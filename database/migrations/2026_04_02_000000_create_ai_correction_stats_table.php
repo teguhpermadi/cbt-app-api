@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::create('ai_correction_stats', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->foreignId('exam_id')->constrained()->onDelete('cascade');
+            $table->foreignUlid('exam_id')->constrained()->onDelete('cascade');
             $table->string('batch_id')->nullable();
             $table->string('provider');
             $table->integer('total_jobs');

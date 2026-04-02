@@ -39,9 +39,12 @@ final class CorrectExamQuestionLMStudioJob implements ShouldQueue
         public ExamResultDetail $examResultDetail,
         public ?string $triggeredBy = null,
         ?string $model = null,
-        public ?string $batchId = null
+        ?string $batchId = null
     ) {
         $this->model = $model ?? config('prism.lmstudio.model', 'gemma-3-4b');
+        if ($batchId !== null) {
+            $this->batchId = $batchId;
+        }
     }
 
     public function handle(): void
