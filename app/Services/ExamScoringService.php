@@ -88,7 +88,20 @@ final class ExamScoringService
     private function scoreMultipleChoice($question, $studentAnswer, $keyAnswer, $maxScore): array
     {
         $keyVal = strip_tags($keyAnswer['answer'] ?? '');
-        $studentVal = is_array($studentAnswer) ? ($studentAnswer[0] ?? '') : $studentAnswer;
+
+        $studentVal = '';
+        if (is_array($studentAnswer)) {
+            if (isset($studentAnswer[0])) {
+                $firstAnswer = $studentAnswer[0];
+                if (is_array($firstAnswer) && isset($firstAnswer['option_key'])) {
+                    $studentVal = $firstAnswer['option_key'];
+                } else {
+                    $studentVal = (string) $firstAnswer;
+                }
+            }
+        } else {
+            $studentVal = (string) $studentAnswer;
+        }
         $studentVal = strip_tags((string) $studentVal);
 
         $isCorrect = ($studentVal === $keyVal);
@@ -142,7 +155,13 @@ final class ExamScoringService
         $totalCorrectOptions = count($correctKeys);
         $selectedByStudent = is_array($studentAnswer) ? $studentAnswer : [];
 
-        // Calculate Intersect
+        if (! empty($selectedByStudent)) {
+            $firstElement = reset($selectedByStudent);
+            if (is_array($firstElement) && isset($firstElement['option_key'])) {
+                $selectedByStudent = array_column($selectedByStudent, 'option_key');
+            }
+        }
+
         $matches = array_intersect($correctKeys, $selectedByStudent);
         $countRight = count($matches);
 
