@@ -98,25 +98,77 @@ curl -X GET https://api.example.com/api/v1/exams/1/correction-progress \
     "exam_id": 1,
     "exam_title": "Ujian Tengah Semester",
     "latest_correction": {
-      "id": 1,
+      "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       "provider": "lmstudio",
       "batch_id": "batch_abc123",
-      "total_jobs": 50,
-      "completed_jobs": 45,
+      "total_jobs": 25,
+      "completed_jobs": 15,
       "failed_jobs": 0,
       "avg_time_per_job": 8.5,
       "status": "processing",
-      "progress_percentage": 90,
-      "estimated_remaining_seconds": 42,
+      "progress_percentage": 60,
+      "estimated_remaining_seconds": 85,
       "started_at": "2026-04-02T10:00:00.000000Z",
       "finished_at": null
     },
+    "question_progress": [
+      {
+        "exam_question_id": 5,
+        "question_number": 1,
+        "question_content": "Jelaskan pengertian photosynthesis dan berikan contoh dalam kehidupan sehari-hari",
+        "score_value": 10,
+        "total_to_correct": 5,
+        "corrected_count": 5,
+        "status": "completed",
+        "progress_percentage": 100
+      },
+      {
+        "exam_question_id": 8,
+        "question_number": 2,
+        "question_content": "Apa dampak positif teknologi terhadap kehidupan sehari-hari? Jelaskan minimal 3 contoh",
+        "score_value": 15,
+        "total_to_correct": 5,
+        "corrected_count": 3,
+        "status": "processing",
+        "progress_percentage": 60
+      },
+      {
+        "exam_question_id": 12,
+        "question_number": 3,
+        "question_content": "Tuliskan contoh penerapan teknologi ramah lingkungan dalam bidang pendidikan",
+        "score_value": 20,
+        "total_to_correct": 5,
+        "corrected_count": 2,
+        "status": "processing",
+        "progress_percentage": 40
+      },
+      {
+        "exam_question_id": 15,
+        "question_number": 4,
+        "question_content": "Bagaimana cara meningkatkan efisiensi energi di sekolah? Berikanminimal 5 saran",
+        "score_value": 25,
+        "total_to_correct": 5,
+        "corrected_count": 0,
+        "status": "processing",
+        "progress_percentage": 0
+      },
+      {
+        "exam_question_id": 20,
+        "question_number": 5,
+        "question_content": "Jelaskan peran pemerintah dalam mengatasi permasalahan lingkungan hidup di Indonesia",
+        "score_value": 30,
+        "total_to_correct": 5,
+        "corrected_count": 5,
+        "status": "completed",
+        "progress_percentage": 100
+      }
+    ],
     "all_corrections": [
       {
-        "id": 1,
+        "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         "provider": "lmstudio",
-        "total_jobs": 50,
-        "completed_jobs": 45,
+        "total_jobs": 25,
+        "completed_jobs": 15,
         "status": "processing",
         "started_at": "2026-04-02T10:00:00.000000Z",
         "finished_at": null
@@ -129,7 +181,7 @@ curl -X GET https://api.example.com/api/v1/exams/1/correction-progress \
 **Response Fields - Latest Correction:**
 | Field | Type | Description |
 |-------|------|-------------|
-| id | int | Stats record ID |
+| id | string (ULID) | Stats record ID |
 | provider | string | AI provider used: `gemini`, `openrouter`, `lmstudio` |
 | batch_id | string | Laravel batch ID for the job batch |
 | total_jobs | int | Total number of jobs in this correction batch |
@@ -141,6 +193,18 @@ curl -X GET https://api.example.com/api/v1/exams/1/correction-progress \
 | estimated_remaining_seconds | int\|null | Estimated seconds remaining, `null` if no avg_time data |
 | started_at | datetime | When the correction started |
 | finished_at | datetime\|null | When the correction finished (null if still processing) |
+
+**Response Fields - Question Progress:**
+| Field | Type | Description |
+|-------|------|-------------|
+| exam_question_id | int | Exam question ID |
+| question_number | int | Question number in the exam |
+| question_content | string | Full question content text |
+| score_value | float | Maximum score for this question |
+| total_to_correct | int | Total answers to be corrected for this question |
+| corrected_count | int | Number of answers already corrected |
+| status | string | Status: `processing`, `completed`, `pending`, `failed` |
+| progress_percentage | int | Progress percentage for this question (0-100) |
 
 ---
 

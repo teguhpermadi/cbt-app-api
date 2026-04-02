@@ -821,6 +821,30 @@ final class ExamCorrectionController extends ApiController
 
         $latestStat = $stats->first();
 
+        $questionCorrections = ExamQuestionCorrection::where('exam_id', $exam->id)
+            ->whereIn('status', [CorrectionStatusEnum::PROCESSING, CorrectionStatusEnum::COMPLETED])
+            ->with(['examQuestion:id,question_number,content,score_value'])
+            ->orderBy('exam_question_id')
+            ->get();
+
+        $questionProgress = $questionCorrections->map(function ($qc) {
+            $question = $qc->examQuestion;
+            $total = $qc->total_to_correct;
+            $corrected = $qc->corrected_count;
+            $progressPercent = $total > 0 ? (int) round(($corrected / $total) * 100) : 0;
+
+            return [
+                'exam_question_id' => $qc->exam_question_id,
+                'question_number' => $question?->question_number,
+                'question_content' => $question?->content,
+                'score_value' => $question?->score_value,
+                'total_to_correct' => $qc->total_to_correct,
+                'corrected_count' => $qc->corrected_count,
+                'status' => $qc->status->value,
+                'progress_percentage' => $progressPercent,
+            ];
+        });
+
         return $this->success([
             'exam_id' => $exam->id,
             'exam_title' => $exam->title,
@@ -838,6 +862,7 @@ final class ExamCorrectionController extends ApiController
                 'started_at' => $latestStat->started_at,
                 'finished_at' => $latestStat->finished_at,
             ],
+            'question_progress' => $questionProgress,
             'all_corrections' => $stats->map(function ($stat) {
                 return [
                     'id' => $stat->id,
