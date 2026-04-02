@@ -206,6 +206,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{exam}/bulk-correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'bulkUpdate'])->name('api.v1.exams.correction.bulk-update');
         Route::post('{exam}/recalculate-all', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculateAll'])->name('api.v1.exams.correction.recalculate-all');
         Route::post('{exam}/ai-correct', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'aiCorrect'])->name('api.v1.exams.correction.ai-correct');
+        Route::get('{exam}/correction-progress', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'correctionProgress'])->name('api.v1.exams.correction.progress');
         Route::delete('{exam}/sessions/{examSession}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'destroy'])->name('api.v1.exams.correction.destroy');
     });
     Route::put('sessions/{examSession}/details/{examResultDetail}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');

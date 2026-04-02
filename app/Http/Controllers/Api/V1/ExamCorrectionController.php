@@ -1,27 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Api\ApiController;
-use App\Http\Resources\ExamCorrectionResource;
-use App\Models\Exam;
-use App\Models\ExamQuestion;
-use App\Models\ExamResultDetail;
-use App\Models\ExamSession;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use App\Enums\UserTypeEnum;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use App\Models\ExamQuestionCorrection;
 use App\Enums\CorrectionStatusEnum;
 use App\Enums\QuestionTypeEnum;
+use App\Enums\UserTypeEnum;
 use App\Events\AiCorrectionFinished;
-use App\Notifications\AiCorrectionFinishedNotification;
+use App\Http\Controllers\Api\ApiController;
+use App\Http\Resources\ExamCorrectionResource;
+use App\Models\AiCorrectionStat;
+use App\Models\Exam;
+use App\Models\ExamQuestion;
+use App\Models\ExamQuestionCorrection;
+use App\Models\ExamResultDetail;
+use App\Models\ExamSession;
 use App\Models\User;
+use App\Notifications\AiCorrectionFinishedNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 
-class ExamCorrectionController extends ApiController
+final class ExamCorrectionController extends ApiController
 {
     /**
      * Get all sessions for a specific exam.
@@ -51,7 +53,7 @@ class ExamCorrectionController extends ApiController
             'exam' => $exam,
             'sessions' => \App\Http\Resources\Student\ExamSessionResource::collection($sessions),
             'questions' => $questions,
-            'correction_statuses' => $correctionStatuses
+            'correction_statuses' => $correctionStatuses,
         ]);
     }
 
@@ -70,7 +72,7 @@ class ExamCorrectionController extends ApiController
             }
 
             // Student can only view if exam's is_show_result is true
-            if (!$exam->is_show_result) {
+            if (! $exam->is_show_result) {
                 return $this->error('Detailed results are not available for this exam.', 403);
             }
         }
@@ -161,7 +163,7 @@ class ExamCorrectionController extends ApiController
         $examResultDetail->update([
             'score_earned' => $scoreEarned,
             'correction_notes' => $validated['correction_notes'] ?? $examResultDetail->correction_notes,
-            'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
+            'is_correct' => $isCorrect ?? ($scoreEarned === $maxScore),
         ]);
 
         // Sync progress
@@ -208,7 +210,7 @@ class ExamCorrectionController extends ApiController
             abort(404, 'Answer detail not found for this session.');
         }
 
-        if (!$examSession->is_finished) {
+        if (! $examSession->is_finished) {
             return $this->error('Session is already active.', 400);
         }
 
@@ -265,7 +267,9 @@ class ExamCorrectionController extends ApiController
             foreach ($validated['updates'] as $updateData) {
                 $detail = ExamResultDetail::with('examQuestion')->find($updateData['id']);
 
-                if (!$detail) continue;
+                if (! $detail) {
+                    continue;
+                }
 
                 $maxScore = $detail->examQuestion->score_value;
                 $scoreEarned = $updateData['score_earned'] ?? $detail->score_earned;
@@ -284,7 +288,7 @@ class ExamCorrectionController extends ApiController
                 $detail->update([
                     'score_earned' => min($scoreEarned, $maxScore),
                     'correction_notes' => $updateData['correction_notes'] ?? $detail->correction_notes,
-                    'is_correct' => $isCorrect ?? ($scoreEarned == $maxScore),
+                    'is_correct' => $isCorrect ?? ($scoreEarned === $maxScore),
                 ]);
 
                 // Sync progress for this question
@@ -304,17 +308,19 @@ class ExamCorrectionController extends ApiController
     {
         // For non-essay/short-answer questions, they are usually auto-corrected
         // But we might want to track them anyway.
-        
+
         $totalToCorrect = ExamResultDetail::where('exam_question_id', $question->id)
-            ->whereHas('examSession', function($q) {
+            ->whereHas('examSession', function ($q) {
                 $q->where('is_finished', true);
             })
             ->count();
 
-        if ($totalToCorrect === 0) return null;
+        if ($totalToCorrect === 0) {
+            return null;
+        }
 
         $correctedCount = ExamResultDetail::where('exam_question_id', $question->id)
-            ->whereHas('examSession', function($q) {
+            ->whereHas('examSession', function ($q) {
                 $q->where('is_finished', true);
             })
             ->whereNotNull('score_earned')
@@ -459,9 +465,11 @@ class ExamCorrectionController extends ApiController
             $details = ExamResultDetail::where('exam_question_id', $question->id)->get();
 
             $totalAnswered = $details->count();
-            if ($totalAnswered === 0) continue;
+            if ($totalAnswered === 0) {
+                continue;
+            }
 
-            $maxScore = max(1, (float)($question->score_value ?? 1));
+            $maxScore = max(1, (float) ($question->score_value ?? 1));
 
             // 1. Tingkat Kesukaran (P) - Menggunakan rerata skor untuk mendukung soal uraian/isian singkat
             $totalScoreEarned = $details->sum('score_earned');
@@ -507,7 +515,9 @@ class ExamCorrectionController extends ApiController
                 $distractorDetails = [];
 
                 foreach ($options as $option) {
-                    if ($option->is_correct) continue;
+                    if ($option->is_correct) {
+                        continue;
+                    }
 
                     // How many chose this option
                     $chosenByAll = $details->filter(function ($d) use ($option) {
@@ -524,7 +534,7 @@ class ExamCorrectionController extends ApiController
 
                     $isFunctional = ($chosenByAll >= $minChosen) && ($chosenByBottom >= $chosenByTop);
 
-                    if (!$isFunctional) {
+                    if (! $isFunctional) {
                         $badDistractors++;
                     }
 
@@ -533,7 +543,7 @@ class ExamCorrectionController extends ApiController
                         'chosen_all' => $chosenByAll,
                         'chosen_top' => $chosenByTop,
                         'chosen_bottom' => $chosenByBottom,
-                        'is_functional' => $isFunctional
+                        'is_functional' => $isFunctional,
                     ];
                 }
 
@@ -553,13 +563,13 @@ class ExamCorrectionController extends ApiController
             if ($discriminationScore < 0.2) {
                 if ($difficultyScore < 0.3) {
                     $status = 'Ditolak';
-                    $recommendation = "Soal ini terlalu sukar dan tidak membedakan siswa (daya beda jelek). Sebaiknya dibuang atau dirombak total.";
+                    $recommendation = 'Soal ini terlalu sukar dan tidak membedakan siswa (daya beda jelek). Sebaiknya dibuang atau dirombak total.';
                 } elseif ($difficultyScore > 0.7) {
                     $status = 'Direvisi';
-                    $recommendation = "Soal ini terlalu mudah dan daya bedanya jelek. Perlu ditambah tingkat kesukarannya.";
+                    $recommendation = 'Soal ini terlalu mudah dan daya bedanya jelek. Perlu ditambah tingkat kesukarannya.';
                 } else {
                     $status = 'Direvisi';
-                    $recommendation = "Tingkat kesukaran sedang, tetapi daya bedanya jelek (mungkin membingungkan siswa pandai). Perlu perbaikan pada redaksi soal atau pengecoh.";
+                    $recommendation = 'Tingkat kesukaran sedang, tetapi daya bedanya jelek (mungkin membingungkan siswa pandai). Perlu perbaikan pada redaksi soal atau pengecoh.';
                 }
             } elseif ($discriminationScore < 0.3) {
                 $status = 'Direvisi';
@@ -568,7 +578,7 @@ class ExamCorrectionController extends ApiController
 
             if ($distractorStatus === 'Kurang Berfungsi') {
                 $status = ($status === 'Diterima') ? 'Direvisi' : $status;
-                $recommendation .= " Beberapa pengecoh tidak berfungsi dengan baik (kurang diminati atau lebih mengecoh kelompok atas).";
+                $recommendation .= ' Beberapa pengecoh tidak berfungsi dengan baik (kurang diminati atau lebih mengecoh kelompok atas).';
             }
 
             $statusCounts[$status]++;
@@ -580,33 +590,33 @@ class ExamCorrectionController extends ApiController
                 'content' => $question->content,
                 'difficulty' => [
                     'score' => round($difficultyScore, 2),
-                    'category' => $difficultyCategory
+                    'category' => $difficultyCategory,
                 ],
                 'discrimination' => [
                     'score' => round($discriminationScore, 2),
-                    'category' => $discriminationCategory
+                    'category' => $discriminationCategory,
                 ],
                 'distractor' => [
                     'status' => $distractorStatus,
-                    'details' => $distractorDetails ?? []
+                    'details' => $distractorDetails ?? [],
                 ],
                 'conclusion' => [
                     'status' => $status,
-                    'recommendation' => $recommendation
-                ]
+                    'recommendation' => $recommendation,
+                ],
             ];
         }
 
         $totalExamQuestions = $questions->count();
         $acceptedPercent = $totalExamQuestions > 0 ? round(($statusCounts['Diterima'] / $totalExamQuestions) * 100) : 0;
 
-        $overallRecommendation = "Instrumen tes memerlukan banyak perbaikan.";
+        $overallRecommendation = 'Instrumen tes memerlukan banyak perbaikan.';
         if ($acceptedPercent >= 80) {
-            $overallRecommendation = "Secara umum, instrumen tes sudah sangat baik dan layak diujikan kembali.";
+            $overallRecommendation = 'Secara umum, instrumen tes sudah sangat baik dan layak diujikan kembali.';
         } elseif ($acceptedPercent >= 50) {
-            $overallRecommendation = "Instrumen tes cukup baik, namun beberapa soal perlu direvisi sebelum digunakan kembali.";
+            $overallRecommendation = 'Instrumen tes cukup baik, namun beberapa soal perlu direvisi sebelum digunakan kembali.';
         } else {
-            $overallRecommendation = "Sebagian besar butir soal kurang relevan atau membingungkan. Sangat disarankan untuk merombak ulang instrumen tes.";
+            $overallRecommendation = 'Sebagian besar butir soal kurang relevan atau membingungkan. Sangat disarankan untuk merombak ulang instrumen tes.';
         }
 
         return $this->success([
@@ -621,7 +631,7 @@ class ExamCorrectionController extends ApiController
                 'rejected' => $statusCounts['Ditolak'],
                 'general_recommendation' => $overallRecommendation,
             ],
-            'item_analysis' => $analysisData
+            'item_analysis' => $analysisData,
         ]);
     }
 
@@ -659,7 +669,7 @@ class ExamCorrectionController extends ApiController
         $userId = Auth::id();
         $userName = Auth::user()?->name;
 
-        if (!in_array($provider, ['gemini', 'openrouter', 'lmstudio'])) {
+        if (! in_array($provider, ['gemini', 'openrouter', 'lmstudio'])) {
             return $this->error('Invalid provider. Supported providers are: gemini, openrouter, lmstudio', 422);
         }
 
@@ -688,6 +698,7 @@ class ExamCorrectionController extends ApiController
             } elseif ($examSessionId) {
                 $msg = 'This student has no essay answers to correct.';
             }
+
             return $this->error($msg, 404);
         }
 
@@ -707,11 +718,11 @@ class ExamCorrectionController extends ApiController
         $jobs = [];
         foreach ($resultDetails as $detail) {
             if ($provider === 'openrouter') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName, null);
             } elseif ($provider === 'lmstudio') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName, null, null);
             } else {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName, null);
             }
         }
 
@@ -722,10 +733,10 @@ class ExamCorrectionController extends ApiController
                     $user = User::find($userId);
                     if ($user) {
                         $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
-                        
+
                         // Database Notification
                         $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
-                        
+
                         // Real-time Event
                         event(new AiCorrectionFinished($exam->id, (string) $userId, $message));
                     }
@@ -734,11 +745,110 @@ class ExamCorrectionController extends ApiController
             ->name($batchName)
             ->dispatch();
 
+        // Create stats record first
+        $stats = AiCorrectionStat::create([
+            'exam_id' => $exam->id,
+            'batch_id' => null, // Will be updated after batch creation
+            'provider' => $provider,
+            'total_jobs' => count($resultDetails),
+            'started_at' => now(),
+            'status' => 'processing',
+        ]);
+
+        $jobs = [];
+        foreach ($resultDetails as $detail) {
+            if ($provider === 'openrouter') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName, (string) $stats->id);
+            } elseif ($provider === 'lmstudio') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName, null, (string) $stats->id);
+            } else {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName, (string) $stats->id);
+            }
+        }
+
+        $batchName = "AI Correction: {$exam->title}";
+        $batch = Bus::batch($jobs)
+            ->then(function (\Illuminate\Bus\Batch $batch) use ($exam, $userId, $stats) {
+                // Update stats when batch completes
+                $stats->update([
+                    'status' => 'completed',
+                    'finished_at' => now(),
+                ]);
+
+                if ($userId) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
+
+                        // Database Notification
+                        $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
+
+                        // Real-time Event
+                        event(new AiCorrectionFinished($exam->id, (string) $userId, $message));
+                    }
+                }
+            })
+            ->name($batchName)
+            ->dispatch();
+
+        // Update stats with batch_id
+        $stats->update(['batch_id' => $batch->id]);
+
         return $this->success([
             'batch_id' => $batch->id,
-            'total_jobs' => $batch->totalJobs,
-            'pending_jobs' => $batch->pendingJobs,
-            'correction_statuses' => ExamQuestionCorrection::where('exam_id', $exam->id)->get()
+            'stats_id' => $stats->id,
+            'total_jobs' => $stats->total_jobs,
+            'correction_statuses' => ExamQuestionCorrection::where('exam_id', $exam->id)->get(),
         ], "AI correction jobs for '{$exam->title}' have been dispatched.");
+    }
+
+    /**
+     * Get AI correction progress for an exam.
+     */
+    public function correctionProgress(Exam $exam)
+    {
+        $stats = AiCorrectionStat::where('exam_id', $exam->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        if ($stats->isEmpty()) {
+            return $this->success([
+                'exam_id' => $exam->id,
+                'stats' => [],
+                'message' => 'No correction jobs found for this exam.',
+            ]);
+        }
+
+        $latestStat = $stats->first();
+
+        return $this->success([
+            'exam_id' => $exam->id,
+            'exam_title' => $exam->title,
+            'latest_correction' => [
+                'id' => $latestStat->id,
+                'provider' => $latestStat->provider,
+                'batch_id' => $latestStat->batch_id,
+                'total_jobs' => $latestStat->total_jobs,
+                'completed_jobs' => $latestStat->completed_jobs,
+                'failed_jobs' => $latestStat->failed_jobs,
+                'avg_time_per_job' => $latestStat->avg_time_per_job,
+                'status' => $latestStat->status,
+                'progress_percentage' => $latestStat->progress_percentage,
+                'estimated_remaining_seconds' => $latestStat->estimated_remaining_seconds,
+                'started_at' => $latestStat->started_at,
+                'finished_at' => $latestStat->finished_at,
+            ],
+            'all_corrections' => $stats->map(function ($stat) {
+                return [
+                    'id' => $stat->id,
+                    'provider' => $stat->provider,
+                    'total_jobs' => $stat->total_jobs,
+                    'completed_jobs' => $stat->completed_jobs,
+                    'status' => $stat->status,
+                    'started_at' => $stat->started_at,
+                    'finished_at' => $stat->finished_at,
+                ];
+            }),
+        ]);
     }
 }

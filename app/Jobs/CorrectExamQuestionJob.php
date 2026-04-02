@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\CorrectionStatusEnum;
 use App\Enums\QuestionTypeEnum;
+use App\Models\AiCorrectionStat;
 use App\Models\ExamQuestionCorrection;
 use App\Models\ExamResult;
 use App\Models\ExamResultDetail;
@@ -25,6 +26,7 @@ use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
 use Prism\Prism\Schema\StringSchema;
 use romanzipp\QueueMonitor\Traits\IsMonitored;
+use Throwable;
 
 final class CorrectExamQuestionJob implements ShouldQueue
 {
@@ -44,12 +46,15 @@ final class CorrectExamQuestionJob implements ShouldQueue
      */
     public $backoff = 30;
 
+    protected ?float $jobStartedAt = null;
+
     /**
      * Create a new job instance.
      */
     public function __construct(
         public ExamResultDetail $examResultDetail,
-        public ?string $triggeredBy = null
+        public ?string $triggeredBy = null,
+        public ?string $batchId = null
     ) {}
 
     /**
@@ -57,6 +62,8 @@ final class CorrectExamQuestionJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->jobStartedAt = microtime(true);
+
         $detail = $this->examResultDetail->load(['examQuestion', 'examSession.exam', 'examSession.user']);
         $question = $detail->examQuestion;
         $session = $detail->examSession;
@@ -64,13 +71,13 @@ final class CorrectExamQuestionJob implements ShouldQueue
         $studentName = $session->user->name;
 
         $queueDataPayload = [
-            'description' => "Koreksi ujian '{$exam->title}' siswa {$studentName} soal no {$question->question_number}"
+            'description' => "Koreksi ujian '{$exam->title}' siswa {$studentName} soal no {$question->question_number}",
         ];
-        
+
         if ($this->triggeredBy) {
             $queueDataPayload['triggered_by'] = $this->triggeredBy;
         }
-        
+
         $this->queueData($queueDataPayload);
 
         $studentAnswer = is_array($detail->student_answer)
@@ -160,6 +167,21 @@ final class CorrectExamQuestionJob implements ShouldQueue
             }
             Log::error("AI Correction failed for Detail ID: {$detail->id}. Error: ".$e->getMessage());
             throw $e;
+        }
+    }
+
+    public function completed(): void
+    {
+        if ($this->jobStartedAt && $this->batchId) {
+            $executionTime = microtime(true) - $this->jobStartedAt;
+            AiCorrectionStat::recordJobCompletion($this->batchId, $executionTime);
+        }
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        if ($this->batchId) {
+            AiCorrectionStat::recordJobFailure($this->batchId);
         }
     }
 

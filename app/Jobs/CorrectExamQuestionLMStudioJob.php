@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\CorrectionStatusEnum;
 use App\Events\AiScoreUpdated;
+use App\Models\AiCorrectionStat;
 use App\Models\ExamQuestionCorrection;
 use App\Models\ExamResult;
 use App\Models\ExamResultDetail;
@@ -32,16 +33,21 @@ final class CorrectExamQuestionLMStudioJob implements ShouldQueue
 
     protected string $model;
 
+    protected ?float $jobStartedAt = null;
+
     public function __construct(
         public ExamResultDetail $examResultDetail,
         public ?string $triggeredBy = null,
-        ?string $model = null
+        ?string $model = null,
+        public ?string $batchId = null
     ) {
         $this->model = $model ?? config('prism.lmstudio.model', 'gemma-3-4b');
     }
 
     public function handle(): void
     {
+        $this->jobStartedAt = microtime(true);
+
         $detail = $this->examResultDetail->load(['examQuestion', 'examSession.exam', 'examSession.user']);
         $question = $detail->examQuestion;
         $session = $detail->examSession;
@@ -159,6 +165,21 @@ JSON WAJIB format: {\"score\": <angka>, \"notes\": \"<catatan singkat dalam baha
             }
             Log::error("LM Studio Correction FAILED for Detail ID: {$detail->id}. Error: ".$e->getMessage());
             throw $e;
+        }
+    }
+
+    public function completed(): void
+    {
+        if ($this->jobStartedAt && $this->batchId) {
+            $executionTime = microtime(true) - $this->jobStartedAt;
+            AiCorrectionStat::recordJobCompletion($this->batchId, $executionTime);
+        }
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        if ($this->batchId) {
+            AiCorrectionStat::recordJobFailure($this->batchId);
         }
     }
 
