@@ -54,15 +54,15 @@ curl -X POST https://api.example.com/api/v1/exams/1/ai-correct \
   "message": "AI correction jobs for 'Ujian Tengah Semester' have been dispatched.",
   "data": {
     "batch_id": "batch_abc123",
-    "stats_id": 1,
-    "total_jobs": 50,
+    "stats_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    "total_jobs": 25,
     "correction_statuses": [
       {
         "id": 1,
         "exam_id": 1,
         "exam_question_id": 5,
         "status": "processing",
-        "total_to_correct": 25,
+        "total_to_correct": 5,
         "corrected_count": 0
       }
     ]
@@ -145,7 +145,7 @@ curl -X GET https://api.example.com/api/v1/exams/1/correction-progress \
       {
         "exam_question_id": 15,
         "question_number": 4,
-        "question_content": "Bagaimana cara meningkatkan efisiensi energi di sekolah? Berikanminimal 5 saran",
+        "question_content": "Bagaimana cara meningkatkan efisiensi energi di sekolah? Berikan minimal 5 saran",
         "score_value": 25,
         "total_to_correct": 5,
         "corrected_count": 0,
