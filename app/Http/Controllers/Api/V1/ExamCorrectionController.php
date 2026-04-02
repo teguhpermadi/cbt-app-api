@@ -659,8 +659,8 @@ class ExamCorrectionController extends ApiController
         $userId = Auth::id();
         $userName = Auth::user()?->name;
 
-        if (!in_array($provider, ['gemini', 'openrouter'])) {
-            return $this->error('Invalid provider. Supported providers are: gemini, openrouter', 422);
+        if (!in_array($provider, ['gemini', 'openrouter', 'lmstudio'])) {
+            return $this->error('Invalid provider. Supported providers are: gemini, openrouter, lmstudio', 422);
         }
 
         $query = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
@@ -708,6 +708,8 @@ class ExamCorrectionController extends ApiController
         foreach ($resultDetails as $detail) {
             if ($provider === 'openrouter') {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName);
+            } elseif ($provider === 'lmstudio') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName);
             } else {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName);
             }
