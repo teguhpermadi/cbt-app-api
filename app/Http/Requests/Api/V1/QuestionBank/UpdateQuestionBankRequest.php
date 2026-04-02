@@ -24,6 +24,7 @@ class UpdateQuestionBankRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'subject_id' => ['sometimes', 'required', 'exists:subjects,id'],
+            'user_id' => ['nullable', 'string', 'exists:users,id'],
         ];
     }
 }
