@@ -1,28 +1,31 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Models\ExamSession;
-use App\Models\ExamResult;
-use App\Models\ExamResultDetail;
 use App\Enums\QuestionTypeEnum;
+use App\Models\ExamResult;
+use App\Models\ExamSession;
+use BackedEnum;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use romanzipp\QueueMonitor\Traits\IsMonitored;
 
-class CalculateExamScoreJob implements ShouldQueue
+final class CalculateExamScoreJob implements ShouldQueue
 {
-    use Queueable, IsMonitored;
+    use IsMonitored, Queueable;
 
     private $session;
+
     private $questionTypes; // Changed from singular to plural conceptual usage, but can be array
 
     /**
      * Create a new job instance.
-     * @param string|array $questionTypes
+     *
+     * @param  string|array  $questionTypes
      */
     public function __construct(ExamSession $session, $questionTypes = 'all')
     {
@@ -57,12 +60,23 @@ class CalculateExamScoreJob implements ShouldQueue
                 $scoreEarned = $detail->score_earned ?? 0;
                 $totalEarnedScore += $scoreEarned;
 
-                $qTypeValue = $examQuestion->question_type instanceof \BackedEnum
+                $qTypeValue = $examQuestion->question_type instanceof BackedEnum
                     ? $examQuestion->question_type->value
                     : $examQuestion->question_type;
 
                 if (in_array($qTypeValue, ['essay', 'short_answer'])) {
-                    Log::info("Calculating " . ucfirst(str_replace('_', ' ', $qTypeValue)) . " Detail {$detail->id}. Current Score: {$scoreEarned}");
+                    Log::info('Calculating '.ucfirst(str_replace('_', ' ', $qTypeValue))." Detail {$detail->id}. Current Score: {$scoreEarned}");
+                }
+
+                $essayTypes = [
+                    QuestionTypeEnum::ESSAY->value,
+                    QuestionTypeEnum::SHORT_ANSWER->value,
+                    QuestionTypeEnum::ARABIC_RESPONSE->value,
+                    QuestionTypeEnum::JAVANESE_RESPONSE->value,
+                ];
+
+                if (in_array($qTypeValue, $essayTypes) && $detail->student_answer !== null && empty($detail->correction_notes)) {
+                    CorrectExamQuestionLMStudioJob::dispatch($detail, 'CalculateExamScoreJob');
                 }
             }
 
@@ -74,7 +88,7 @@ class CalculateExamScoreJob implements ShouldQueue
             // Update ExamSession total_score AND total_max_score
             $session->update([
                 'total_score' => $totalEarnedScore,
-                'total_max_score' => $totalMaxScore
+                'total_max_score' => $totalMaxScore,
             ]);
 
             // Update or Create ExamResult
@@ -84,7 +98,7 @@ class CalculateExamScoreJob implements ShouldQueue
                 ->where('user_id', $session->user_id)
                 ->first();
 
-            $shouldUpdate = !$existingResult
+            $shouldUpdate = ! $existingResult
                 || $existingResult->exam_session_id === $session->id
                 || $scorePercent > $existingResult->score_percent;
 
