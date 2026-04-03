@@ -1,0 +1,189 @@
+{
+    "success": true,
+    "message": "Success",
+    "data": {
+        "exam_id": "01kjp7k5n260vbc8ams13dvd5a",
+        "exam_title": "Test Pendidikan Pancasila",
+        "latest_correction": {
+            "id": "01kn92p4kj0mfp1zgge9rd2qkc",
+            "provider": "lmstudio",
+            "batch_id": "a17418d3-3640-4b6a-bcb3-7a406910ecea",
+            "total_jobs": 69,
+            "completed_jobs": 315,
+            "failed_jobs": 0,
+            "pending_jobs": 69,
+            "total_corrected_count": 315,
+            "total_to_correct": 315,
+            "avg_time_per_job": null,
+            "status": "processing",
+            "progress_percentage": 457,
+            "estimated_remaining_seconds": null,
+            "started_at": "2026-04-03T07:07:27.000000Z",
+            "finished_at": null
+        },
+        "question_progress": [
+            {
+                "exam_question_id": "01kjp7k5naw8gbtqbqnr69gbb6",
+                "question_number": 1,
+                "question_content": "<p>Perhatikan informasi tradisi gotong royong berikut!<\/p><p>1. Ngayah (Bali): Pekerjaan sukarela di banjar tanpa imbalan.<\/p><p>2. Sambatan (Jawa): Membantu tetangga saat hajatan\/musibah.<\/p><p>3. Mapalus (Minahasa): Sistem kerja sama bertani\/fasum berasas kekeluargaan.<\/p><p>4. Liliuran (Jawa Barat): Gotong royong lahan bergantian.<\/p><p>Di sebuah desa transmigrasi di Kalimantan, tinggallah warga dari berbagai suku. Menjelang musim hujan, saluran air utama tersumbat lumpur. Pak RT dari Minahasa mengajak warga berkumpul dan menerapkan prinsip kerja sama daerah masing-masing untuk kepentingan desa. Pak Budi (Jawa Tengah) membawa cangkul, Bli Wayan (Bali) menyiapkan konsumsi sukarela, dan warga lain membagi jadwal pengerukan.<\/p><p>Pertanyaan:<\/p><p>Berdasarkan cerita di atas, nilai esensial apa yang berhasil disinergikan oleh Pak RT dalam mengatasi ancaman banjir tersebut?<\/p>",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5ndnpdgej26rgzf0dx3",
+                "question_number": 2,
+                "question_content": "<p>Perhatikan informasi tradisi gotong royong berikut!<\/p><p>1. Ngayah (Bali): Pekerjaan sukarela di banjar tanpa imbalan.<\/p><p>2. Sambatan (Jawa): Membantu tetangga saat hajatan\/musibah.<\/p><p>3. Mapalus (Minahasa): Sistem kerja sama bertani\/fasum berasas kekeluargaan.<\/p><p>4. Liliuran (Jawa Barat): Gotong royong lahan bergantian.<\/p><p>Di sebuah desa transmigrasi di Kalimantan, saluran air utama tersumbat lumpur. Pak RT (Minahasa) mengajak warga menerapkan prinsip kerja sama daerah masing-masing. Pak Budi (Jawa Tengah) membawa cangkul, Bli Wayan (Bali) menyiapkan konsumsi sukarela, dan warga lain membagi jadwal.<\/p><p>Pertanyaan:<\/p><p>Mengevaluasi sikap Bli Wayan dan Pak Budi dalam cerita, pernyataan mana sajakah yang menunjukkan relevansi tradisi daerah dengan perilaku mereka? (Pilih lebih dari satu)<\/p>",
+                "score_value": 2,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nfhvp8jf0cr77zt766",
+                "question_number": 3,
+                "question_content": "<p>Tentukan Benar atau Salah pernyataan berikut:<\/p><p>Tradisi Sambatan di Jawa dan Ngayah di Bali memiliki perbedaan mendasar di mana Sambatan hanya dilakukan untuk urusan keagamaan, sedangkan Ngayah khusus untuk membangun rumah warga.<\/p>",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5njx0ee3cjed2t97zts",
+                "question_number": 4,
+                "question_content": "<p>Bacalah cerita berikut!<\/p><p>SDN 1 Nusantara mengadakan &quot;Pekan Kuliner Tradisional&quot;. Andi membawa Pempek, Siti membawa Gudeg, dan Made membawa Ayam Betutu. Saat istirahat, Doni (Jakarta) melihat bekal Tigor, yaitu Naniura (ikan mas mentah berbumbu khas Batak). Karena belum pernah melihatnya, Doni menutup hidung dan berkata keras, &quot;Makanan apa itu? Baunya aneh dan mentah! Aku tidak mau makan di dekatmu.&quot; Tigor merasa sedih dan marah. Beberapa siswa mulai menjauhi Tigor.<\/p><p>Pertanyaan:<\/p><p>Konflik tersebut dapat merusak nilai persatuan. Berdasarkan Sila ke-2 Pancasila, bagaimana seharusnya sikap Doni saat melihat makanan yang belum dikenalnya?<\/p>",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nk00493dns5ykdk5nf",
+                "question_number": 5,
+                "question_content": "<p>Bacalah cerita berikut!<\/p><p>Di SDN 1 Nusantara, Doni mencela makanan tradisional Naniura yang dibawa oleh Tigor karena dianggap berbau aneh dan mentah. Hal ini membuat Tigor sedih dan dijauhi teman-temannya, yang merupakan bentuk bullying kultural.<\/p><p>Pertanyaan:<\/p><p>Sebagai ketua kelas yang melihat kejadian tersebut, buatlah sebuah rancangan program\/aturan kelas sederhana (terdiri dari 3 langkah\/poin) yang dapat kamu usulkan kepada wali kelas untuk mencegah kejadian ini terulang, sekaligus meningkatkan apresiasi terhadap keberagaman Nusantara!<\/p>",
+                "score_value": 5,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "processing",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nnk1tk8n2r2fszh0mb",
+                "question_number": 6,
+                "question_content": "Tindakan saling menghargai dan tidak merendahkan budaya atau tradisi orang lain, seperti yang seharusnya dilakukan oleh siswa di SDN 1 Nusantara, merupakan pengamalan Pancasila, khususnya Sila ke-....",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nq99n08knrsak0kyv2",
+                "question_number": 7,
+                "question_content": "<p>Bacalah studi kasus berikut!<\/p><p>Di suatu daerah, terdapat Desa Sukamakmur dan Desa Sumberjaya yang berada di bawah Kecamatan Lintas Alam, Kabupaten Gemilang. Terjadi perselisihan batas wilayah karena pergeseran patok akibat longsor. Kepala Desa Sukamakmur dan Sumberjaya saling klaim tanah tersebut. Warga mulai terpancing emosi dan bersiap melakukan bentrokan fisik.<\/p><p>Pertanyaan:<\/p><p>Mengevaluasi situasi tersebut, langkah administratif dan konstitusional manakah yang paling tepat untuk menyelesaikan masalah tanpa mengorbankan keutuhan NKRI? (Pilih lebih dari satu)<\/p>",
+                "score_value": 2,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nszvd6z5667w6tnd1n",
+                "question_number": 8,
+                "question_content": "Jika penyelesaian sengketa batas desa di tingkat Kecamatan Lintas Alam gagal dan tidak menemukan titik temu, kepada siapa institusi pemerintahan di atasnya yang berwenang menengahi konflik batas antara dua desa di kecamatan yang sama tersebut?",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nvbn07b78perbpxe1v",
+                "question_number": 9,
+                "question_content": "Wilayah administratif yang terdiri dari gabungan beberapa Rukun Tetangga (RT) dan dipimpin oleh seorang ketua yang dipilih oleh warga sekitar disebut...",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nxpqwfcdax5xftmw8b",
+                "question_number": 10,
+                "question_content": "<p>Bacalah narasi &quot;Membangun Jembatan Harapan&quot; berikut!<\/p><p>Desa Pesisir Indah dihantam puting beliung yang memutuskan jembatan utama. Menunggu bantuan pemerintah butuh waktu lama karena akses sulit. Pemuda desa dari Suku Bugis, Jawa, dan Madura berinisiatif mengumpulkan dana via media sosial. Bapak-bapak sukarela menebang pohon kelapanya untuk jembatan darurat, dan ibu-ibu mendirikan dapur umum. Semua dilakukan tanpa sekat perbedaan.<\/p><p>Pertanyaan:<\/p><p>Analisis alasan utama mengapa gotong royong warga Desa Pesisir Indah tersebut dapat memperkuat rasa nasionalisme!<\/p>",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5nz9xj84283jxmt9g7g",
+                "question_number": 11,
+                "question_content": "<p>Tentukan Benar atau Salah pernyataan berikut!<\/p><p>Tindakan pemuda Karang Taruna mengumpulkan dana pemulihan bencana lewat media sosial menunjukkan bahwa nilai gotong royong di era modern telah luntur karena lebih mengandalkan bantuan orang luar secara virtual daripada tenaga fisik.<\/p>",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5p06ypgkee2m2kfwbff",
+                "question_number": 12,
+                "question_content": "Bandingkan respons warga Desa Pesisir Indah (yang bergotong royong secara proaktif memperbaiki jembatan dan membuat dapur umum) dengan masyarakat yang cenderung individualistis ketika menghadapi bencana! Mengapa sikap proaktif warga desa tersebut sangat sejalan dengan cita-cita pembentukan Negara Kesatuan Republik Indonesia (NKRI)? Berikan dua alasan kuat!",
+                "score_value": 5,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "processing",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5p30mth3qrqcy2ak3k0",
+                "question_number": 13,
+                "question_content": "<p>Perhatikan Data Indeks Kerukunan Umat Beragama (KUB) di Provinsi X tahun 2025 berikut:<\/p><p>- Tingkat Toleransi: 85% (Tinggi)<\/p><p>- Tingkat Kesetaraan: 80% (Tinggi)<\/p><p>- Tingkat Kerja Sama: 60% (Sedang)<\/p><p>Catatan: Warga merasa canggung mengajak tetangga beda agama bergotong royong\/siskamling karena takut menyinggung waktu ibadah mereka.<\/p><p>Pertanyaan:<\/p><p>Berdasarkan data di atas, manakah pernyataan yang menganalisis akar masalah dan solusi yang tepat sesuai nilai Pancasila? (Pilih lebih dari satu)<\/p>",
+                "score_value": 2,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5p51hdyas010sxb0k1b",
+                "question_number": 14,
+                "question_content": "Sikap saling menghormati dan tidak memaksakan kehendak kepada orang lain yang berbeda agama demi menjaga kerukunan merupakan pencerminan nilai Pancasila dengan lambang.... (Sebutkan nama lambangnya).",
+                "score_value": 1,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "completed",
+                "progress_percentage": 100
+            },
+            {
+                "exam_question_id": "01kjp7k5p6ykdq11k6kewcme0p",
+                "question_number": 15,
+                "question_content": "<p>Berdasarkan data Indeks KUB di Provinsi X, tingkat &quot;Kerja Sama&quot; masyarakat masih berada di angka 60% karena rasa canggung antarumat beragama.<\/p><p>Pertanyaan:<\/p><p>Rancanglah sebuah kegiatan warga di tingkat RT\/RW tempat tinggalmu yang bertujuan khusus untuk meningkatkan persentase kerja sama gotong royong antarwarga yang berbeda agama dan budaya. Jelaskan nama kegiatan, tujuan, dan tahapan pelaksanaannya!<\/p>",
+                "score_value": 5,
+                "total_to_correct": 21,
+                "corrected_count": 21,
+                "status": "processing",
+                "progress_percentage": 100
+            }
+        ],
+        "all_corrections": [
+            {
+                "id": "01kn92p4kj0mfp1zgge9rd2qkc",
+                "provider": "lmstudio",
+                "total_jobs": 69,
+                "completed_jobs": 0,
+                "failed_jobs": 0,
+                "status": "processing",
+                "started_at": "2026-04-03T07:07:27.000000Z",
+                "finished_at": null
+            }
+        ]
+    }
+}

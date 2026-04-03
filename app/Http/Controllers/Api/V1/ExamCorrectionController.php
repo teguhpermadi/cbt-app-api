@@ -709,12 +709,13 @@ final class ExamCorrectionController extends ApiController
                 ['exam_id' => $exam->id, 'exam_question_id' => $questionId],
                 [
                     'status' => CorrectionStatusEnum::PROCESSING,
-                    'total_to_correct' => $details->count(), // This might need logic if we want to add to existing total
+                    'total_to_correct' => $details->count(),
                     'corrected_count' => 0,
                 ]
             );
         }
 
+        // Create jobs array
         $jobs = [];
         foreach ($resultDetails as $detail) {
             if ($provider === 'openrouter') {
@@ -726,45 +727,15 @@ final class ExamCorrectionController extends ApiController
             }
         }
 
-        $batchName = "AI Correction: {$exam->title}";
-        $batch = Bus::batch($jobs)
-            ->then(function (\Illuminate\Bus\Batch $batch) use ($exam, $userId) {
-                if ($userId) {
-                    $user = User::find($userId);
-                    if ($user) {
-                        $message = "Koreksi AI untuk ujian '{$exam->title}' telah selesai.";
-
-                        // Database Notification
-                        $user->notify(new AiCorrectionFinishedNotification($exam->id, $exam->title, $message));
-
-                        // Real-time Event
-                        event(new AiCorrectionFinished($exam->id, (string) $userId, $message));
-                    }
-                }
-            })
-            ->name($batchName)
-            ->dispatch();
-
         // Create stats record first
         $stats = AiCorrectionStat::create([
             'exam_id' => $exam->id,
-            'batch_id' => null, // Will be updated after batch creation
+            'batch_id' => null,
             'provider' => $provider,
             'total_jobs' => count($resultDetails),
             'started_at' => now(),
             'status' => 'processing',
         ]);
-
-        $jobs = [];
-        foreach ($resultDetails as $detail) {
-            if ($provider === 'openrouter') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName, (string) $stats->id);
-            } elseif ($provider === 'lmstudio') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName, null, (string) $stats->id);
-            } else {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName, (string) $stats->id);
-            }
-        }
 
         $batchName = "AI Correction: {$exam->title}";
         $batch = Bus::batch($jobs)
@@ -845,6 +816,64 @@ final class ExamCorrectionController extends ApiController
             ];
         });
 
+        // Calculate actual completed jobs from question corrections (most accurate)
+        $totalCorrectedCount = $questionCorrections->sum('corrected_count');
+        $totalToCorrect = $questionCorrections->sum('total_to_correct');
+
+        // Check if all questions are completed
+        $allQuestionsCompleted = $questionCorrections->every(function ($qc) {
+            return $qc->status === CorrectionStatusEnum::COMPLETED;
+        });
+
+        // Get batch info if available
+        $batchInfo = null;
+        $pendingJobs = null;
+        if ($latestStat->batch_id) {
+            $batch = Bus::findBatch($latestStat->batch_id);
+            if ($batch) {
+                $pendingJobs = $batch->pendingJobs;
+                $batchInfo = [
+                    'total_jobs' => $batch->totalJobs,
+                    'processed_jobs' => $batch->processedJobs(),
+                    'failed_jobs' => $batch->failedJobs,
+                    'pending_jobs' => $batch->pendingJobs,
+                ];
+            }
+        }
+
+        // Calculate total_jobs from ALL essay answers in the exam (including unfinished sessions)
+        $totalJobs = ExamResultDetail::whereHas('examSession.exam', function ($q) use ($exam) {
+            $q->where('id', $exam->id);
+        })->whereHas('examQuestion', function ($q) {
+            $q->where('question_type', QuestionTypeEnum::ESSAY->value);
+        })->count();
+
+        // Use question_progress as source of truth for completed count
+        $completedJobs = $totalCorrectedCount;
+
+        // If we have batch info and it shows different values, prefer batch data
+        if ($batchInfo) {
+            // Only use batch data if it makes more sense (e.g., batch shows fewer completed than expected)
+            if ($batchInfo['processed_jobs'] > 0 && $batchInfo['processed_jobs'] < $completedJobs) {
+                $completedJobs = $batchInfo['processed_jobs'];
+            }
+        }
+
+        // Cap progress percentage at 100%
+        $progressPercentage = $totalJobs > 0 ? min(100, (int) round(($completedJobs / $totalJobs) * 100)) : 0;
+
+        // Determine actual status
+        $status = $latestStat->status;
+        if ($allQuestionsCompleted && $status !== 'completed') {
+            $status = 'completed';
+        }
+
+        // Estimate remaining time
+        $estimatedRemainingSeconds = null;
+        if ($pendingJobs !== null && $pendingJobs > 0 && $latestStat->avg_time_per_job) {
+            $estimatedRemainingSeconds = (int) ceil($pendingJobs * $latestStat->avg_time_per_job);
+        }
+
         return $this->success([
             'exam_id' => $exam->id,
             'exam_title' => $exam->title,
@@ -852,23 +881,31 @@ final class ExamCorrectionController extends ApiController
                 'id' => $latestStat->id,
                 'provider' => $latestStat->provider,
                 'batch_id' => $latestStat->batch_id,
-                'total_jobs' => $latestStat->total_jobs,
-                'completed_jobs' => $latestStat->completed_jobs,
-                'failed_jobs' => $latestStat->failed_jobs,
+                'total_jobs' => $totalJobs,
+                'completed_jobs' => $completedJobs,
+                'failed_jobs' => $latestStat->failed_jobs ?? 0,
+                'pending_jobs' => $pendingJobs,
+                'total_corrected_count' => $totalCorrectedCount,
+                'total_to_correct' => $totalToCorrect,
                 'avg_time_per_job' => $latestStat->avg_time_per_job,
-                'status' => $latestStat->status,
-                'progress_percentage' => $latestStat->progress_percentage,
-                'estimated_remaining_seconds' => $latestStat->estimated_remaining_seconds,
+                'status' => $status,
+                'progress_percentage' => $progressPercentage,
+                'estimated_remaining_seconds' => $estimatedRemainingSeconds,
                 'started_at' => $latestStat->started_at,
                 'finished_at' => $latestStat->finished_at,
             ],
             'question_progress' => $questionProgress,
-            'all_corrections' => $stats->map(function ($stat) {
+            'all_corrections' => $stats->map(function ($stat) use ($totalJobs, $completedJobs, $latestStat) {
+                // For the latest correction, use calculated values
+                // For older corrections, use stored values
+                $isLatest = $stat->id === $latestStat->id;
+
                 return [
                     'id' => $stat->id,
                     'provider' => $stat->provider,
-                    'total_jobs' => $stat->total_jobs,
-                    'completed_jobs' => $stat->completed_jobs,
+                    'total_jobs' => $isLatest ? $totalJobs : $stat->total_jobs,
+                    'completed_jobs' => $isLatest ? $completedJobs : ($stat->completed_jobs ?? 0),
+                    'failed_jobs' => $stat->failed_jobs ?? 0,
                     'status' => $stat->status,
                     'started_at' => $stat->started_at,
                     'finished_at' => $stat->finished_at,

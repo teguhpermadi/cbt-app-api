@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\CorrectionStatusEnum;
-use App\Events\AiScoreUpdated;
 use App\Models\AiCorrectionStat;
 use App\Models\ExamQuestionCorrection;
 use App\Models\ExamResult;
@@ -170,18 +169,6 @@ final class CorrectExamQuestionOpenRouterJob implements ShouldQueue
             });
 
             Log::debug("Transaction committed for Detail ID: {$detail->id}");
-
-            // Dispatch event for real-time frontend update OUTSIDE the transaction
-            try {
-                if (! empty($session->exam_id) && ! empty($detail->id)) {
-                    AiScoreUpdated::dispatch((string) $session->exam_id, (string) $detail->id);
-                    Log::debug('AiScoreUpdated dispatched.');
-                } else {
-                    Log::warning('Skipping AiScoreUpdated dispatch due to missing IDs.');
-                }
-            } catch (Throwable $broadcastError) {
-                Log::warning('AiScoreUpdated broadcast failed but score was saved. Error: '.$broadcastError->getMessage());
-            }
 
         } catch (Throwable $e) {
             if (str_contains($e->getMessage(), 'rate limit') || str_contains($e->getMessage(), 'timed out') || str_contains($e->getMessage(), 'cURL error 28')) {
