@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use App\Services\ExamScoringService;
 
 final class ExamCorrectionController extends ApiController
 {
@@ -794,6 +795,54 @@ final class ExamCorrectionController extends ApiController
             'total_jobs' => $stats->total_jobs,
             'correction_statuses' => ExamQuestionCorrection::where('exam_id', $exam->id)->get(),
         ], "AI correction jobs for '{$exam->title}' have been dispatched.");
+    }
+
+    /**
+     * Reset and re-correct all objective questions for an exam.
+     * This does NOT affect essay, short_answer, math_input, arabic_response, javanese_response.
+     */
+    public function resetObjectiveCorrection(Request $request, Exam $exam)
+    {
+        $objectiveTypes = [
+            QuestionTypeEnum::MULTIPLE_CHOICE->value,
+            QuestionTypeEnum::TRUE_FALSE->value,
+            QuestionTypeEnum::MULTIPLE_SELECTION->value,
+            QuestionTypeEnum::MATCHING->value,
+            QuestionTypeEnum::SEQUENCE->value,
+            QuestionTypeEnum::ARRANGE_WORDS->value,
+            QuestionTypeEnum::CATEGORIZATION->value,
+        ];
+
+        $details = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
+            $query->where('exam_id', $exam->id);
+        })->whereHas('examQuestion', function ($query) use ($objectiveTypes) {
+            $query->whereIn('question_type', $objectiveTypes);
+        })->with('examQuestion')->get();
+
+        if ($details->isEmpty()) {
+            return $this->error('No objective questions found for this exam.', 404);
+        }
+
+        $scoringService = new ExamScoringService();
+        $correctedCount = 0;
+
+        DB::transaction(function () use ($details, $scoringService, &$correctedCount, $exam) {
+            foreach ($details as $detail) {
+                $result = $scoringService->calculateDetailScore($detail);
+                $detail->update([
+                    'is_correct' => $result['is_correct'],
+                    'score_earned' => $result['score'],
+                ]);
+                $correctedCount++;
+            }
+
+            ExamSession::where('exam_id', $exam->id)
+                ->update(['is_corrected' => false]);
+        });
+
+        return $this->success([
+            'corrected_count' => $correctedCount,
+        ], "Reset correction completed for {$correctedCount} objective answers.");
     }
 
     /**
