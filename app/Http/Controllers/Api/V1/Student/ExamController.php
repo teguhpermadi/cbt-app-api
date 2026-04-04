@@ -1,24 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1\Student;
 
+use App\Events\LiveScoreUpdated;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\ExamResource;
 use App\Http\Resources\Student\ExamResultDetailResource;
 use App\Http\Resources\Student\ExamSessionResource;
 use App\Models\Exam;
-use App\Models\ExamSession;
 use App\Models\ExamQuestion;
 use App\Models\ExamResultDetail;
+use App\Models\ExamSession;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use App\Events\LiveScoreUpdated;
+use Throwable;
 
-class ExamController extends ApiController
+final class ExamController extends ApiController
 {
     /**
      * List available exams for the student.
@@ -55,7 +60,7 @@ class ExamController extends ApiController
             ->paginate($perPage);
 
         // Process exams to add status (e.g., if already taken, attempts left)
-        // This might be better done in a Resource or Service, but for now we rely on the client to check 
+        // This might be better done in a Resource or Service, but for now we rely on the client to check
         // We can append 'current_session' or 'attempts_count' if needed.
         // Let's add `attempts_count` and `latest_session_status` via subqueries or separate loading if performance allows.
 
@@ -167,7 +172,7 @@ class ExamController extends ApiController
                 [
                     'exam_session_id' => $activeSession->id,
                     'session' => new ExamSessionResource($activeSession),
-                    'message' => 'Resuming existing session.'
+                    'message' => 'Resuming existing session.',
                 ],
                 'Exam session resumed.'
             );
@@ -265,8 +270,8 @@ class ExamController extends ApiController
                     'Exam started successfully.'
                 );
             });
-        } catch (\Exception $e) {
-            return $this->error('Failed to start exam: ' . $e->getMessage(), 500);
+        } catch (Exception $e) {
+            return $this->error('Failed to start exam: '.$e->getMessage(), 500);
         }
     }
 
@@ -328,10 +333,10 @@ class ExamController extends ApiController
         // HEALING: If session has no questions, try to populate them now
         // OR if the first question has options as an object (associative array with non-numeric keys)
         $needsHealing = $questions->isEmpty();
-        if (!$needsHealing && $questions->first()->examQuestion) {
+        if (! $needsHealing && $questions->first()->examQuestion) {
             $firstOptions = $questions->first()->examQuestion->options;
             // Check if it's an associative array (old format)
-            if (is_array($firstOptions) && !empty($firstOptions) && !array_is_list($firstOptions)) {
+            if (is_array($firstOptions) && ! empty($firstOptions) && ! array_is_list($firstOptions)) {
                 $needsHealing = true;
                 // Delete old ExamQuestions and ResultDetails to force re-snapshot
                 ExamResultDetail::where('exam_session_id', $session->id)->delete();
@@ -372,7 +377,7 @@ class ExamController extends ApiController
             }
 
             // Create Result Details for this session from ExamQuestions
-            if (!$examQuestions->isEmpty()) {
+            if (! $examQuestions->isEmpty()) {
                 $detailsData = [];
                 $qNum = 1;
                 foreach ($examQuestions as $eq) {
@@ -415,6 +420,7 @@ class ExamController extends ApiController
                     }
                 }
             }
+
             return $detail;
         });
 
@@ -482,18 +488,22 @@ class ExamController extends ApiController
         // Dispatch LiveScoreUpdated event
         // We need to fetch the live score data or just enough for real-time update.
         // For efficiency, we can just send the updated score and progress for this student.
-        $exam = Exam::find($id);
-        $classroom = $exam->classrooms()->whereHas('students', fn($q) => $q->where('users.id', $user->id))->first();
+        try {
+            $exam = Exam::find($id);
+            $classroom = $exam->classrooms()->whereHas('students', fn ($q) => $q->where('users.id', $user->id))->first();
 
-        $sessionData = $detail->examSession->getBroadcastData();
+            $sessionData = $detail->examSession->getBroadcastData();
 
-        event(new LiveScoreUpdated($id, $sessionData));
+            event(new LiveScoreUpdated($id, $sessionData));
+        } catch (Throwable $e) {
+            Log::warning('Broadcast failed for LiveScoreUpdated: '.$e->getMessage());
+        }
 
         return $this->success(
             [
                 'question_id' => $detail->id,
                 'is_answered' => true,
-                'detail' => new \App\Http\Resources\Student\ExamResultDetailResource($detail),
+                'detail' => new ExamResultDetailResource($detail),
             ],
             'Answer saved.'
         );
@@ -528,11 +538,15 @@ class ExamController extends ApiController
             ]);
 
             // Dispatch LiveScoreUpdated event
-            $exam = Exam::find($id);
-            $classroom = $exam->classrooms()->whereHas('students', fn($q) => $q->where('users.id', $user->id))->first();
+            try {
+                $exam = Exam::find($id);
+                $classroom = $exam->classrooms()->whereHas('students', fn ($q) => $q->where('users.id', $user->id))->first();
 
-            $sessionData = $session->refresh()->getBroadcastData();
-            event(new LiveScoreUpdated($id, $sessionData));
+                $sessionData = $session->refresh()->getBroadcastData();
+                event(new LiveScoreUpdated($id, $sessionData));
+            } catch (Throwable $e) {
+                Log::warning('Broadcast failed for LiveScoreUpdated: '.$e->getMessage());
+            }
 
             // 2. Dispatch Scoring Job (Calculate final score asynchronously)
             \App\Jobs\CalculateExamScoreJob::dispatch($session);
@@ -540,7 +554,7 @@ class ExamController extends ApiController
             return $this->success(
                 [
                     'exam_session_id' => $session->id,
-                    'session' => new \App\Http\Resources\Student\ExamSessionResource($session),
+                    'session' => new ExamSessionResource($session),
                     'message' => 'Exam finished. Scoring is in progress.',
                     'finished_at' => $session->finish_time,
                 ],
@@ -562,7 +576,7 @@ class ExamController extends ApiController
                 'exam' => function ($query) {
                     $query->with(['subject', 'academicYear']);
                 },
-                'officialSession'
+                'officialSession',
             ])
             ->where('user_id', $user->id)
             ->latest()

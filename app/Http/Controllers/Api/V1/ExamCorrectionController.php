@@ -676,7 +676,13 @@ final class ExamCorrectionController extends ApiController
         $query = ExamResultDetail::whereHas('examSession', function ($query) use ($exam) {
             $query->where('exam_id', $exam->id);
         })->whereHas('examQuestion', function ($query) {
-            $query->where('question_type', QuestionTypeEnum::ESSAY->value);
+            $query->whereIn('question_type', [
+                QuestionTypeEnum::ESSAY->value,
+                QuestionTypeEnum::SHORT_ANSWER->value,
+                QuestionTypeEnum::MATH_INPUT->value,
+                QuestionTypeEnum::ARABIC_RESPONSE->value,
+                QuestionTypeEnum::JAVANESE_RESPONSE->value,
+            ]);
         });
 
         if ($examQuestionId) {
@@ -687,16 +693,33 @@ final class ExamCorrectionController extends ApiController
             $query->where('exam_session_id', $examSessionId);
         }
 
+        $onlyUncorrected = $request->boolean('only_uncorrected', false);
+        if ($onlyUncorrected) {
+            $query->where(function ($q) {
+                $q->whereNull('is_correct')
+                  ->orWhere('is_correct', false);
+            });
+        }
+
         $resultDetails = $query->get();
 
         if ($resultDetails->isEmpty()) {
-            $msg = 'No essay questions found for this selection.';
-            if ($examQuestionId && $examSessionId) {
-                $msg = 'Student answer for this essay question not found.';
+            $msg = 'No answers found for manual correction in this selection.';
+            if ($onlyUncorrected) {
+                $msg = 'All selected answers have already been corrected.';
+                if ($examQuestionId && $examSessionId) {
+                    $msg = 'This answer has already been corrected.';
+                } elseif ($examQuestionId) {
+                    $msg = 'All answers for this question have been corrected.';
+                } elseif ($examSessionId) {
+                    $msg = 'All answers for this student have been corrected.';
+                }
+            } elseif ($examQuestionId && $examSessionId) {
+                $msg = 'Student answer not found.';
             } elseif ($examQuestionId) {
-                $msg = 'No student answers found for this essay question.';
+                $msg = 'No student answers found for this question.';
             } elseif ($examSessionId) {
-                $msg = 'This student has no essay answers to correct.';
+                $msg = 'This student has no answers to correct.';
             }
 
             return $this->error($msg, 404);
