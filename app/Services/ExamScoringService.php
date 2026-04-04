@@ -176,7 +176,7 @@ final class ExamScoringService
 
         $ratio = $totalCorrectOptions > 0 ? $netCorrect / $totalCorrectOptions : 0;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio === 1.0);
+        $isCorrect = ($ratio >= 1.0);
 
         return [
             'score' => $scoreEarned,
@@ -211,7 +211,7 @@ final class ExamScoringService
 
         $ratio = $totalPairs > 0 ? $correctMatchCount / $totalPairs : 0;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio === 1.0);
+        $isCorrect = ($ratio >= 1.0);
 
         return [
             'score' => $scoreEarned,
@@ -238,7 +238,7 @@ final class ExamScoringService
 
         $ratio = (float) $correctPositionCount / (float) $totalItems;
         $scoreEarned = round($ratio * $maxScore, 1);
-        $isCorrect = ($ratio === 1.0);
+        $isCorrect = ($ratio >= 1.0);
 
         return [
             'score' => $scoreEarned,
