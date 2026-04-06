@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy dengan SSL
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/letsencrypt/live
+      - ./docker/nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - reverb
+    networks:
+      - app-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Frontend React
+  frontend:
+    build:
+      context: ../lunar-pinwheel
+      dockerfile: Dockerfile
+    container_name: lunar-frontend
+    expose:
+      - "8080"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Backend Laravel
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbt-backend
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./storage:/var/www/storage
+    depends_on:
+      - mysql
+      - redis
+      - mongodb
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - DB_MONGO_HOST=mongodb
+    networks:
+      - app-network
+    command: ["php-fpm"]
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Laravel Reverb (WebSocket)
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbt-reverb
+    working_dir: /var/www
+    command: ["php", "artisan", "reverb:start"]
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - backend
+    environment:
+      - REVERB_HOST=0.0.0.0
+      - REVERB_PORT=6001
+      - REVERB_SCHEME=https
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - DB_MONGO_HOST=mongodb
+    expose:
+      - "6001"
+    networks:
+      - app-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Database
+  mysql:
+    image: mysql:8.0
+    container_name: cbt-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secure_password}
+      MYSQL_DATABASE: ${DB_DATABASE:-cbt_app}
+      MYSQL_USER: ${DB_USERNAME:-cbt_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-user_password}
+    volumes:
+      - ./docker/mysql:/var/lib/mysql
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache
+  redis:
+    image: redis:7-alpine
+    container_name: cbt-redis
+    volumes:
+      - ./docker/redis:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NoSQL Database
+  mongodb:
+    image: mongo:7.0
+    container_name: cbt-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-mongo_user}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongo_password}
+      MONGO_INITDB_DATABASE: ${DB_MONGO_DATABASE:-cbt_app}
+    volumes:
+      - ./docker/mongodb:/data/db
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
