@@ -27,6 +27,12 @@ services:
     build:
       context: ../lunar-pinwheel
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://api.cbtmiarridlo.com/api/v1
+        - VITE_REVERB_APP_KEY=pusbcdgudcsfkepuso8p
+        - VITE_REVERB_HOST=api.cbtmiarridlo.com
+        - VITE_REVERB_PORT=6001
+        - VITE_REVERB_SCHEME=wss
     container_name: lunar-frontend
     expose:
       - "8080"
