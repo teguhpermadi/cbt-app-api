@@ -24,13 +24,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-public"
-      # HTTPS
-      - "traefik.http.routers.frontend.rule=Host(`app.cbtmiarridlo.com`)"
+      # HTTPS — root domain + www
+      - "traefik.http.routers.frontend.rule=Host(`cbtmiarridlo.com`) || Host(`www.cbtmiarridlo.com`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=8080"
       # HTTP → HTTPS redirect
-      - "traefik.http.routers.frontend-http.rule=Host(`app.cbtmiarridlo.com`)"
+      - "traefik.http.routers.frontend-http.rule=Host(`cbtmiarridlo.com`) || Host(`www.cbtmiarridlo.com`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
       - "traefik.http.routers.frontend-http.middlewares=https-redirect@docker"
 
