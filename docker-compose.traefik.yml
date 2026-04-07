@@ -1,4 +1,3 @@
-version: '3.8'
 
 # Jalankan SEKALI di VPS sebelum service lain:
 #   docker compose -f docker-compose.traefik.yml up -d
