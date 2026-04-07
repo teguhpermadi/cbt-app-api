@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
@@ -7,9 +9,11 @@ use App\Http\Requests\Api\V1\QuestionBank\StoreQuestionBankRequest;
 use App\Http\Requests\Api\V1\QuestionBank\UpdateQuestionBankRequest;
 use App\Http\Resources\QuestionBankResource;
 use App\Models\QuestionBank;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use ZipArchive;
 
 final class QuestionBankController extends ApiController
 {
@@ -75,7 +79,7 @@ final class QuestionBankController extends ApiController
             ->withCount('questions')
             ->find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -92,7 +96,7 @@ final class QuestionBankController extends ApiController
     {
         $questionBank = QuestionBank::query()->find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -111,7 +115,7 @@ final class QuestionBankController extends ApiController
     {
         $questionBank = QuestionBank::query()->find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -149,7 +153,7 @@ final class QuestionBankController extends ApiController
         $questionBank = QuestionBank::onlyTrashed()
             ->find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Trashed question bank not found');
         }
 
@@ -169,7 +173,7 @@ final class QuestionBankController extends ApiController
         $questionBank = QuestionBank::withTrashed()
             ->find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -190,7 +194,7 @@ final class QuestionBankController extends ApiController
     ): JsonResponse {
         $questionBank = QuestionBank::find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -216,7 +220,7 @@ final class QuestionBankController extends ApiController
                 422,
                 $result['errors']
             );
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error(
                 'Terjadi kesalahan saat memproses file.',
                 500,
@@ -232,7 +236,7 @@ final class QuestionBankController extends ApiController
     {
         $questionBank = QuestionBank::find($id);
 
-        if (!$questionBank) {
+        if (! $questionBank) {
             return $this->notFound('Question bank not found');
         }
 
@@ -243,15 +247,100 @@ final class QuestionBankController extends ApiController
                 ob_end_clean();
             }
 
-            return response()->download($filePath, $questionBank->name . '.docx', [
+            return response()->download($filePath, $questionBank->name.'.docx', [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             ])->deleteFileAfterSend(true);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error(
                 'Terjadi kesalahan saat mengekspor file.',
                 500,
                 ['error' => $e->getMessage()]
             );
         }
+    }
+
+    /**
+     * Backup all assets from public storage.
+     */
+    public function backupAssets(): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    {
+        $publicPath = storage_path('app/public');
+
+        if (! is_dir($publicPath)) {
+            return $this->error('Public storage not found', 500);
+        }
+
+        $files = [];
+        $directories = glob($publicPath.'/*', GLOB_ONLYDIR);
+
+        foreach ($directories as $dir) {
+            $dirFiles = glob($dir.'/*');
+            if ($dirFiles) {
+                $files = array_merge($files, $dirFiles);
+            }
+        }
+
+        if (empty($files)) {
+            return $this->error('No files to backup', 400);
+        }
+
+        $zipFileName = 'assets_backup_'.date('Y-m-d').'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $relativePath = str_replace($publicPath.'\\', '', $file);
+                    $relativePath = str_replace('/', '\\', $relativePath);
+                    $zip->addFile($file, $relativePath);
+                }
+            }
+            $zip->close();
+        }
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        return response()->download($zipPath, $zipFileName, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Restore assets from uploaded zip file.
+     */
+    public function restoreAssets(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:zip',
+        ]);
+
+        $file = $request->file('file');
+        $publicPath = storage_path('app/public');
+
+        $zip = new ZipArchive();
+        $result = $zip->open($file->path());
+
+        if ($result !== true) {
+            return $this->error('Failed to open zip file', 400);
+        }
+
+        $extractedCount = 0;
+        $zip->extractTo($publicPath);
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (! is_dir($publicPath.'/'.$name)) {
+                $extractedCount++;
+            }
+        }
+        $zip->close();
+
+        return $this->success(
+            ['extracted_files' => $extractedCount],
+            "Berhasil merestore {$extractedCount} file."
+        );
     }
 }
