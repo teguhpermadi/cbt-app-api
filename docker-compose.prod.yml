@@ -74,7 +74,6 @@ services:
     working_dir: /var/www
     volumes:
       - ./:/var/www
-      - ./storage:/var/www/storage
     depends_on:
       mysql:
         condition: service_healthy
@@ -154,10 +153,10 @@ services:
     image: mysql:8.0
     container_name: cbt-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secure_password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-secure_root_password}
       MYSQL_DATABASE: ${DB_DATABASE:-cbt_app}
       MYSQL_USER: ${DB_USERNAME:-cbt_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-user_password}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secure_user_password}
     volumes:
       - ./docker/mysql:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
@@ -210,4 +209,4 @@ services:
 
 networks:
   app-network:
-    driver: bridge
+    external: true
