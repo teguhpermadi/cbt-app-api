@@ -19,11 +19,9 @@ services:
       - "8080"
     restart: unless-stopped
     networks:
-      - traefik-public   # harus bergabung ke network Traefik yg sudah ada
       - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik-public"
       # HTTPS — root domain + www
       - "traefik.http.routers.frontend.rule=Host(`cbtmiarridlo.com`) || Host(`www.cbtmiarridlo.com`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
@@ -50,13 +48,11 @@ services:
       - reverb
     restart: unless-stopped
     networks:
-      - traefik-public   # harus bergabung ke network Traefik yg sudah ada
       - app-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik-public"
       # HTTPS untuk API
       - "traefik.http.routers.backend.rule=Host(`api.cbtmiarridlo.com`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
@@ -212,12 +208,5 @@ services:
       retries: 5
 
 networks:
-  # Network internal antar service CBT
   app-network:
     driver: bridge
-
-  # Network eksternal milik Traefik yang sudah running di VPS
-  # Ganti "traefik-public" jika nama network Traefik Anda berbeda
-  # Cek dengan: docker network ls
-  traefik-public:
-    external: true
