@@ -56,8 +56,13 @@ services:
       - DB_MONGO_HOST=mongodb
     networks:
       - app-network
-    command: ["php-fpm"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -74,7 +79,10 @@ services:
     volumes:
       - ./:/var/www
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - REVERB_HOST=0.0.0.0
       - REVERB_PORT=6001
@@ -87,6 +95,11 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "php artisan reverb:status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -103,8 +116,12 @@ services:
     volumes:
       - ./:/var/www
     depends_on:
-      - backend
-      - redis
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     environment:
       - DB_HOST=mysql
       - REDIS_HOST=redis
@@ -112,6 +129,11 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'queue:work' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

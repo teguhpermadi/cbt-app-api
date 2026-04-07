@@ -1,6 +1,5 @@
 FROM php:8.3-fpm
 
-# Arguments
 ARG user=laravel
 ARG uid=1000
 
@@ -32,4 +31,11 @@ RUN useradd -G www-data,root -u $uid -d /home/$user $user \
 
 WORKDIR /var/www
 
+# Copy entrypoint script
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 USER $user
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["php-fpm"]
