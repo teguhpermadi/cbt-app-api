@@ -160,6 +160,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-user_password}
     volumes:
       - ./docker/mysql:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     networks:
       - app-network
     restart: unless-stopped
