@@ -48,8 +48,6 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-user_password}
     volumes:
       - ./docker/mysql:/var/lib/mysql
-    ports:
-      - "3306:3306"
     networks:
       - cbt-network
     healthcheck:
@@ -63,8 +61,6 @@ services:
     container_name: cbt-redis
     volumes:
       - ./docker/redis:/data
-    ports:
-      - "6379:6379"
     networks:
       - cbt-network
     healthcheck:
@@ -82,8 +78,6 @@ services:
       MONGO_INITDB_DATABASE: ${DB_MONGO_DATABASE:-cbt_app}
     volumes:
       - ./docker/mongodb:/data/db
-    ports:
-      - "27017:27017"
     networks:
       - cbt-network
     healthcheck:
