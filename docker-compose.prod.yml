@@ -2,36 +2,6 @@ version: '3.8'
 
 services:
   # ─────────────────────────────────────────
-  # Traefik Reverse Proxy + Auto SSL (ACME)
-  # ─────────────────────────────────────────
-  traefik:
-    image: traefik:v3.0
-    container_name: traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./docker/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./docker/traefik/acme.json:/acme.json
-    networks:
-      - app-network
-    labels:
-      - "traefik.enable=true"
-      # Dashboard (opsional, akses via https://traefik.cbtmiarridlo.com)
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.cbtmiarridlo.com`)"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-dashboard.middlewares=auth"
-      # Basic auth untuk dashboard (ganti passwordnya!)
-      # Generate: echo $(htpasswd -nb admin yourpassword) | sed -e s/\\$/\\$\\$/g
-      - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$xyz$$hashedpasshere"
-      # Middleware redirect HTTP → HTTPS
-      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
-
-  # ─────────────────────────────────────────
   # Frontend React (Nginx static serving)
   # ─────────────────────────────────────────
   frontend:
@@ -49,10 +19,12 @@ services:
       - "8080"
     restart: unless-stopped
     networks:
+      - traefik-public   # harus bergabung ke network Traefik yg sudah ada
       - app-network
     labels:
       - "traefik.enable=true"
-      # HTTPS router
+      - "traefik.docker.network=traefik-public"
+      # HTTPS
       - "traefik.http.routers.frontend.rule=Host(`app.cbtmiarridlo.com`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
@@ -60,7 +32,7 @@ services:
       # HTTP → HTTPS redirect
       - "traefik.http.routers.frontend-http.rule=Host(`app.cbtmiarridlo.com`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.middlewares=https-redirect"
+      - "traefik.http.routers.frontend-http.middlewares=https-redirect@docker"
 
   # ─────────────────────────────────────────
   # Nginx Sidecar — FastCGI bridge ke backend
@@ -76,14 +48,16 @@ services:
     depends_on:
       - backend
       - reverb
-    networks:
-      - app-network
     restart: unless-stopped
+    networks:
+      - traefik-public   # harus bergabung ke network Traefik yg sudah ada
+      - app-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     labels:
       - "traefik.enable=true"
-      # HTTPS router untuk API
+      - "traefik.docker.network=traefik-public"
+      # HTTPS untuk API
       - "traefik.http.routers.backend.rule=Host(`api.cbtmiarridlo.com`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
@@ -91,7 +65,7 @@ services:
       # HTTP → HTTPS redirect
       - "traefik.http.routers.backend-http.rule=Host(`api.cbtmiarridlo.com`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
-      - "traefik.http.routers.backend-http.middlewares=https-redirect"
+      - "traefik.http.routers.backend-http.middlewares=https-redirect@docker"
 
   # ─────────────────────────────────────────
   # Backend Laravel (PHP-FPM)
@@ -238,5 +212,12 @@ services:
       retries: 5
 
 networks:
+  # Network internal antar service CBT
   app-network:
     driver: bridge
+
+  # Network eksternal milik Traefik yang sudah running di VPS
+  # Ganti "traefik-public" jika nama network Traefik Anda berbeda
+  # Cek dengan: docker network ls
+  traefik-public:
+    external: true
