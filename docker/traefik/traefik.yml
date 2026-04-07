@@ -1,0 +1,46 @@
+# Traefik Static Configuration
+# Docs: https://doc.traefik.io/traefik/
+
+api:
+  dashboard: true
+  insecure: false
+
+# Entrypoints
+entryPoints:
+  web:
+    address: ":80"
+    # Global HTTP → HTTPS redirect (backup, juga ada di tiap router)
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+# Docker provider
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: app-network
+
+# Let's Encrypt ACME (SSL otomatis)
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@cbtmiarridlo.com    # Ganti dengan email kamu
+      storage: /acme.json
+      httpChallenge:
+        entryPoint: web
+
+# Logging
+log:
+  level: INFO
+
+accessLog: {}
