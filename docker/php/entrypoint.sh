@@ -3,16 +3,17 @@ set -e
 
 echo "==> Checking Laravel setup..."
 
-# Fix gitdubious ownership issue
+# Fix git dubious ownership issue
 git config --global --add safe.directory /var/www
 
-# Fix ownership untuk volume /var/www
+# Fix ownership dan permission untuk volume /var/www
 chown -R www-data:www-data /var/www
+chmod -R u+rwX,go+rX /var/www
 
 # Install composer dependencies if vendor doesn't exist or composer.lock changed
 if [ ! -d "vendor" ] || [ "composer.lock" -nt "vendor" ]; then
     echo "==> Installing Composer dependencies..."
-    sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader
+    composer install --no-interaction --prefer-dist --optimize-autoloader --fallback
 fi
 
 # Generate application key if not set
