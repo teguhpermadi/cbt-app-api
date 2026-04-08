@@ -39,9 +39,6 @@ RUN git clone --depth 1 --branch $BRANCH $REPO_URL /var/www
 # Fix git dubious ownership
 RUN git config --global --add safe.directory /var/www
 
-# Copy .env.production sebagai .env (setelah clone)
-COPY .env.production /var/www/.env
-
 # Install Composer dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
