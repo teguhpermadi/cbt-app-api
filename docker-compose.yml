@@ -146,7 +146,7 @@ services:
     environment:
       - PMA_HOST=mysql
       - PMA_USER=root
-      - PMA_PASSWORD=${DB_ROOT_PASSWORD}
+      - PMA_PASSWORD=${DB_ROOT_PASSWORD:-cbt_root_2024}
     depends_on:
       mysql:
         condition: service_healthy
