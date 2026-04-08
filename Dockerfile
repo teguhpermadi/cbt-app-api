@@ -2,8 +2,6 @@ FROM php:8.3-fpm
 
 ARG user=laravel
 ARG uid=1000
-ARG REPO_URL=https://github.com/teguhpermadi/cbt-app-api.git
-ARG BRANCH=main
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -33,8 +31,8 @@ RUN useradd -G www-data,root -u $uid -d /home/$user $user \
 
 WORKDIR /var/www
 
-# Clone repository
-RUN git clone --depth 1 --branch $BRANCH $REPO_URL /var/www
+# Copy project files from context (already cloned by Docker Manager)
+COPY . /var/www
 
 # Fix git dubious ownership
 RUN git config --global --add safe.directory /var/www
