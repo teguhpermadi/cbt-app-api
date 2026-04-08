@@ -2,6 +2,8 @@ FROM php:8.3-fpm
 
 ARG user=laravel
 ARG uid=1000
+ARG REPO_URL=https://github.com/teguhpermadi/cbt-app-api.git
+ARG BRANCH=main
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -31,8 +33,20 @@ RUN useradd -G www-data,root -u $uid -d /home/$user $user \
 
 WORKDIR /var/www
 
-# Copy entrypoint script
-COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Clone repository
+RUN git clone --depth 1 --branch $BRANCH $REPO_URL /var/www
+
+# Fix git dubious ownership
+RUN git config --global --add safe.directory /var/www
+
+# Copy .env.production sebagai .env (setelah clone)
+COPY .env.production /var/www/.env
+
+# Install Composer dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Copy entrypoint script (dari hasil clone)
+RUN cp /var/www/docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # USER $user
