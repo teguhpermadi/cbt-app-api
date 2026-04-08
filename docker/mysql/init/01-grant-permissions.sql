@@ -1,0 +1,2 @@
+GRANT ALL PRIVILEGES ON cbt_app.* TO 'cbt_user'@'%';
+FLUSH PRIVILEGES;
