@@ -13,7 +13,7 @@ chmod -R u+rwX,go+rX /var/www
 # Install composer dependencies if vendor doesn't exist or composer.lock changed
 if [ ! -d "vendor" ] || [ "composer.lock" -nt "vendor" ]; then
     echo "==> Installing Composer dependencies..."
-    composer install --no-interaction --prefer-dist --optimize-autoloader --fallback
+    composer install --no-interaction --prefer-dist --optimize-autoloader
 fi
 
 # Generate application key if not set
