@@ -71,9 +71,14 @@ fi
 echo "==> Caching configuration..."
 php artisan config:cache 2>/dev/null || true
 
-# Run migrations if needed (uncomment if desired)
-# echo "==> Running migrations..."
-# php artisan migrate --force
+# Run migrations if needed
+echo "==> Running migrations..."
+php artisan migrate --force --no-interaction
+
+# Create cache table if not exists
+echo "==> Creating cache table..."
+php artisan cache:table --no-interaction 2>/dev/null || true
+php artisan migrate --force --no-interaction
 
 echo "==> Laravel setup complete!"
 
