@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AcademicYearController;
 use App\Http\Controllers\Api\V1\ActivityLogController;
+use App\Http\Controllers\Api\V1\Admin\BackupController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClassroomController;
 use App\Http\Controllers\Api\V1\CurriculumController;
@@ -291,6 +292,12 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::delete('{learningLesson}/media/{media}', [LearningLessonController::class, 'deleteMedia'])->name('api.v1.learning-lessons.media.delete');
     });
     Route::apiResource('learning-lessons', LearningLessonController::class)->names('api.v1.learning-lessons');
+
+    // Admin - Backup & Restore
+    Route::prefix('admin')->group(function () {
+        Route::post('backup/exam-answers/restore', [BackupController::class, 'restoreExamAnswers'])
+            ->name('api.v1.admin.backup.exam-answers.restore');
+    });
 });
 
 // Password reset routes (public with rate limiting)
