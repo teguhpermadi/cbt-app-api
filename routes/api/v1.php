@@ -72,8 +72,12 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
             Route::get('{exam}', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'show'])->name('api.v1.student.exams.show');
             Route::post('{exam}/start', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'start'])->name('api.v1.student.exams.start');
             Route::get('{exam}/take', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'take'])->name('api.v1.student.exams.take');
-            Route::post('{exam}/answer', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])->name('api.v1.student.exams.answer');
-            Route::post('{exam}/finish', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])->name('api.v1.student.exams.finish');
+            Route::post('{exam}/answer', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])
+                ->middleware('throttle:exam-submit')
+                ->name('api.v1.student.exams.answer');
+            Route::post('{exam}/finish', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])
+                ->middleware('throttle:exam-submit')
+                ->name('api.v1.student.exams.finish');
         });
 
         // Student Exam Results

@@ -59,5 +59,17 @@ final class AppServiceProvider extends ServiceProvider
         RateLimiter::for('authenticated', fn (Request $request) => $request->user()
             ? Limit::perMinute(120)->by($request->user()->id)
             : Limit::perMinute(60)->by($request->ip()));
+
+        RateLimiter::for('exam-submit', function (Request $request) {
+            return Limit::perMinute(300)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Terlalu banyak request. Silakan tunggu sebentar.',
+                        'error' => 'rate_limit_exceeded',
+                    ], 429);
+                });
+        });
     }
 }
