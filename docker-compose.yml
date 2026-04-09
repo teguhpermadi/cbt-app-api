@@ -16,19 +16,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-      - traefik-proxy
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-proxy"
-      - "traefik.http.routers.backend.rule=Host(`api.cbtmiarridlo.com`)"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.backend.loadbalancer.server.port=80"
-      - "traefik.http.routers.backend-http.rule=Host(`api.cbtmiarridlo.com`)"
-      - "traefik.http.routers.backend-http.entrypoints=web"
-      - "traefik.http.routers.backend-http.middlewares=https-redirect@docker"
 
   # ─────────────────────────────────────────
   # Backend Laravel (PHP-FPM)
@@ -39,6 +28,9 @@ services:
       dockerfile: Dockerfile
     container_name: cbt-backend
     working_dir: /var/www
+    expose:
+      - "9000"
+      - "8000"
     volumes:
       - storage:/var/www/storage
     depends_on:
@@ -59,6 +51,17 @@ services:
       - DB_MONGO_HOST=mongodb
     networks:
       - app-network
+      - traefik-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.api.rule=Host(`api.cbtmiarridlo.com`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.api-http.rule=Host(`api.cbtmiarridlo.com`)"
+      - "traefik.http.routers.api-http.entrypoints=web"
+      - "traefik.http.routers.api-http.middlewares=https-redirect@docker"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "php artisan --version || exit 1"]
