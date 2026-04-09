@@ -48,6 +48,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+    env_file:
+      - .env.production
     environment:
       - DB_HOST=mysql
       - DB_DATABASE=cbt_app
@@ -84,6 +86,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env.production
     environment:
       - REVERB_HOST=0.0.0.0
       - REVERB_PORT=6001
@@ -126,6 +132,8 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
+    env_file:
+      - .env.production
     environment:
       - DB_HOST=mysql
       - DB_DATABASE=cbt_app
