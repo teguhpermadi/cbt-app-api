@@ -50,6 +50,9 @@ services:
         condition: service_healthy
     environment:
       - DB_HOST=mysql
+      - DB_DATABASE=cbt_app
+      - DB_USERNAME=cbt_user
+      - DB_PASSWORD=MySQL_App_P@ss2026
       - REDIS_HOST=redis
       - DB_MONGO_HOST=mongodb
     networks:
@@ -86,6 +89,9 @@ services:
       - REVERB_PORT=6001
       - REVERB_SCHEME=https
       - DB_HOST=mysql
+      - DB_DATABASE=cbt_app
+      - DB_USERNAME=cbt_user
+      - DB_PASSWORD=MySQL_App_P@ss2026
       - REDIS_HOST=redis
       - DB_MONGO_HOST=mongodb
     expose:
@@ -122,6 +128,9 @@ services:
         condition: service_healthy
     environment:
       - DB_HOST=mysql
+      - DB_DATABASE=cbt_app
+      - DB_USERNAME=cbt_user
+      - DB_PASSWORD=MySQL_App_P@ss2026
       - REDIS_HOST=redis
       - DB_MONGO_HOST=mongodb
     networks:
