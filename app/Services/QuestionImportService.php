@@ -1,40 +1,44 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
-use App\Enums\QuestionTypeEnum;
 use App\Enums\QuestionDifficultyLevelEnum;
-use App\Enums\QuestionTimeEnum;
 use App\Enums\QuestionScoreEnum;
+use App\Enums\QuestionTimeEnum;
+use App\Enums\QuestionTypeEnum;
 use App\Models\Option;
 use App\Models\Question;
 use App\Models\QuestionBank;
-use Illuminate\Support\Str;
-use PhpOffice\PhpWord\PhpWord;
-use PhpOffice\PhpWord\Element\TextRun;
-use PhpOffice\PhpWord\Element\TextBreak;
-use PhpOffice\PhpWord\Element\Text;
 use Exception;
+use finfo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Element\Table;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\Element\Image;
+use PhpOffice\PhpWord\Element\Table;
+use PhpOffice\PhpWord\Element\Text;
+use PhpOffice\PhpWord\Element\TextBreak;
+use PhpOffice\PhpWord\Element\TextRun;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 use Spatie\MediaLibrary\HasMedia;
 
-class QuestionImportService
+final class QuestionImportService
 {
-    protected $questionBank;
-    protected $createdQuestions = [];
-    protected $errors = [];
+    private $questionBank;
+
+    private $createdQuestions = [];
+
+    private $errors = [];
 
     /**
      * Parse Word document and create questions
      *
-     * @param string $filePath Full path to uploaded .docx file
-     * @param string $questionBankId ULID of question bank
-     * @param string $authorId ULID of key user
+     * @param  string  $filePath  Full path to uploaded .docx file
+     * @param  string  $questionBankId  ULID of question bank
+     * @param  string  $authorId  ULID of key user
      * @return array ['success' => bool, 'questions' => array, 'errors' => array]
      */
     public function parseWordDocument(string $filePath, string $questionBankId, string $authorId): array
@@ -66,17 +70,17 @@ class QuestionImportService
                         $this->createdQuestions[] = $question;
                     }
                 } catch (Exception $e) {
-                    $this->errors[] = "Row " . ($index + 1) . ": " . $e->getMessage();
-                    Log::error("Question import error at row " . ($index + 1), [
+                    $this->errors[] = 'Row '.($index + 1).': '.$e->getMessage();
+                    Log::error('Question import error at row '.($index + 1), [
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
                 }
             }
 
             if (count($this->errors) > 0 && count($this->createdQuestions) === 0) {
                 // If all failed, rollback
-                throw new Exception("Semua baris gagal diimpor. Periksa format file Anda.");
+                throw new Exception('Semua baris gagal diimpor. Periksa format file Anda.');
             }
 
             DB::commit();
@@ -103,10 +107,9 @@ class QuestionImportService
     /**
      * Extract all table rows from Word document
      *
-     * @param \PhpOffice\PhpWord\PhpWord $phpWord
      * @return array Array of rows, each row is array of cell texts
      */
-    protected function extractTableRows(\PhpOffice\PhpWord\PhpWord $phpWord): array
+    private function extractTableRows(PhpWord $phpWord): array
     {
         $rows = [];
         $sections = $phpWord->getSections();
@@ -122,7 +125,7 @@ class QuestionImportService
                         }
 
                         // Skip strictly empty rows
-                        if (empty(array_filter($rowValues, fn($v) => !empty(trim($v['text']))))) {
+                        if (empty(array_filter($rowValues, fn ($v) => ! empty(trim($v['text']))))) {
                             continue;
                         }
 
@@ -135,44 +138,47 @@ class QuestionImportService
         return $rows;
     }
 
-
     /**
      * Fix double-encoded UTF-8 strings (Mojibake)
      * Useful when Arabic/Javanese characters are extracted from PhpWord as Windows-1252 mapped to UTF-8.
      */
-    protected function fixMojibake(string $text): string
+    private function fixMojibake(string $text): string
     {
-        if (empty($text)) return $text;
+        if (empty($text)) {
+            return $text;
+        }
 
         $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
 
         if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
-            if (substr_count($decoded, '?') === substr_count($text, '?')) {
+            if (mb_substr_count($decoded, '?') === mb_substr_count($text, '?')) {
                 if ($decoded !== $text) {
                     return $decoded;
                 }
             }
         }
+
         return $text;
     }
 
     /**
      * Extract text and images from a cell
      */
-    protected function extractCellContent($cell): array
+    private function extractCellContent($cell): array
     {
         $images = [];
         $text = $this->recursiveExtractText($cell, $images);
+
         return [
             'text' => $this->fixMojibake(trim($text)),
-            'images' => $images
+            'images' => $images,
         ];
     }
 
     /**
      * Recursively extract text from any element, preserving intentional line breaks
      */
-    protected function recursiveExtractText($element, &$images = []): string
+    private function recursiveExtractText($element, &$images = []): string
     {
         $text = '';
 
@@ -187,6 +193,7 @@ class QuestionImportService
         if ($element instanceof Image) {
             $id = (string) Str::ulid();
             $images[$id] = $element;
+
             // Insert a placeholder to track image position using random ULID
             return "[IMG_ID:{$id}]";
         }
@@ -216,14 +223,16 @@ class QuestionImportService
     /**
      * Process placeholders and attach images to model
      */
-    protected function processPlaceholdersAndAttach(HasMedia $model, string $text, array $images, string $collection)
+    private function processPlaceholdersAndAttach(HasMedia $model, string $text, array $images, string $collection)
     {
-        if (empty($images)) return;
+        if (empty($images)) {
+            return;
+        }
 
         // Scan the text for [IMG_ID:...] placeholders (ULID format)
         preg_match_all('/\[IMG_ID:([0-9A-Z]+)\]/', $text, $matches);
 
-        if (!empty($matches[1])) {
+        if (! empty($matches[1])) {
             $foundIds = array_unique($matches[1]);
             foreach ($foundIds as $id) {
                 if (isset($images[$id])) {
@@ -236,7 +245,7 @@ class QuestionImportService
     /**
      * Attach a PHPWord Image element to a Spatie Media model
      */
-    protected function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
+    private function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
     {
         try {
             $source = $image->getSource();
@@ -247,8 +256,9 @@ class QuestionImportService
             if (str_starts_with($source, 'data:image')) {
                 /** @var Question|Option $model */
                 $model->addMediaFromBase64($source)
-                    ->usingFileName('image_' . uniqid() . '.' . $extension)
+                    ->usingFileName('image_'.uniqid().'.'.$extension)
                     ->toMediaCollection($collection);
+
                 return;
             }
 
@@ -259,18 +269,19 @@ class QuestionImportService
                 $extension = pathinfo($source, PATHINFO_EXTENSION);
             }
 
-            if (!$binaryData) {
-                Log::warning("Gagal mendapatkan data biner untuk gambar dari source: " . substr($source, 0, 100));
+            if (! $binaryData) {
+                Log::warning('Gagal mendapatkan data biner untuk gambar dari source: '.mb_substr($source, 0, 100));
+
                 return;
             }
 
             // Fix: PHPWord sometimes returns hex-encoded string instead of raw binary
-            if (ctype_xdigit($binaryData) && strlen($binaryData) > 128) {
+            if (ctype_xdigit($binaryData) && mb_strlen($binaryData) > 128) {
                 $binaryData = hex2bin($binaryData);
             }
 
             // Detect mime type and extension from binary data
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->buffer($binaryData);
 
             $extensionMap = [
@@ -287,15 +298,15 @@ class QuestionImportService
                 $extension = $extensionMap[$mimeType];
             }
 
-            $filename = 'image_' . uniqid() . '.' . $extension;
-            Log::debug("Attaching image: " . $filename . " (Mime: {$mimeType}) | Size: " . strlen($binaryData));
+            $filename = 'image_'.uniqid().'.'.$extension;
+            Log::debug('Attaching image: '.$filename." (Mime: {$mimeType}) | Size: ".mb_strlen($binaryData));
 
             /** @var Question|Option $model */
             $model->addMediaFromString($binaryData)
                 ->usingFileName($filename)
                 ->toMediaCollection($collection);
         } catch (Exception $e) {
-            Log::warning("Gagal melampirkan gambar ke koleksi {$collection}: " . $e->getMessage());
+            Log::warning("Gagal melampirkan gambar ke koleksi {$collection}: ".$e->getMessage());
         }
     }
 
@@ -303,10 +314,9 @@ class QuestionImportService
      * Parse a single row from table
      * Expected format: [Tipe Soal, Pertanyaan, Opsi, Kunci, Poin]
      *
-     * @param array $cells Array of 5 cell texts
-     * @return Question|null
+     * @param  array  $cells  Array of 5 cell texts
      */
-    protected function parseRow(array $cells, string $authorId): ?Question
+    private function parseRow(array $cells, string $authorId): ?Question
     {
         if (count($cells) < 4) { // At least Type, Question, Key
             return null;
@@ -320,7 +330,7 @@ class QuestionImportService
         [$typeCell, $questionCell, $optionsCell, $keyCell, $pointsCell, $tagsCell] = $cells;
 
         $typeStr = is_array($typeCell) ? $typeCell['text'] : $typeCell;
-        $typeNormalized = strtoupper(trim($typeStr));
+        $typeNormalized = mb_strtoupper(trim($typeStr));
 
         // Skip header rows
         if (in_array($typeNormalized, ['TIPE SOAL', 'TYPE', 'QUESTION TYPE', 'NO', 'NUMBER', ''])) {
@@ -329,20 +339,22 @@ class QuestionImportService
 
         // Validate question type
         $questionType = $this->parseQuestionType($typeStr);
-        if (!$questionType) {
-            if (empty($typeNormalized)) return null;
+        if (! $questionType) {
+            if (empty($typeNormalized)) {
+                return null;
+            }
             throw new Exception("Tipe soal tidak valid: '{$typeStr}'");
         }
 
         // Validate score
-        $scoreValue = is_numeric($pointsCell['text']) ? intval($pointsCell['text']) : 1;
+        $scoreValue = is_numeric($pointsCell['text']) ? (int) ($pointsCell['text']) : 1;
         $scoreEnum = QuestionScoreEnum::tryFrom($scoreValue);
 
         // If score is invalid (e.g. 10, 15, 20), we default to 5 or throw error?
-        // Let's coerce to closest available or default to 1 to prevent failure, 
+        // Let's coerce to closest available or default to 1 to prevent failure,
         // but since we want strict checking, let's try to map typical values (10, 20..) to 1-5 if possible?
         // For now, strict check:
-        if (!$scoreEnum) {
+        if (! $scoreEnum) {
             // Attempt fallback mapping for common user inputs
             $scoreEnum = match (true) {
                 $scoreValue > 5 => QuestionScoreEnum::FIVE,
@@ -365,7 +377,7 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($question, $questionCell['text'], $questionCell['images'], 'question_content');
 
             // Clean up placeholders from question content
-            if (strpos($question->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($question->content, '[IMG_ID:') !== false) {
                 $question->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $question->content)]);
             }
 
@@ -373,39 +385,37 @@ class QuestionImportService
             $this->createOptions($question, $questionType, $optionsCell, $keyCell['text']);
 
             // Smart detect language from question and options
-            $detectedTags = $this->detectLanguageTags($questionCell['text'] . ' ' . $optionsCell['text']);
+            $detectedTags = $this->detectLanguageTags($questionCell['text'].' '.$optionsCell['text']);
 
             // Attach Tags
             $tags = [];
-            if (!empty(trim($tagsCell['text']))) {
+            if (! empty(trim($tagsCell['text']))) {
                 // Split by comma, trim, and filter empty
                 $tags = array_values(array_filter(array_map('trim', explode(',', $tagsCell['text']))));
             }
 
             $tags = array_unique(array_merge($tags, $detectedTags));
 
-            if (!empty($tags)) {
+            if (! empty($tags)) {
                 $question->attachTags($tags);
             }
 
             DB::commit();
+
             return $question;
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error("Gagal mengimport baris: " . $e->getMessage(), ['cells' => $cells]);
+            Log::error('Gagal mengimport baris: '.$e->getMessage(), ['cells' => $cells]);
             throw $e;
         }
     }
 
     /**
      * Parse question type string to enum
-     *
-     * @param string $typeStr
-     * @return QuestionTypeEnum|null
      */
-    protected function parseQuestionType(string $typeStr): ?QuestionTypeEnum
+    private function parseQuestionType(string $typeStr): ?QuestionTypeEnum
     {
-        $typeStr = strtoupper(trim($typeStr));
+        $typeStr = mb_strtoupper(trim($typeStr));
 
         return match ($typeStr) {
             '1', 'MULTIPLE_CHOICE' => QuestionTypeEnum::MULTIPLE_CHOICE,
@@ -426,7 +436,7 @@ class QuestionImportService
     /**
      * Process text to convert specific patterns to Rich Text HTML components
      */
-    protected function processRichText(?string $text, bool $wrapArabic = true): string
+    private function processRichText(?string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) {
             return '';
@@ -435,12 +445,23 @@ class QuestionImportService
         // Apply Mojibake fix first
         $text = $this->fixMojibake($text);
 
+        Log::debug('processRichText input', [
+            'text' => $text,
+            'has_dollar' => str_contains($text, '$'),
+            'has_entity' => str_contains($text, '&#36;'),
+        ]);
+
+        // Decode HTML entities first (&#36; -> $, &dollar; -> $, etc)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         // 1. Convert Latex: $equation$ -> math-component
         $text = preg_replace_callback(
             '/\$([^$]+)\$/',
             function ($matches) {
-                $latex = htmlspecialchars($matches[1], ENT_QUOTES);
-                return '<span data-type="math-component" latex="' . $latex . '"></span>';
+                $latex = trim($matches[1]);
+                Log::debug('processRichText matched latex', ['latex' => $latex]);
+
+                return '<span data-type="math-component" latex="'.htmlspecialchars($latex, ENT_QUOTES, 'UTF-8').'"></span>';
             },
             $text
         );
@@ -451,7 +472,7 @@ class QuestionImportService
             $html = '';
             foreach ($lines as $line) {
                 if (trim($line) !== '') {
-                    $html .= '<p>' . $line . '</p>';
+                    $html .= '<p>'.$line.'</p>';
                 }
             }
 
@@ -473,7 +494,7 @@ class QuestionImportService
      * This helper avoids double-wrapping by checking whether the tag
      * already exists in the given text for that language.
      */
-    protected function wrapLanguageTags(string $text, bool $wrapArabic = true): string
+    private function wrapLanguageTags(string $text, bool $wrapArabic = true): string
     {
         if (empty($text)) {
             return $text;
@@ -482,7 +503,7 @@ class QuestionImportService
         $original = $text;
 
         // Wrap contiguous runs of Arabic text [ara]...[/ara]
-        if ($wrapArabic && strpos($text, '[ara]') === false) {
+        if ($wrapArabic && mb_strpos($text, '[ara]') === false) {
             $arabicPattern = '/(\p{Arabic}(?:[\p{Arabic}\p{M}\p{Cf}\s\p{P}\p{S}\d]*\p{Arabic})?)/u';
             if (preg_match_all($arabicPattern, $text, $m1) && count($m1[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
@@ -491,7 +512,7 @@ class QuestionImportService
         }
 
         // Wrap Javanese runs [jav]...[/jav]
-        if (strpos($text, '[jav]') === false) {
+        if (mb_strpos($text, '[jav]') === false) {
             // Javanese Unicode block: U+A980–U+A9DF. Use explicit range since \p{Javanese}
             // may not be available in all PCRE builds.
             $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
@@ -508,7 +529,7 @@ class QuestionImportService
         return $text;
     }
 
-    protected function createQuestion(array $data): Question
+    private function createQuestion(array $data): Question
     {
         return Question::create([
             // 'question_bank_id' => $this->questionBank->id, // Removed: Not in Question model fillable
@@ -526,7 +547,7 @@ class QuestionImportService
     /**
      * Create options based on question type
      */
-    protected function createOptions(Question $question, QuestionTypeEnum $type, array $optionsCell, string $keyAnswer): void
+    private function createOptions(Question $question, QuestionTypeEnum $type, array $optionsCell, string $keyAnswer): void
     {
         match ($type) {
             QuestionTypeEnum::MULTIPLE_CHOICE => $this->handleMultipleChoice($question, $optionsCell, $keyAnswer),
@@ -544,18 +565,18 @@ class QuestionImportService
         };
     }
 
-    protected function handleMultipleChoice(Question $question, array $optionsCell, string $keyAnswer): void
+    private function handleMultipleChoice(Question $question, array $optionsCell, string $keyAnswer): void
     {
         $options = $this->splitOptions($optionsCell['text']);
-        $correctKey = strtoupper(trim($keyAnswer));
+        $correctKey = mb_strtoupper(trim($keyAnswer));
 
         if (count($options) < 2) {
-            throw new Exception("Soal Multiple Choice harus memiliki minimal 2 opsi jawaban.");
+            throw new Exception('Soal Multiple Choice harus memiliki minimal 2 opsi jawaban.');
         }
 
         foreach ($options as $index => $optionText) {
             if (preg_match('/^([A-Z])\.\s*(.+)$/si', trim($optionText), $matches)) {
-                $key = strtoupper($matches[1]);
+                $key = mb_strtoupper($matches[1]);
                 $content = trim($matches[2]);
             } else {
                 $key = chr(65 + $index);
@@ -573,25 +594,25 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
 
             // Clean up placeholders from option content
-            if (strpos($option->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($option->content, '[IMG_ID:') !== false) {
                 $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
             }
         }
     }
 
-    protected function handleMultipleSelection(Question $question, array $optionsCell, string $keyAnswer): void
+    private function handleMultipleSelection(Question $question, array $optionsCell, string $keyAnswer): void
     {
         $options = $this->splitOptions($optionsCell['text']);
-        $correctKeys = array_map('trim', explode(',', strtoupper($keyAnswer)));
+        $correctKeys = array_map('trim', explode(',', mb_strtoupper($keyAnswer)));
         $correctKeys = array_map('strtoupper', $correctKeys);
 
         if (count($options) < 2) {
-            throw new Exception("Soal Multiple Selection harus memiliki minimal 2 opsi jawaban.");
+            throw new Exception('Soal Multiple Selection harus memiliki minimal 2 opsi jawaban.');
         }
 
         foreach ($options as $index => $optionText) {
             if (preg_match('/^([A-Z])\.\s*(.+)$/si', trim($optionText), $matches)) {
-                $key = strtoupper($matches[1]);
+                $key = mb_strtoupper($matches[1]);
                 $content = trim($matches[2]);
             } else {
                 $key = chr(65 + $index);
@@ -609,16 +630,16 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
 
             // Clean up placeholders from option content
-            if (strpos($option->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($option->content, '[IMG_ID:') !== false) {
                 $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
             }
         }
     }
 
-    protected function handleTrueFalse(Question $question, array $optionsCell, string $keyAnswer): void
+    private function handleTrueFalse(Question $question, array $optionsCell, string $keyAnswer): void
     {
         $options = $this->splitOptions($optionsCell['text']);
-        $rawCorrectKey = strtoupper(trim($keyAnswer));
+        $rawCorrectKey = mb_strtoupper(trim($keyAnswer));
 
         if (empty($options)) {
             $options = ['A. Benar', 'B. Salah'];
@@ -653,13 +674,13 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($option, $optionText, $optionsCell['images'], 'option_media');
 
             // Clean up placeholders from option content
-            if (strpos($option->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($option->content, '[IMG_ID:') !== false) {
                 $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
             }
         }
     }
 
-    protected function handleMatching(Question $question, array $optionsCell): void
+    private function handleMatching(Question $question, array $optionsCell): void
     {
         $pairs = $this->splitOptions($optionsCell['text']);
 
@@ -672,8 +693,8 @@ class QuestionImportService
             $leftContent = trim($parts[0]);
             $rightContent = trim($parts[1]);
 
-            $leftKey = 'L' . ($index + 1);
-            $rightKey = 'R' . ($index + 1);
+            $leftKey = 'L'.($index + 1);
+            $rightKey = 'R'.($index + 1);
 
             $leftOption = Option::create([
                 'question_id' => $question->id,
@@ -705,22 +726,22 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($rightOption, $rightContent, $optionsCell['images'], 'option_media');
 
             // Clean up placeholders
-            if (strpos($leftOption->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($leftOption->content, '[IMG_ID:') !== false) {
                 $leftOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $leftOption->content)]);
             }
-            if (strpos($rightOption->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($rightOption->content, '[IMG_ID:') !== false) {
                 $rightOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $rightOption->content)]);
             }
         }
     }
 
-    protected function handleSequence(Question $question, array $optionsCell): void
+    private function handleSequence(Question $question, array $optionsCell): void
     {
         $items = $this->splitOptions($optionsCell['text']);
 
         foreach ($items as $index => $itemText) {
             if (preg_match('/^(\d+)\.\s*(.+)$/si', trim($itemText), $matches)) {
-                $correctPosition = intval($matches[1]);
+                $correctPosition = (int) ($matches[1]);
                 $content = trim($matches[2]);
             } else {
                 $correctPosition = $index + 1;
@@ -729,7 +750,7 @@ class QuestionImportService
 
             $option = Option::create([
                 'question_id' => $question->id,
-                'option_key' => (string)($index + 1),
+                'option_key' => (string) ($index + 1),
                 'content' => $this->processRichText($content),
                 'order' => $index,
                 'is_correct' => false,
@@ -741,21 +762,21 @@ class QuestionImportService
             $this->processPlaceholdersAndAttach($option, $itemText, $optionsCell['images'], 'option_media');
 
             // Clean up placeholders
-            if (strpos($option->content, '[IMG_ID:') !== false) {
+            if (mb_strpos($option->content, '[IMG_ID:') !== false) {
                 $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
             }
         }
     }
 
-    protected function handleMathInput(Question $question, array $optionsCell, string $keyAnswer): void
+    private function handleMathInput(Question $question, array $optionsCell, string $keyAnswer): void
     {
         $sanitizedValue = str_replace(',', '.', trim($keyAnswer));
-        $numericValue = is_numeric($sanitizedValue) ? (float)$sanitizedValue : 0;
+        $numericValue = is_numeric($sanitizedValue) ? (float) $sanitizedValue : 0;
 
         $option = Option::create([
             'question_id' => $question->id,
             'option_key' => 'NUM',
-            'content' => (string)$numericValue,
+            'content' => (string) $numericValue,
             'order' => 0,
             'is_correct' => true,
             'metadata' => [
@@ -768,7 +789,7 @@ class QuestionImportService
         $this->processPlaceholdersAndAttach($option, $optionsCell['text'], $optionsCell['images'], 'option_media');
     }
 
-    protected function handleShortAnswer(Question $question, string $keyAnswer): void
+    private function handleShortAnswer(Question $question, string $keyAnswer): void
     {
         // Remove language tags from key answer for consistency
         // We use a more aggressive replace to ensure no stray tags remain
@@ -784,13 +805,13 @@ class QuestionImportService
         ]);
     }
 
-    protected function handleArrangeWords(Question $question, array $optionsCell): void
+    private function handleArrangeWords(Question $question, array $optionsCell): void
     {
         $sentence = trim($optionsCell['text']);
         Option::createArrangeWordsOption($question->id, $sentence);
     }
 
-    protected function handleEssay(Question $question, string $rubric): void
+    private function handleEssay(Question $question, string $rubric): void
     {
         Option::create([
             'question_id' => $question->id,
@@ -805,7 +826,7 @@ class QuestionImportService
         ]);
     }
 
-    protected function splitOptions(string $text): array
+    private function splitOptions(string $text): array
     {
         if (empty(trim($text)) || $text === '-') {
             return [];
@@ -819,11 +840,11 @@ class QuestionImportService
 
     /**
      * Detect languages from text and return language tags
-     * 
-     * @param string $text Text to analyze
+     *
+     * @param  string  $text  Text to analyze
      * @return array Array of detected tags
      */
-    protected function detectLanguageTags(string $text): array
+    private function detectLanguageTags(string $text): array
     {
         $tags = [];
 
