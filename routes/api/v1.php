@@ -216,9 +216,12 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{exam}/reset-objective-correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'resetObjectiveCorrection'])->name('api.v1.exams.correction.reset-objective');
         Route::get('{exam}/correction-progress', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'correctionProgress'])->name('api.v1.exams.correction.progress');
         Route::delete('{exam}/sessions/{examSession}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'destroy'])->name('api.v1.exams.correction.destroy');
+        Route::put('{exam}/sessions/{examSession}/details/{examResultDetail}/answer', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'updateAnswer'])->name('api.v1.exams.correction.update-answer');
+        Route::get('{exam}/sessions/{examSession}/details/{examResultDetail}/history', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'answerHistory'])->name('api.v1.exams.correction.answer-history');
+        Route::post('{exam}/sessions/{examSession}/details/{examResultDetail}/restore', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'restoreAnswer'])->name('api.v1.exams.correction.restore-answer');
+        Route::post('{exam}/sessions/{examSession}/details/{examResultDetail}/restore-to-version/{versionId}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'restoreToVersion'])->name('api.v1.exams.correction.restore-to-version');
     });
     Route::put('sessions/{examSession}/details/{examResultDetail}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
-    Route::put('{exam}/sessions/{examSession}/details/{examResultDetail}/answer', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'updateAnswer'])->name('api.v1.exams.correction.update-answer');
     Route::post('sessions/{examSession}/details/{examResultDetail}/reopen', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'reopenByDetail'])->name('api.v1.exams.correction.reopen-by-detail');
     Route::post('sessions/{examSession}/finish-correction', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'finish'])->name('api.v1.exams.correction.finish');
     Route::post('sessions/{examSession}/recalculate', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'recalculate'])->name('api.v1.exams.correction.recalculate');

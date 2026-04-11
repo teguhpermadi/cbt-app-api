@@ -196,17 +196,168 @@ final class ExamCorrectionController extends ApiController
         }
 
         $validated = $request->validate([
-            'student_answer' => 'required', // can be string or array/json
+            'student_answer' => 'required',
+            'edit_reason' => 'nullable|string',
+        ]);
+
+        // Simpan jawaban saat ini ke history sebelum diupdate
+        \App\Models\ExamResultDetailAnswerHistory::create([
+            'exam_result_detail_id' => $examResultDetail->id,
+            'previous_answer' => $examResultDetail->student_answer,
+            'new_answer' => $validated['student_answer'],
+            'edited_by' => $user->id,
+            'edit_reason' => $validated['edit_reason'] ?? null,
         ]);
 
         $examResultDetail->update([
             'student_answer' => $validated['student_answer'],
-            'answered_at' => now(), // update timestamp as if student answered it
+            'answered_at' => now(),
         ]);
 
         return $this->success(
             new ExamCorrectionResource($examResultDetail),
             'Student answer updated successfully'
+        );
+    }
+
+    /**
+     * Get answer history for a specific exam result detail.
+     */
+    public function answerHistory(Exam $exam, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        $histories = $examResultDetail->answerHistories()
+            ->with(['editor:id,name,email'])
+            ->get();
+
+        return $this->success([
+            'current_answer' => $examResultDetail->student_answer,
+            'histories' => $histories,
+        ]);
+    }
+
+    /**
+     * Restore student's answer to previous version from history.
+     */
+    public function restoreAnswer(Request $request, Exam $exam, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        $user = Auth::user();
+
+        if ($user->user_type === UserTypeEnum::STUDENT) {
+            return $this->error('You do not have permission to restore student answers.', 403);
+        }
+
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        // Ambil history terakhir
+        $lastHistory = $examResultDetail->answerHistories()->first();
+
+        if (! $lastHistory) {
+            return $this->error('No previous version found to restore.', 404);
+        }
+
+        $previousAnswer = $lastHistory->previous_answer;
+
+        if ($previousAnswer === null) {
+            return $this->error('Unable to retrieve previous answer version.', 404);
+        }
+
+        // Simpan restore ke history
+        \App\Models\ExamResultDetailAnswerHistory::create([
+            'exam_result_detail_id' => $examResultDetail->id,
+            'previous_answer' => $examResultDetail->student_answer,
+            'new_answer' => $previousAnswer,
+            'edited_by' => $user->id,
+            'edit_reason' => 'Restore to previous version',
+        ]);
+
+        // Reset skor karena jawaban berubah
+        $examResultDetail->update([
+            'student_answer' => $previousAnswer,
+            'score_earned' => 0,
+            'is_correct' => null,
+            'correction_notes' => null,
+            'answered_at' => now(),
+        ]);
+
+        // Sync progress
+        $this->syncQuestionCorrectionProgress($examSession->exam, $examResultDetail->examQuestion);
+
+        return $this->success(
+            new ExamCorrectionResource($examResultDetail->fresh()),
+            'Student answer restored successfully. Score has been reset.'
+        );
+    }
+
+    /**
+     * Restore student's answer to a specific version.
+     */
+    public function restoreToVersion(Request $request, Exam $exam, ExamSession $examSession, ExamResultDetail $examResultDetail, int $versionId)
+    {
+        $user = Auth::user();
+
+        if ($user->user_type === UserTypeEnum::STUDENT) {
+            return $this->error('You do not have permission to restore student answers.', 403);
+        }
+
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        // Ambil history versi tertentu
+        $history = $examResultDetail->answerHistories()->find($versionId);
+
+        if (! $history) {
+            return $this->error('Version not found.', 404);
+        }
+
+        $targetAnswer = $history->previous_answer;
+
+        if ($targetAnswer === null) {
+            return $this->error('Unable to retrieve answer version.', 404);
+        }
+
+        // Simpan restore ke history
+        \App\Models\ExamResultDetailAnswerHistory::create([
+            'exam_result_detail_id' => $examResultDetail->id,
+            'previous_answer' => $examResultDetail->student_answer,
+            'new_answer' => $targetAnswer,
+            'edited_by' => $user->id,
+            'edit_reason' => "Restore to version {$versionId}",
+        ]);
+
+        // Reset skor karena jawaban berubah
+        $examResultDetail->update([
+            'student_answer' => $targetAnswer,
+            'score_earned' => 0,
+            'is_correct' => null,
+            'correction_notes' => null,
+            'answered_at' => now(),
+        ]);
+
+        // Sync progress
+        $this->syncQuestionCorrectionProgress($examSession->exam, $examResultDetail->examQuestion);
+
+        return $this->success(
+            new ExamCorrectionResource($examResultDetail->fresh()),
+            "Student answer restored to version {$versionId}. Score has been reset."
         );
     }
 

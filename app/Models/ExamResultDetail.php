@@ -1,18 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
-class ExamResultDetail extends Model
+final class ExamResultDetail extends Model
 {
-    /** @use HasFactory<\Database\Factories\ExamResultDetailFactory> */
-    use HasFactory, HasUlids;
+    use HasFactory, HasUlids, LogsActivity;
 
-    // model ini berfungsi untuk menyimpan jawaban siswa per soal dalam satu sesi ujian. 
+    /** @use HasFactory<\Database\Factories\ExamResultDetailFactory> */
+
+    // model ini berfungsi untuk menyimpan jawaban siswa per soal dalam satu sesi ujian.
     protected $fillable = [
         'exam_session_id',      // ID Sesi Pengerjaan (BARU)
         'exam_question_id',     // ID Soal Transaksional (Salinan Soal)
@@ -52,5 +57,17 @@ class ExamResultDetail extends Model
     public function examQuestion(): BelongsTo
     {
         return $this->belongsTo(ExamQuestion::class, 'exam_question_id');
+    }
+
+    public function answerHistories()
+    {
+        return $this->hasMany(ExamResultDetailAnswerHistory::class, 'exam_result_detail_id')->orderBy('created_at', 'desc');
+    }
+
+    protected function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['student_answer'])
+            ->logOnlyDirty();
     }
 }
