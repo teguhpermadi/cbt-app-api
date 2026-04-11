@@ -33,8 +33,8 @@ final class ExamCorrectionController extends ApiController
     {
         $sessions = ExamSession::query()
             ->where('exam_id', $exam->id)
-            ->with(['user'])
-            ->get(); // Removed latest() to keep order more stable if preferred, but usually name is better for stability
+            ->with(['user', 'examResult'])
+            ->get();
 
         $questions = ExamQuestion::query()
             ->where('exam_id', $exam->id)
@@ -50,11 +50,21 @@ final class ExamCorrectionController extends ApiController
             ->where('exam_id', $exam->id)
             ->get();
 
+        $passedCount = $sessions->filter(fn ($s) => $s->examResult?->is_passed === true)->count();
+        $failedCount = $sessions->filter(fn ($s) => $s->examResult?->is_passed === false)->count();
+        $notGradedCount = $sessions->filter(fn ($s) => $s->examResult === null)->count();
+
         return $this->success([
             'exam' => $exam,
             'sessions' => \App\Http\Resources\Student\ExamSessionResource::collection($sessions),
             'questions' => $questions,
             'correction_statuses' => $correctionStatuses,
+            'pass_fail_stats' => [
+                'total' => $sessions->count(),
+                'passed' => $passedCount,
+                'failed' => $failedCount,
+                'not_yet_graded' => $notGradedCount,
+            ],
         ]);
     }
 
