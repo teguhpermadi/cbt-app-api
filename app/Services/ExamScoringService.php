@@ -119,7 +119,9 @@ final class ExamScoringService
         $studentVal = '';
 
         if (is_array($studentAnswer)) {
-            if (isset($studentAnswer[0])) {
+            if (isset($studentAnswer['option_key'])) {
+                $studentVal = $studentAnswer['option_key'];
+            } elseif (isset($studentAnswer[0])) {
                 $firstAnswer = $studentAnswer[0];
                 if (is_array($firstAnswer) && isset($firstAnswer['option_key'])) {
                     $studentVal = $firstAnswer['option_key'];
