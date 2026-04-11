@@ -80,10 +80,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-    environment:
-      - DB_HOST=mysql
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
+    env_file:
+      - .env.production
     networks:
       - app-network
     command: ["php-fpm"]
@@ -105,13 +103,8 @@ services:
       - storage:/var/www/storage
     depends_on:
       - backend
-    environment:
-      - REVERB_HOST=0.0.0.0
-      - REVERB_PORT=6001
-      - REVERB_SCHEME=https
-      - DB_HOST=mysql
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
+    env_file:
+      - .env.production
     expose:
       - "6001"
     networks:
@@ -135,10 +128,8 @@ services:
     depends_on:
       - backend
       - redis
-    environment:
-      - DB_HOST=mysql
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
+    env_file:
+      - .env.production
     networks:
       - app-network
     restart: unless-stopped
@@ -175,6 +166,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cbt-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
       - ./docker/redis:/data
     networks:

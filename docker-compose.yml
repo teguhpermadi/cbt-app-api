@@ -42,13 +42,6 @@ services:
         condition: service_healthy
     env_file:
       - .env.production
-    environment:
-      - DB_HOST=mysql
-      - DB_DATABASE=cbt_app
-      - DB_USERNAME=cbt_user
-      - DB_PASSWORD=MySQL_App_P@ss2026
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
     networks:
       - app-network
       - traefik-proxy
@@ -93,16 +86,6 @@ services:
         condition: service_healthy
     env_file:
       - .env.production
-    environment:
-      - REVERB_HOST=0.0.0.0
-      - REVERB_PORT=6001
-      - REVERB_SCHEME=https
-      - DB_HOST=mysql
-      - DB_DATABASE=cbt_app
-      - DB_USERNAME=cbt_user
-      - DB_PASSWORD=MySQL_App_P@ss2026
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
     expose:
       - "6001"
     networks:
@@ -137,13 +120,6 @@ services:
         condition: service_healthy
     env_file:
       - .env.production
-    environment:
-      - DB_HOST=mysql
-      - DB_DATABASE=cbt_app
-      - DB_USERNAME=cbt_user
-      - DB_PASSWORD=MySQL_App_P@ss2026
-      - REDIS_HOST=redis
-      - DB_MONGO_HOST=mongodb
     networks:
       - app-network
     restart: unless-stopped
