@@ -18,11 +18,11 @@ use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use App\Models\User;
 use App\Notifications\AiCorrectionFinishedNotification;
+use App\Services\ExamScoringService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
-use App\Services\ExamScoringService;
 
 final class ExamCorrectionController extends ApiController
 {
@@ -179,9 +179,18 @@ final class ExamCorrectionController extends ApiController
     /**
      * Update the student's answer for a specific question.
      */
-    public function updateAnswer(Request $request, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    public function updateAnswer(Request $request, Exam $exam, ExamSession $examSession, ExamResultDetail $examResultDetail)
     {
-        // Ensure detail belongs to session
+        $user = Auth::user();
+
+        if ($user->user_type === UserTypeEnum::STUDENT) {
+            return $this->error('You do not have permission to update student answers.', 403);
+        }
+
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
         if ($examResultDetail->exam_session_id !== $examSession->id) {
             abort(404, 'Answer detail not found for this session.');
         }
@@ -698,7 +707,7 @@ final class ExamCorrectionController extends ApiController
         if ($onlyUncorrected) {
             $query->where(function ($q) {
                 $q->whereNull('is_correct')
-                  ->orWhere('is_correct', false);
+                    ->orWhere('is_correct', false);
             });
         }
 
