@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Enums\QuestionDifficultyLevelEnum;
@@ -8,7 +10,6 @@ use App\Enums\QuestionTimeEnum;
 use App\Enums\QuestionTypeEnum;
 use App\Models\Option;
 use App\Models\Question;
-use App\Models\QuestionBank;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,19 +23,21 @@ use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use Spatie\MediaLibrary\HasMedia;
 
-class WordToDatabaseParserService
+final class WordToDatabaseParserService
 {
-    protected $createdQuestions = [];
-    protected $errors = [];
-    protected $baseOrder = 0;
+    private $createdQuestions = [];
+
+    private $errors = [];
+
+    private $baseOrder = 0;
 
     /**
      * Parse Word document (2-column Key-Value format) and create questions
      */
     public function parse(string $filePath, string $authorId, ?string $questionBankId = null): array
     {
-        file_put_contents(storage_path('app/import_debug.log'), "Parse started: " . $filePath . "\n", FILE_APPEND);
-        Log::info("WordToDatabaseParserService::parse started", ['file' => $filePath]);
+        file_put_contents(storage_path('app/import_debug.log'), 'Parse started: '.$filePath."\n", FILE_APPEND);
+        Log::info('WordToDatabaseParserService::parse started', ['file' => $filePath]);
         try {
             $phpWord = IOFactory::load($filePath);
             $sections = $phpWord->getSections();
@@ -56,7 +59,7 @@ class WordToDatabaseParserService
                 }
             }
 
-            if (empty($this->createdQuestions) && !empty($this->errors)) {
+            if (empty($this->createdQuestions) && ! empty($this->errors)) {
                 return [
                     'success' => false,
                     'total' => 0,
@@ -73,250 +76,13 @@ class WordToDatabaseParserService
             ];
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Word import failed: ' . $e->getMessage());
+            Log::error('Word import failed: '.$e->getMessage());
+
             return [
                 'success' => false,
                 'total' => 0,
                 'errors' => array_merge($this->errors, [$e->getMessage()]),
             ];
-        }
-    }
-
-    /**
-     * Process a single question table
-     */
-    protected function processTable(Table $table, string $authorId, ?string $questionBankId): void
-    {
-        file_put_contents(storage_path('app/import_debug.log'), "Processing Table...\n", FILE_APPEND);
-        Log::info("WordToDatabaseParserService::processTable started");
-        $data = [
-            'type' => null,
-            'score' => 1,
-            'question' => ['text' => '', 'images' => []],
-            'option' => ['text' => '', 'images' => []],
-            'key' => '',
-            'hint' => '',
-        ];
-
-        foreach ($table->getRows() as $row) {
-            $cells = $row->getCells();
-            if (count($cells) < 2) continue;
-
-            $key = strtolower(trim($this->extractRawText($cells[0])));
-            $content = $this->extractCellContent($cells[1]);
-
-            file_put_contents(storage_path('app/import_debug.log'), "Key: '{$key}' | Content: '" . substr($content['text'], 0, 50) . "...'\n", FILE_APPEND);
-            Log::info("Word Import Key: '{$key}' Content: '{$content['text']}'");
-
-            if (array_key_exists($key, $data)) {
-                $data[$key] = $content;
-            }
-        }
-
-        Log::info("Word Import Table Data Collected", ['type' => $data['type']['text'] ?? 'null', 'question' => $data['question']['text'] ?? 'null']);
-
-        // Validate mandatory fields
-        if (empty($data['type']['text']) || empty($data['question']['text'])) {
-            file_put_contents(storage_path('app/import_debug.log'), "Skipped table: type=" . ($data['type']['text'] ?? 'null') . ", q=" . ($data['question']['text'] ?? 'null') . "\n", FILE_APPEND);
-            Log::info("Word Import skipped table: type or question empty");
-            return;
-        }
-
-        try {
-            $typeCode = (int) $data['type']['text'];
-            $type = $this->mapType($typeCode);
-
-            if (!$type) {
-                throw new Exception("Tipe soal '{$typeCode}' tidak didukung.");
-            }
-
-            $scoreValue = (int) $data['score']['text'];
-            $scoreEnum = QuestionScoreEnum::tryFrom($scoreValue) ?? QuestionScoreEnum::ONE;
-
-            file_put_contents(storage_path('app/import_debug.log'), "Attempting to create question...\n", FILE_APPEND);
-            $question = Question::create([
-                'user_id' => $authorId,
-                'type' => $type,
-                'content' => $this->formatRichText($data['question']['text']),
-                'score' => $scoreEnum,
-                'hint' => $data['hint']['text'] ?? null,
-                'difficulty' => QuestionDifficultyLevelEnum::Medium,
-                'timer' => QuestionTimeEnum::THIRTY_SECONDS,
-                'is_approved' => true,
-                'order' => $this->baseOrder + count($this->createdQuestions) + 1,
-            ]);
-            file_put_contents(storage_path('app/import_debug.log'), "Question created: " . $question->id . "\n", FILE_APPEND);
-
-            if ($questionBankId) {
-                $question->questionBanks()->attach($questionBankId);
-            }
-
-            // Attach Question Images via placeholders
-            $this->processPlaceholdersAndAttach($question, $data['question']['text'], $data['question']['images'], 'question_content');
-
-            // Clean up placeholders from question content
-            if (strpos($question->content, '[IMG_ID:') !== false) {
-                $question->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $question->content)]);
-            }
-
-            // Handle Options logic
-            $this->createOptions($question, $type, $data['option'], $data['key']['text']);
-
-            $this->createdQuestions[] = $question->id;
-            file_put_contents(storage_path('app/import_debug.log'), "Process finished for this table.\n", FILE_APPEND);
-        } catch (Exception $e) {
-            file_put_contents(storage_path('app/import_debug.log'), "Error in Table Processing: " . $e->getMessage() . "\n", FILE_APPEND);
-            $this->errors[] = "Tabel " . (count($this->createdQuestions) + count($this->errors) + 1) . ": " . $e->getMessage();
-        }
-    }
-
-    /**
-     * Map numeric code to QuestionTypeEnum
-     */
-    protected function mapType(int $code): ?QuestionTypeEnum
-    {
-        return match ($code) {
-            1 => QuestionTypeEnum::MULTIPLE_CHOICE,
-            2 => QuestionTypeEnum::MULTIPLE_SELECTION,
-            3 => QuestionTypeEnum::TRUE_FALSE,
-            4 => QuestionTypeEnum::SHORT_ANSWER,
-            5 => QuestionTypeEnum::ESSAY,
-            6 => QuestionTypeEnum::MATH_INPUT,
-            7 => QuestionTypeEnum::SEQUENCE,
-            8 => QuestionTypeEnum::ARABIC_RESPONSE,
-            9 => QuestionTypeEnum::JAVANESE_RESPONSE,
-            10 => QuestionTypeEnum::MATCHING,
-            default => null,
-        };
-    }
-
-    /**
-     * Create options based on type
-     */
-    protected function createOptions(Question $question, QuestionTypeEnum $type, array $optionData, string $keyAnswer): void
-    {
-        // Split by newline while preserving potential placeholders
-        $rawLines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
-
-        // Pre-format all option lines so language tags and latex are handled
-        $wrapArabic = $type !== QuestionTypeEnum::ARABIC_RESPONSE;
-        $formattedLines = array_map(fn($l) => $this->formatRichText($l, $wrapArabic), $rawLines);
-
-        switch ($type) {
-            case QuestionTypeEnum::MULTIPLE_CHOICE:
-            case QuestionTypeEnum::MULTIPLE_SELECTION:
-                foreach ($formattedLines as $index => $line) {
-                    $key = chr(65 + $index); // A, B, C...
-                    $isCorrect = false;
-
-                    if ($type === QuestionTypeEnum::MULTIPLE_CHOICE) {
-                        $isCorrect = (strtoupper(trim($keyAnswer)) === $key);
-                    } else {
-                        $correctKeys = array_map('trim', array_map('strtoupper', explode(',', $keyAnswer)));
-                        $isCorrect = in_array($key, $correctKeys);
-                    }
-
-                    $option = Option::create([
-                        'question_id' => $question->id,
-                        'option_key' => $key,
-                        'content' => $line,
-                        'order' => $index,
-                        'is_correct' => $isCorrect,
-                    ]);
-
-                    // Attach images found in THIS specific option line
-                    $originalLine = $rawLines[$index];
-                    $this->processPlaceholdersAndAttach($option, $originalLine, $optionData['images'], 'option_media');
-
-                    // Clean up placeholders from option content
-                    if (strpos($option->content, '[IMG_ID:') !== false) {
-                        $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
-                    }
-                }
-                break;
-
-            case QuestionTypeEnum::TRUE_FALSE:
-                $correct = (strtoupper(trim($keyAnswer)) === 'T' || strtoupper(trim($keyAnswer)) === 'TRUE' || strtoupper(trim($keyAnswer)) === 'BENAR');
-                Option::createTrueFalseOptions($question->id, $correct);
-                break;
-
-            case QuestionTypeEnum::SHORT_ANSWER:
-                // Multiple correct answers can be separated by newline in the 'key' cell
-                $answers = array_values(array_filter(array_map('trim', explode("\n", $keyAnswer))));
-                // Strip language tags from answers for consistency
-                $answers = array_map(fn($a) => preg_replace('/\[\/?(ara|jav)\]/i', '', $a), $answers);
-                Option::createShortAnswerOptions($question->id, $answers);
-                break;
-
-            case QuestionTypeEnum::ESSAY:
-                Option::createEssayOption($question->id, $this->formatRichText($keyAnswer));
-                break;
-
-            case QuestionTypeEnum::MATH_INPUT:
-                Option::createMathInputOption($question->id, $this->formatRichText($keyAnswer));
-                break;
-
-            case QuestionTypeEnum::SEQUENCE:
-                $options = Option::createOrderingOptions($question->id, $formattedLines);
-                foreach ($options as $index => $option) {
-                    /** @var Option $option */
-                    if (isset($rawLines[$index])) {
-                        $this->processPlaceholdersAndAttach($option, $rawLines[$index], $optionData['images'], 'option_media');
-                        if (strpos($option->content, '[IMG_ID:') !== false) {
-                            $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
-                        }
-                    }
-                }
-                break;
-
-            case QuestionTypeEnum::ARABIC_RESPONSE:
-                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
-                Option::createArabicOption($question->id, $cleanKey);
-                break;
-
-            case QuestionTypeEnum::JAVANESE_RESPONSE:
-                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
-                Option::createJavaneseOption($question->id, $cleanKey);
-                break;
-
-            case QuestionTypeEnum::MATCHING:
-                $pairs = [];
-                $validLines = [];
-                foreach ($rawLines as $line) {
-                    if (str_contains($line, '::')) {
-                        [$left, $right] = explode('::', $line, 2);
-                        $pairs[] = [
-                            'left' => $this->formatRichText(trim(trim($left), '"')),
-                            'right' => $this->formatRichText(trim(trim($right), '"'))
-                        ];
-                        $validLines[] = $line;
-                    }
-                }
-                if (!empty($pairs)) {
-                    $createdOptions = Option::createMatchingOptions($question->id, $pairs);
-                    // Match up images from the raw line to the newly created L/R pairs
-                    foreach ($validLines as $lineIndex => $line) {
-                        /** @var Option|null $leftOption */
-                        $leftOption = $createdOptions->get($lineIndex * 2);
-                        /** @var Option|null $rightOption */
-                        $rightOption = $createdOptions->get($lineIndex * 2 + 1);
-
-                        if ($leftOption && $rightOption) {
-                            [$leftPart, $rightPart] = explode('::', $line, 2);
-                            $this->processPlaceholdersAndAttach($leftOption, $leftPart, $optionData['images'], 'option_media');
-                            $this->processPlaceholdersAndAttach($rightOption, $rightPart, $optionData['images'], 'option_media');
-
-                            // Clean up placeholders
-                            if (strpos($leftOption->content, '[IMG_ID:') !== false) {
-                                $leftOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $leftOption->content)]);
-                            }
-                            if (strpos($rightOption->content, '[IMG_ID:') !== false) {
-                                $rightOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $rightOption->content)]);
-                            }
-                        }
-                    }
-                }
-                break;
         }
     }
 
@@ -353,7 +119,6 @@ class WordToDatabaseParserService
             '9' => 'Javanese Response',
             '10' => 'Matching (Menjodohkan)',
         ];
-
 
         foreach ($types as $code => $label) {
             $section->addText("{$code} : {$label}");
@@ -507,7 +272,7 @@ class WordToDatabaseParserService
         $this->addQuestionRow($table11, 'key', 'A');
         $this->addQuestionRow($table11, 'hint', 'Cari gambar berwarna merah');
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'template_') . '.docx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'template_').'.docx';
         $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
         $objWriter->save($tempFile);
 
@@ -515,9 +280,250 @@ class WordToDatabaseParserService
     }
 
     /**
+     * Process a single question table
+     */
+    private function processTable(Table $table, string $authorId, ?string $questionBankId): void
+    {
+        file_put_contents(storage_path('app/import_debug.log'), "Processing Table...\n", FILE_APPEND);
+        Log::info('WordToDatabaseParserService::processTable started');
+        $data = [
+            'type' => null,
+            'score' => 1,
+            'question' => ['text' => '', 'images' => []],
+            'option' => ['text' => '', 'images' => []],
+            'key' => '',
+            'hint' => '',
+        ];
+
+        foreach ($table->getRows() as $row) {
+            $cells = $row->getCells();
+            if (count($cells) < 2) {
+                continue;
+            }
+
+            $key = mb_strtolower(trim($this->extractRawText($cells[0])));
+            $content = $this->extractCellContent($cells[1]);
+
+            file_put_contents(storage_path('app/import_debug.log'), "Key: '{$key}' | Content: '".mb_substr($content['text'], 0, 50)."...'\n", FILE_APPEND);
+            Log::info("Word Import Key: '{$key}' Content: '{$content['text']}'");
+
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $content;
+            }
+        }
+
+        Log::info('Word Import Table Data Collected', ['type' => $data['type']['text'] ?? 'null', 'question' => $data['question']['text'] ?? 'null']);
+
+        // Validate mandatory fields
+        if (empty($data['type']['text']) || empty($data['question']['text'])) {
+            file_put_contents(storage_path('app/import_debug.log'), 'Skipped table: type='.($data['type']['text'] ?? 'null').', q='.($data['question']['text'] ?? 'null')."\n", FILE_APPEND);
+            Log::info('Word Import skipped table: type or question empty');
+
+            return;
+        }
+
+        try {
+            $typeCode = (int) $data['type']['text'];
+            $type = $this->mapType($typeCode);
+
+            if (! $type) {
+                throw new Exception("Tipe soal '{$typeCode}' tidak didukung.");
+            }
+
+            $scoreValue = (int) $data['score']['text'];
+            $scoreEnum = QuestionScoreEnum::tryFrom($scoreValue) ?? QuestionScoreEnum::ONE;
+
+            file_put_contents(storage_path('app/import_debug.log'), "Attempting to create question...\n", FILE_APPEND);
+            $question = Question::create([
+                'user_id' => $authorId,
+                'type' => $type,
+                'content' => $this->formatRichText($data['question']['text']),
+                'score' => $scoreEnum,
+                'hint' => $data['hint']['text'] ?? null,
+                'difficulty' => QuestionDifficultyLevelEnum::Medium,
+                'timer' => QuestionTimeEnum::THIRTY_SECONDS,
+                'is_approved' => true,
+                'order' => $this->baseOrder + count($this->createdQuestions) + 1,
+            ]);
+            file_put_contents(storage_path('app/import_debug.log'), 'Question created: '.$question->id."\n", FILE_APPEND);
+
+            if ($questionBankId) {
+                $question->questionBanks()->attach($questionBankId);
+            }
+
+            // Attach Question Images via placeholders
+            $this->processPlaceholdersAndAttach($question, $data['question']['text'], $data['question']['images'], 'question_content');
+
+            // Clean up placeholders from question content
+            if (mb_strpos($question->content, '[IMG_ID:') !== false) {
+                $question->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $question->content)]);
+            }
+
+            // Handle Options logic
+            $this->createOptions($question, $type, $data['option'], $data['key']['text']);
+
+            $this->createdQuestions[] = $question->id;
+            file_put_contents(storage_path('app/import_debug.log'), "Process finished for this table.\n", FILE_APPEND);
+        } catch (Exception $e) {
+            file_put_contents(storage_path('app/import_debug.log'), 'Error in Table Processing: '.$e->getMessage()."\n", FILE_APPEND);
+            $this->errors[] = 'Tabel '.(count($this->createdQuestions) + count($this->errors) + 1).': '.$e->getMessage();
+        }
+    }
+
+    /**
+     * Map numeric code to QuestionTypeEnum
+     */
+    private function mapType(int $code): ?QuestionTypeEnum
+    {
+        return match ($code) {
+            1 => QuestionTypeEnum::MULTIPLE_CHOICE,
+            2 => QuestionTypeEnum::MULTIPLE_SELECTION,
+            3 => QuestionTypeEnum::TRUE_FALSE,
+            4 => QuestionTypeEnum::SHORT_ANSWER,
+            5 => QuestionTypeEnum::ESSAY,
+            6 => QuestionTypeEnum::MATH_INPUT,
+            7 => QuestionTypeEnum::SEQUENCE,
+            8 => QuestionTypeEnum::ARABIC_RESPONSE,
+            9 => QuestionTypeEnum::JAVANESE_RESPONSE,
+            10 => QuestionTypeEnum::MATCHING,
+            default => null,
+        };
+    }
+
+    /**
+     * Create options based on type
+     */
+    private function createOptions(Question $question, QuestionTypeEnum $type, array $optionData, string $keyAnswer): void
+    {
+        // Split by newline while preserving potential placeholders
+        $rawLines = array_values(array_filter(array_map('trim', explode("\n", $optionData['text']))));
+
+        // Pre-format all option lines so language tags and latex are handled
+        $wrapArabic = $type !== QuestionTypeEnum::ARABIC_RESPONSE;
+        $formattedLines = array_map(fn ($l) => $this->formatRichText($l, $wrapArabic), $rawLines);
+
+        switch ($type) {
+            case QuestionTypeEnum::MULTIPLE_CHOICE:
+            case QuestionTypeEnum::MULTIPLE_SELECTION:
+                foreach ($formattedLines as $index => $line) {
+                    $key = chr(65 + $index); // A, B, C...
+                    $isCorrect = false;
+
+                    if ($type === QuestionTypeEnum::MULTIPLE_CHOICE) {
+                        $isCorrect = (mb_strtoupper(trim($keyAnswer)) === $key);
+                    } else {
+                        $correctKeys = array_map('trim', array_map('strtoupper', explode(',', $keyAnswer)));
+                        $isCorrect = in_array($key, $correctKeys);
+                    }
+
+                    $option = Option::create([
+                        'question_id' => $question->id,
+                        'option_key' => $key,
+                        'content' => $line,
+                        'order' => $index,
+                        'is_correct' => $isCorrect,
+                    ]);
+
+                    // Attach images found in THIS specific option line
+                    $originalLine = $rawLines[$index];
+                    $this->processPlaceholdersAndAttach($option, $originalLine, $optionData['images'], 'option_media');
+
+                    // Clean up placeholders from option content
+                    if (mb_strpos($option->content, '[IMG_ID:') !== false) {
+                        $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+                    }
+                }
+                break;
+
+            case QuestionTypeEnum::TRUE_FALSE:
+                $correct = (mb_strtoupper(trim($keyAnswer)) === 'T' || mb_strtoupper(trim($keyAnswer)) === 'TRUE' || mb_strtoupper(trim($keyAnswer)) === 'BENAR');
+                Option::createTrueFalseOptions($question->id, $correct);
+                break;
+
+            case QuestionTypeEnum::SHORT_ANSWER:
+                // Multiple correct answers can be separated by newline in the 'key' cell
+                $answers = array_values(array_filter(array_map('trim', explode("\n", $keyAnswer))));
+                // Strip language tags from answers for consistency
+                $answers = array_map(fn ($a) => preg_replace('/\[\/?(ara|jav)\]/i', '', $a), $answers);
+                Option::createShortAnswerOptions($question->id, $answers);
+                break;
+
+            case QuestionTypeEnum::ESSAY:
+                Option::createEssayOption($question->id, $this->formatRichText($keyAnswer));
+                break;
+
+            case QuestionTypeEnum::MATH_INPUT:
+                Option::createMathInputOption($question->id, $this->formatRichText($keyAnswer));
+                break;
+
+            case QuestionTypeEnum::SEQUENCE:
+                $options = Option::createOrderingOptions($question->id, $formattedLines);
+                foreach ($options as $index => $option) {
+                    /** @var Option $option */
+                    if (isset($rawLines[$index])) {
+                        $this->processPlaceholdersAndAttach($option, $rawLines[$index], $optionData['images'], 'option_media');
+                        if (mb_strpos($option->content, '[IMG_ID:') !== false) {
+                            $option->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $option->content)]);
+                        }
+                    }
+                }
+                break;
+
+            case QuestionTypeEnum::ARABIC_RESPONSE:
+                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+                Option::createArabicOption($question->id, $cleanKey);
+                break;
+
+            case QuestionTypeEnum::JAVANESE_RESPONSE:
+                $cleanKey = preg_replace('/\[\/?(ara|jav)\]/i', '', $keyAnswer);
+                Option::createJavaneseOption($question->id, $cleanKey);
+                break;
+
+            case QuestionTypeEnum::MATCHING:
+                $pairs = [];
+                $validLines = [];
+                foreach ($rawLines as $line) {
+                    if (str_contains($line, '::')) {
+                        [$left, $right] = explode('::', $line, 2);
+                        $pairs[] = [
+                            'left' => $this->formatRichText(trim(trim($left), '"')),
+                            'right' => $this->formatRichText(trim(trim($right), '"')),
+                        ];
+                        $validLines[] = $line;
+                    }
+                }
+                if (! empty($pairs)) {
+                    $createdOptions = Option::createMatchingOptions($question->id, $pairs);
+                    // Match up images from the raw line to the newly created L/R pairs
+                    foreach ($validLines as $lineIndex => $line) {
+                        /** @var Option|null $leftOption */
+                        $leftOption = $createdOptions->get($lineIndex * 2);
+                        /** @var Option|null $rightOption */
+                        $rightOption = $createdOptions->get($lineIndex * 2 + 1);
+
+                        if ($leftOption && $rightOption) {
+                            [$leftPart, $rightPart] = explode('::', $line, 2);
+                            $this->processPlaceholdersAndAttach($leftOption, $leftPart, $optionData['images'], 'option_media');
+                            $this->processPlaceholdersAndAttach($rightOption, $rightPart, $optionData['images'], 'option_media');
+
+                            // Clean up placeholders
+                            if (mb_strpos($leftOption->content, '[IMG_ID:') !== false) {
+                                $leftOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $leftOption->content)]);
+                            }
+                            if (mb_strpos($rightOption->content, '[IMG_ID:') !== false) {
+                                $rightOption->update(['content' => preg_replace('/\[IMG_ID:[^\]]+\]/', '', $rightOption->content)]);
+                            }
+                        }
+                    }
+                }
+                break;
+        }
+    }
+
+    /**
      * Helper to add row with multiline support
      */
-    protected function addQuestionRow($table, $key, $value): void
+    private function addQuestionRow($table, $key, $value): void
     {
         $row = $table->addRow();
         $row->addCell(2000)->addText($key, ['bold' => true]);
@@ -535,7 +541,7 @@ class WordToDatabaseParserService
     /**
      * Helpers for extraction
      */
-    protected function extractRawText($element): string
+    private function extractRawText($element): string
     {
         $text = '';
         if ($element instanceof Text) {
@@ -554,10 +560,11 @@ class WordToDatabaseParserService
                 $text .= "\n";
             }
         }
+
         return $text;
     }
 
-    protected function extractCellContent($cell): array
+    private function extractCellContent($cell): array
     {
         $images = [];
         $text = $this->recursiveExtract($cell, $images);
@@ -566,13 +573,21 @@ class WordToDatabaseParserService
         // Attempt to fix common mojibake (double-encoded UTF-8) before returning
         $clean = $this->fixMojibake($clean);
 
+        // Debug log to see raw extracted content
+        Log::debug('extractCellContent extracted', [
+            'text' => $clean,
+            'has_dollar' => str_contains($clean, '$'),
+            'has_entity' => str_contains($clean, '&#36;'),
+            'raw_bytes' => bin2hex(mb_substr($clean, 0, 100)),
+        ]);
+
         return [
             'text' => $clean,
-            'images' => $images
+            'images' => $images,
         ];
     }
 
-    protected function recursiveExtract($element, &$images): string
+    private function recursiveExtract($element, &$images): string
     {
         $text = '';
         if ($element instanceof TextBreak) {
@@ -584,6 +599,7 @@ class WordToDatabaseParserService
         if ($element instanceof Image) {
             $id = (string) Str::ulid();
             $images[$id] = $element;
+
             return "[IMG_ID:{$id}]";
         }
         if (method_exists($element, 'getElements')) {
@@ -598,20 +614,23 @@ class WordToDatabaseParserService
                 $text .= "\n";
             }
         }
+
         return $text;
     }
 
     /**
      * Process placeholders and attach images to model
      */
-    protected function processPlaceholdersAndAttach(HasMedia $model, string $text, array $images, string $collection)
+    private function processPlaceholdersAndAttach(HasMedia $model, string $text, array $images, string $collection)
     {
-        if (empty($images)) return;
+        if (empty($images)) {
+            return;
+        }
 
         // Scan the text for [IMG_ID:...] placeholders (ULID format)
         preg_match_all('/\[IMG_ID:([0-9A-Z]+)\]/', $text, $matches);
 
-        if (!empty($matches[1])) {
+        if (! empty($matches[1])) {
             $foundIds = array_unique($matches[1]);
             foreach ($foundIds as $id) {
                 if (isset($images[$id])) {
@@ -624,7 +643,7 @@ class WordToDatabaseParserService
     /**
      * Attach a PHPWord Image element to a Spatie Media model
      */
-    protected function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
+    private function attachPhpWordImage(HasMedia $model, Image $image, string $collection)
     {
         /** @var \Spatie\MediaLibrary\InteractsWithMedia $model */
         try {
@@ -634,8 +653,9 @@ class WordToDatabaseParserService
 
             if (str_starts_with($source, 'data:image')) {
                 $model->addMediaFromBase64($source)
-                    ->usingFileName('img_' . uniqid() . '.' . $extension)
+                    ->usingFileName('img_'.uniqid().'.'.$extension)
                     ->toMediaCollection($collection);
+
                 return;
             }
 
@@ -647,32 +667,52 @@ class WordToDatabaseParserService
 
             if ($binaryData) {
                 // Check if hex
-                if (ctype_xdigit($binaryData) && strlen($binaryData) > 128) {
+                if (ctype_xdigit($binaryData) && mb_strlen($binaryData) > 128) {
                     $binaryData = hex2bin($binaryData);
                 }
 
                 $model->addMediaFromString($binaryData)
-                    ->usingFileName('img_' . uniqid() . '.' . $extension)
+                    ->usingFileName('img_'.uniqid().'.'.$extension)
                     ->toMediaCollection($collection);
             }
         } catch (Exception $e) {
-            Log::warning("Failed to attach image from Word: " . $e->getMessage());
+            Log::warning('Failed to attach image from Word: '.$e->getMessage());
         }
     }
 
-    protected function formatRichText(string $text, bool $wrapArabic = true): string
+    private function formatRichText(string $text, bool $wrapArabic = true): string
     {
-        if (empty($text)) return '';
+        if (empty($text)) {
+            return '';
+        }
+
+        // Log raw input for debugging
+        Log::debug('formatRichText input', [
+            'text' => $text,
+            'has_dollar' => str_contains($text, '$'),
+            'has_entity' => str_contains($text, '&#36;'),
+        ]);
+
+        // Decode HTML entities first (&#36; -> $, &dollar; -> $, etc)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         // Handle LaTeX pattern $...$
-        $text = preg_replace_callback('/\$([^$]+)\$/', function ($m) {
-            return '<span data-type="math-component" latex="' . htmlspecialchars($m[1]) . '"></span>';
-        }, $text);
+        $text = preg_replace_callback(
+            '/\$([^$]+)\$/',
+            function ($m) {
+                $latex = trim($m[1]);
+                Log::debug('formatRichText matched latex', ['latex' => $latex]);
+
+                return '<span data-type="math-component" latex="'.htmlspecialchars($latex, ENT_QUOTES, 'UTF-8').'"></span>';
+            },
+            $text
+        );
 
         // Basic multi-line to P tags if many
         $lines = explode("\n", $text);
         if (count($lines) > 1) {
-            $html = collect($lines)->map(fn($l) => trim($l) ? "<p>{$l}</p>" : "")->implode('');
+            $html = collect($lines)->map(fn ($l) => trim($l) ? "<p>{$l}</p>" : '')->implode('');
+
             // After generating HTML, wrap language runs
             return $this->wrapLanguageTags($html, $wrapArabic);
         }
@@ -684,34 +724,40 @@ class WordToDatabaseParserService
     /**
      * Fix double-encoded UTF-8 strings (mojibake)
      */
-    protected function fixMojibake(string $text): string
+    private function fixMojibake(string $text): string
     {
-        if (empty($text)) return $text;
+        if (empty($text)) {
+            return $text;
+        }
 
         $decoded = @mb_convert_encoding($text, 'Windows-1252', 'UTF-8');
 
         if ($decoded !== false && mb_check_encoding($decoded, 'UTF-8')) {
-            if (substr_count($decoded, '?') === substr_count($text, '?')) {
+            if (mb_substr_count($decoded, '?') === mb_substr_count($text, '?')) {
                 if ($decoded !== $text) {
-                    Log::debug('fixMojibake: converted text', ['original_snippet' => substr($text, 0, 60)]);
+                    Log::debug('fixMojibake: converted text', ['original_snippet' => mb_substr($text, 0, 60)]);
+
                     return $decoded;
                 }
             }
         }
+
         return $text;
     }
 
     /**
      * Wrap Arabic and Javanese script runs with simple tags [ara]...[/ara] and [jav]...[/jav]
      */
-    protected function wrapLanguageTags(string $text, bool $wrapArabic = true): string
+    private function wrapLanguageTags(string $text, bool $wrapArabic = true): string
     {
-        if (empty($text)) return $text;
+        if (empty($text)) {
+            return $text;
+        }
 
         $original = $text;
 
         // Wrap Arabic runs [ara]...[/ara]
-        if ($wrapArabic && strpos($text, '[ara]') === false) {
+        if ($wrapArabic && mb_strpos($text, '[ara]') === false) {
             $arabicPattern = '/(\p{Arabic}(?:[\p{Arabic}\p{M}\p{Cf}\s\p{P}\p{S}\d]*\p{Arabic})?)/u';
             if (preg_match_all($arabicPattern, $text, $m1) && count($m1[0]) > 0) {
                 $text = preg_replace($arabicPattern, '[ara]$1[/ara]', $text);
@@ -720,7 +766,7 @@ class WordToDatabaseParserService
         }
 
         // Wrap Javanese runs [jav]...[/jav]
-        if (strpos($text, '[jav]') === false) {
+        if (mb_strpos($text, '[jav]') === false) {
             $javanesePattern = '/([\x{A980}-\x{A9DF}]+)/u';
             if (preg_match_all($javanesePattern, $text, $m2) && count($m2[0]) > 0) {
                 $text = preg_replace($javanesePattern, '[jav]$1[/jav]', $text);
@@ -735,7 +781,7 @@ class WordToDatabaseParserService
         return $text;
     }
 
-    protected function attachImages($model, array $images, string $collection): void
+    private function attachImages($model, array $images, string $collection): void
     {
         /** @var \Spatie\MediaLibrary\InteractsWithMedia $model */
         foreach ($images as $image) {
@@ -746,8 +792,9 @@ class WordToDatabaseParserService
 
                 if (str_starts_with($source, 'data:image')) {
                     $model->addMediaFromBase64($source)
-                        ->usingFileName('img_' . uniqid() . '.' . $extension)
+                        ->usingFileName('img_'.uniqid().'.'.$extension)
                         ->toMediaCollection($collection);
+
                     continue;
                 }
 
@@ -759,16 +806,16 @@ class WordToDatabaseParserService
 
                 if ($binaryData) {
                     // Check if hex
-                    if (ctype_xdigit($binaryData) && strlen($binaryData) > 128) {
+                    if (ctype_xdigit($binaryData) && mb_strlen($binaryData) > 128) {
                         $binaryData = hex2bin($binaryData);
                     }
 
                     $model->addMediaFromString($binaryData)
-                        ->usingFileName('img_' . uniqid() . '.' . $extension)
+                        ->usingFileName('img_'.uniqid().'.'.$extension)
                         ->toMediaCollection($collection);
                 }
             } catch (Exception $e) {
-                Log::warning("Failed to attach image from Word: " . $e->getMessage());
+                Log::warning('Failed to attach image from Word: '.$e->getMessage());
             }
         }
     }
