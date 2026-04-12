@@ -122,8 +122,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-MySQL_R00t_P@ss2026}
       MYSQL_DATABASE: ${DB_DATABASE:-cbt_app}
-      MYSQL_USER: ${DB_USERNAME:-user_cbt}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-miarridlo}
+      MYSQL_USER: ${DB_APP_USERNAME:-user_cbt}
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD:-miarridlo}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
