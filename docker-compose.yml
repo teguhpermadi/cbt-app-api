@@ -1,25 +1,5 @@
 services:
-  traefik:
-    image: traefik:v3.1
-    container_name: cbt-traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./docker/traefik/traefik.yml:/traefik.yml:ro
-      - ./docker/traefik/acme.json:/acme.json
-    networks:
-      - app-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.cbtmiarridlo.com`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+
 
   backend:
     build:
@@ -142,8 +122,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-MySQL_R00t_P@ss2026}
       MYSQL_DATABASE: ${DB_DATABASE:-cbt_app}
-      MYSQL_USER: ${DB_APP_USERNAME:-cbt_user}
-      MYSQL_PASSWORD: ${DB_APP_PASSWORD:-MySQL_App_P@ss2026}
+      MYSQL_USER: ${DB_USERNAME:-user_cbt}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-miarridlo}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
