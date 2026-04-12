@@ -36,7 +36,8 @@ COPY . /var/www
 RUN git config --global --add safe.directory /var/www
 
 # Install Composer dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev || \
+    COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
 
 # Copy entrypoint script (dari hasil clone)
 RUN cp /var/www/docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
