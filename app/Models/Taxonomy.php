@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 final class Taxonomy extends Model
 {
-    protected $connection = 'mongodb';
-
-    protected $collection = 'taxonomies';
+    protected $table = 'taxonomies';
 
     protected $fillable = [
         'taxonomy_type',

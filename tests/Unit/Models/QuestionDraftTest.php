@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 use App\Models\QuestionDraft;
+use Illuminate\Database\Eloquent\Builder;
 
 it('has correct connection', function () {
     $draft = new QuestionDraft();
-    expect($draft->getConnectionName())->toBe('mongodb');
+    expect($draft->getConnectionName())->toBe('mysql');
 });
 
 it('has correct collection name', function () {
@@ -63,37 +64,37 @@ it('has correct status constants', function () {
 describe('scopes', function () {
     it('pending scope returns builder', function () {
         $query = QuestionDraft::pending();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('approved scope returns builder', function () {
         $query = QuestionDraft::approved();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('rejected scope returns builder', function () {
         $query = QuestionDraft::rejected();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('byUser scope returns builder', function () {
         $query = QuestionDraft::byUser('user-123');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('byCurriculum scope returns builder', function () {
         $query = QuestionDraft::byCurriculum('curriculum-123');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('bySubject scope returns builder', function () {
         $query = QuestionDraft::bySubject('MAT');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('byType scope returns builder', function () {
         $query = QuestionDraft::byType('multiple_choice');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 });
 

@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -115,18 +115,6 @@ return [
             'prefix_indexes' => true,
             // 'encrypt' => env('DB_ENCRYPT', 'yes'),
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
-        ],
-
-        'mongodb' => [
-            'driver' => 'mongodb',
-            'host' => env('DB_MONGO_HOST', '127.0.0.1'),
-            'port' => env('DB_MONGO_PORT', 27017),
-            'database' => env('DB_MONGO_DATABASE', 'cbt_app'),
-            'username' => env('DB_MONGO_USERNAME', ''),
-            'password' => env('DB_MONGO_PASSWORD', ''),
-            'options' => [
-                'appname' => env('APP_NAME', 'laravel'),
-            ],
         ],
 
     ],

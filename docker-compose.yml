@@ -38,8 +38,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     env_file:
       - .env.production
     networks:
@@ -227,7 +225,6 @@ services:
 volumes:
   mysql-data:
   redis-data:
-  mongodb-data:
   storage:
 
 networks:

@@ -78,8 +78,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     env_file:
       - .env.production
     networks:
@@ -178,29 +176,6 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a $REDIS_PASSWORD ping || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ─────────────────────────────────────────
-  # NoSQL - MongoDB
-  # ─────────────────────────────────────────
-  mongodb:
-    image: mongo:7.0
-    container_name: cbt-mongodb
-    env_file:
-      - .env.production
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-mongo_user}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongo_password}
-      MONGO_INITDB_DATABASE: ${DB_MONGO_DATABASE:-cbt_app}
-    volumes:
-      - ./docker/mongodb:/data/db
-    networks:
-      - app-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5

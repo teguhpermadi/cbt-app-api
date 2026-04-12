@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 use App\Models\Taxonomy;
+use Illuminate\Database\Eloquent\Builder;
 
 it('has correct connection', function () {
     $taxonomy = new Taxonomy();
-    expect($taxonomy->getConnectionName())->toBe('mongodb');
+    expect($taxonomy->getConnectionName())->toBe('mysql');
 });
 
 it('has correct collection name', function () {
@@ -127,36 +128,36 @@ it('handles empty subcategories and verbs', function () {
 describe('Taxonomy Scopes', function () {
     it('active scope returns builder', function () {
         $query = Taxonomy::active();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('byType scope returns builder', function () {
         $query = Taxonomy::byType('bloom');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('ordered scope returns builder', function () {
         $query = Taxonomy::ordered();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('byCode scope returns builder', function () {
         $query = Taxonomy::byCode('CP1');
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('cognitiveProcess scope returns builder', function () {
         $query = Taxonomy::cognitiveProcess();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('knowledge scope returns builder', function () {
         $query = Taxonomy::knowledge();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 
     it('level scope returns builder', function () {
         $query = Taxonomy::level();
-        expect($query)->toBeInstanceOf(MongoDB\Laravel\Eloquent\Builder::class);
+        expect($query)->toBeInstanceOf(Builder::class);
     });
 });

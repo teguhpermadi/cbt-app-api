@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 final class QuestionDraft extends Model
 {
@@ -14,9 +14,7 @@ final class QuestionDraft extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
-    protected $connection = 'mongodb';
-
-    protected $collection = 'question_drafts';
+    protected $table = 'question_drafts';
 
     protected $fillable = [
         'user_id',

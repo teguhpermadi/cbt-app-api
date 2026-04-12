@@ -248,7 +248,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
     // Dashboard
     Route::get('dashboard', [App\Http\Controllers\Api\V1\DashboardController::class, 'index'])->name('api.v1.dashboard');
 
-    // Curricula (MongoDB)
+    // Curricula
     Route::prefix('curricula')->group(function () {
         Route::get('phases', [CurriculumController::class, 'getPhases'])->name('api.v1.curricula.phases');
         Route::get('levels', [CurriculumController::class, 'getLevels'])->name('api.v1.curricula.levels');
