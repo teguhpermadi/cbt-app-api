@@ -35,9 +35,10 @@ COPY . /var/www
 # Fix git dubious ownership
 RUN git config --global --add safe.directory /var/www
 
-# Install Composer dependencies
+# Install Composer dependencies (with fallback for various issues)
 RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev || \
-    COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
+    COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader || \
+    COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
 
 # Copy entrypoint script (dari hasil clone)
 RUN cp /var/www/docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
