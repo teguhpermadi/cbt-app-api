@@ -1,6 +1,32 @@
 services:
 
 
+  nginx:
+    image: nginx:alpine
+    container_name: cbt-nginx
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - storage:/var/www/storage:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+      - traefik-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.api.rule=Host(`api.cbtmiarridlo.com`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=80"
+      - "traefik.http.routers.api-http.rule=Host(`api.cbtmiarridlo.com`)"
+      - "traefik.http.routers.api-http.entrypoints=web"
+      - "traefik.http.routers.api-http.middlewares=https-redirect@docker"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   backend:
     build:
       context: .
@@ -19,16 +45,6 @@ services:
     networks:
       - app-network
       - traefik-proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-proxy"
-      - "traefik.http.routers.api.rule=Host(`api.cbtmiarridlo.com`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.api.loadbalancer.server.port=9000"
-      - "traefik.http.routers.api-http.rule=Host(`api.cbtmiarridlo.com`)"
-      - "traefik.http.routers.api-http.entrypoints=web"
-      - "traefik.http.routers.api-http.middlewares=https-redirect@docker"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "php artisan --version || exit 1"]
