@@ -1,2 +1,3 @@
-GRANT ALL PRIVILEGES ON cbt_app.* TO 'cbt_user'@'%';
+CREATE USER IF NOT EXISTS 'user_cbt'@'%';
+GRANT ALL PRIVILEGES ON cbt_app.* TO 'user_cbt'@'%';
 FLUSH PRIVILEGES;
