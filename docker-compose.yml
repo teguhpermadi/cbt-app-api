@@ -2,11 +2,12 @@ services:
 
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
     container_name: cbt-nginx
     volumes:
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - storage:/var/www/storage:ro
+      - storage:/var/www/storage
     depends_on:
       backend:
         condition: service_healthy
