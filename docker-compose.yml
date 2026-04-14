@@ -157,7 +157,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cbt-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-Redis_P@ss2026}
+    env_file:
+      - .env.production
+    command: ["/bin/sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - redis-data:/data
     networks:
