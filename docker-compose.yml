@@ -3,8 +3,8 @@ services:
 
   nginx:
     build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/nginx/Dockerfile
     container_name: cbt-nginx
     volumes:
       - storage:/var/www/storage
