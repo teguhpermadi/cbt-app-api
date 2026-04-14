@@ -12,6 +12,7 @@ docker-compose*.yml
 Dockerfile
 docker
 !docker/php/entrypoint.sh
+!docker/nginx
 storage/logs/*
 !storage/logs/.gitignore
 storage/framework/cache/*
