@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+
 Artisan::command('inspire', function (): void {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
@@ -14,3 +16,5 @@ Artisan::command('convert:mojibake {--dry-run}', function () {
     $dry = $this->option('dry-run');
     ConvertMojibake::perform($dry, $this);
 })->describe('Convert mojibake text to proper utf-8 and wrap Arabic/Javanese runs with tags');
+
+Schedule::command('cleanup:ai-correction-stats')->dailyAt('02:00');
