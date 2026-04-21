@@ -17,4 +17,4 @@ Artisan::command('convert:mojibake {--dry-run}', function () {
     ConvertMojibake::perform($dry, $this);
 })->describe('Convert mojibake text to proper utf-8 and wrap Arabic/Javanese runs with tags');
 
-Schedule::command('cleanup:ai-correction-stats')->dailyAt('02:00');
+Schedule::command('cleanup:old-records')->dailyAt('02:00');
