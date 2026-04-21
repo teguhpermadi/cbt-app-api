@@ -32,8 +32,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Public routes with auth rate limiter (5/min - brute force protection)
-Route::middleware('throttle:auth')->group(function (): void {
+// Public routes with auth rate limiter (10/min - brute force protection)
+Route::middleware('throttle:10,1')->group(function (): void {
     Route::post('register', [AuthController::class, 'register'])->name('api.v1.register');
     Route::post('login', [AuthController::class, 'login'])->name('api.v1.login');
 });
