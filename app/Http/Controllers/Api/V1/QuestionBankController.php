@@ -50,6 +50,74 @@ final class QuestionBankController extends ApiController
         );
     }
 
+    public function mine(Request $request): JsonResponse
+    {
+        $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
+
+        $questionBanks = QuestionBank::query()
+            ->mine()
+            ->with(['user', 'subject'])
+            ->withCount('questions')
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->when($request->filled('academic_year_id'), function ($query) use ($request) {
+                $query->whereHas('subject', function ($q) use ($request) {
+                    $q->where('academic_year_id', $request->academic_year_id);
+                });
+            })
+            ->when($request->filled('subject_id'), function ($query) use ($request) {
+                $query->where('subject_id', $request->subject_id);
+            })
+            ->when($request->filled('is_public'), function ($query) use ($request) {
+                $query->where('is_public', filter_var($request->is_public, FILTER_VALIDATE_BOOLEAN));
+            })
+            ->orderBy($sortBy, $order)
+            ->paginate($perPage);
+
+        return $this->success(
+            QuestionBankResource::collection($questionBanks)->response()->getData(true),
+            'My question banks retrieved successfully'
+        );
+    }
+
+    public function public(Request $request): JsonResponse
+    {
+        $perPage = $request->integer('per_page', 15);
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
+
+        $questionBanks = QuestionBank::query()
+            ->public()
+            ->with(['user', 'subject'])
+            ->withCount('questions')
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->when($request->filled('academic_year_id'), function ($query) use ($request) {
+                $query->whereHas('subject', function ($q) use ($request) {
+                    $q->where('academic_year_id', $request->academic_year_id);
+                });
+            })
+            ->when($request->filled('subject_id'), function ($query) use ($request) {
+                $query->where('subject_id', $request->subject_id);
+            })
+            ->when($request->filled('user_id'), function ($query) use ($request) {
+                $query->where('user_id', $request->user_id);
+            })
+            ->orderBy($sortBy, $order)
+            ->paginate($perPage);
+
+        return $this->success(
+            QuestionBankResource::collection($questionBanks)->response()->getData(true),
+            'Public question banks retrieved successfully'
+        );
+    }
+
     /**
      * Store a newly created question bank in storage.
      */

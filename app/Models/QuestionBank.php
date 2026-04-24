@@ -66,4 +66,14 @@ final class QuestionBank extends Model
 
         return $query;
     }
+
+    public function scopeMine($query)
+    {
+        return $query->where('user_id', auth()->id());
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->where('is_public', true);
+    }
 }
