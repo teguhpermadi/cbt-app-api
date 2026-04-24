@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class QuestionBankResource extends JsonResource
+final class QuestionBankResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -19,6 +21,7 @@ class QuestionBankResource extends JsonResource
             'name' => $this->name,
             'user_id' => $this->user_id,
             'subject_id' => $this->subject_id,
+            'is_public' => $this->is_public,
             'user' => $this->whenLoaded('user') ? new UserResource($this->user) : null,
             'subject' => $this->whenLoaded('subject') ? new SubjectResource($this->subject) : null,
             'questions_count' => $this->whenCounted('questions'),

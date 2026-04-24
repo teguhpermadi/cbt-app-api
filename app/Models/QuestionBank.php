@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -8,18 +10,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
-class QuestionBank extends Model
+final class QuestionBank extends Model
 {
     /** @use HasFactory<\Database\Factories\QuestionBankFactory> */
-    use HasFactory, HasUlids, SoftDeletes, LogsActivity;
+    use HasFactory, HasUlids, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'name',
         'user_id',
         'subject_id',
+        'is_public',
     ];
 
     public function user(): BelongsTo
@@ -40,10 +43,10 @@ class QuestionBank extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'subject_id'])
+            ->logOnly(['name', 'subject_id', 'is_public'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "QuestionBank has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "QuestionBank has been {$eventName}");
     }
 
     /**
@@ -55,7 +58,10 @@ class QuestionBank extends Model
         $user = auth()->user();
 
         if ($user && ! $user->isAdmin()) {
-            return $query->where('user_id', $user->id);
+            return $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('is_public', true);
+            });
         }
 
         return $query;

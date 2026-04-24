@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Api\V1\QuestionBank;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreQuestionBankRequest extends FormRequest
+final class StoreQuestionBankRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,6 +26,7 @@ class StoreQuestionBankRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'subject_id' => ['required', 'exists:subjects,id'],
+            'is_public' => ['nullable', 'boolean'],
         ];
     }
 }

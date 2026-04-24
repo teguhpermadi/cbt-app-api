@@ -83,6 +83,11 @@ final class QuestionBankController extends ApiController
             return $this->notFound('Question bank not found');
         }
 
+        $user = auth()->user();
+        if (! $user->isAdmin() && $questionBank->user_id !== $user->id && ! $questionBank->is_public) {
+            return $this->error('You do not have permission to view this question bank', 403);
+        }
+
         return $this->success(
             new QuestionBankResource($questionBank),
             'Question bank retrieved successfully'
@@ -100,7 +105,19 @@ final class QuestionBankController extends ApiController
             return $this->notFound('Question bank not found');
         }
 
-        $questionBank->update($request->validated());
+        $user = auth()->user();
+        $data = $request->validated();
+
+        if (isset($data['is_public'])) {
+            if ($user->isAdmin()) {
+                $questionBank->is_public = $data['is_public'];
+                unset($data['is_public']);
+            } elseif ($questionBank->user_id !== $user->id) {
+                return $this->error('You do not have permission to change visibility of this question bank', 403);
+            }
+        }
+
+        $questionBank->update($data);
 
         return $this->success(
             new QuestionBankResource($questionBank->load(['user', 'subject'])),
