@@ -1643,6 +1643,180 @@
                 }
             }
         },
+        "/v1/admin/backup/exam-answers/restore": {
+            "post": {
+                "operationId": "v1.admin.backup.exam-answers.restore",
+                "tags": [
+                    "Backup"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "maxLength": 5120
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Exam answers restored successfully."
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "examSessionId": {
+                                                    "type": "string"
+                                                },
+                                                "examTitle": {
+                                                    "type": "string"
+                                                },
+                                                "studentId": {
+                                                    "type": "string"
+                                                },
+                                                "studentName": {
+                                                    "type": "string"
+                                                },
+                                                "totalQuestions": {
+                                                    "type": "string"
+                                                },
+                                                "restoredCount": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "skippedCount": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "newTotalScore": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "filename": {
+                                                    "type": "string"
+                                                },
+                                                "restoredAt": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "examSessionId",
+                                                "examTitle",
+                                                "studentId",
+                                                "studentName",
+                                                "totalQuestions",
+                                                "restoredCount",
+                                                "skippedCount",
+                                                "newTotalScore",
+                                                "filename",
+                                                "restoredAt"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "No exam session found for this student and exam."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/classrooms/trashed": {
             "get": {
                 "operationId": "v1.classrooms.trashed",
@@ -5527,13 +5701,37 @@
                                                 },
                                                 "correction_statuses": {
                                                     "type": "string"
+                                                },
+                                                "pass_fail_stats": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": {
+                                                            "type": "string"
+                                                        },
+                                                        "passed": {
+                                                            "type": "string"
+                                                        },
+                                                        "failed": {
+                                                            "type": "string"
+                                                        },
+                                                        "not_yet_graded": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total",
+                                                        "passed",
+                                                        "failed",
+                                                        "not_yet_graded"
+                                                    ]
                                                 }
                                             },
                                             "required": [
                                                 "exam",
                                                 "sessions",
                                                 "questions",
-                                                "correction_statuses"
+                                                "correction_statuses",
+                                                "pass_fail_stats"
                                             ]
                                         }
                                     },
@@ -6233,6 +6431,10 @@
                                     },
                                     "exam_session_id": {
                                         "type": "string"
+                                    },
+                                    "only_uncorrected": {
+                                        "type": "boolean",
+                                        "default": false
                                     }
                                 }
                             }
@@ -6259,10 +6461,10 @@
                                                 "batch_id": {
                                                     "type": "string"
                                                 },
-                                                "total_jobs": {
+                                                "stats_id": {
                                                     "type": "string"
                                                 },
-                                                "pending_jobs": {
+                                                "total_jobs": {
                                                     "type": "string"
                                                 },
                                                 "correction_statuses": {
@@ -6271,8 +6473,8 @@
                                             },
                                             "required": [
                                                 "batch_id",
+                                                "stats_id",
                                                 "total_jobs",
-                                                "pending_jobs",
                                                 "correction_statuses"
                                             ]
                                         }
@@ -6302,7 +6504,7 @@
                                         "message": {
                                             "type": "string",
                                             "enum": [
-                                                "Invalid provider. Supported providers are: gemini, openrouter"
+                                                "Invalid provider. Supported providers are: gemini, openrouter, lmstudio"
                                             ]
                                         },
                                         "errors": {
@@ -6317,6 +6519,280 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/reset-objective-correction": {
+            "post": {
+                "operationId": "v1.exams.correction.reset-objective",
+                "summary": "Reset and re-correct all objective questions for an exam.\nThis does NOT affect essay, short_answer, math_input, arabic_response, javanese_response",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "corrected_count": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "corrected_count"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/correction-progress": {
+            "get": {
+                "operationId": "v1.exams.correction.progress",
+                "summary": "Get AI correction progress for an exam",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Success"
+                                                    ]
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "exam_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "exam_title": {
+                                                            "type": "string"
+                                                        },
+                                                        "latest_correction": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "provider": {
+                                                                    "type": "string"
+                                                                },
+                                                                "batch_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "total_jobs": {
+                                                                    "type": "string"
+                                                                },
+                                                                "completed_jobs": {
+                                                                    "type": "string"
+                                                                },
+                                                                "failed_jobs": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pending_jobs": {
+                                                                    "type": "string"
+                                                                },
+                                                                "total_corrected_count": {
+                                                                    "type": "string"
+                                                                },
+                                                                "total_to_correct": {
+                                                                    "type": "string"
+                                                                },
+                                                                "avg_time_per_job": {
+                                                                    "type": "string"
+                                                                },
+                                                                "status": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                        "completed"
+                                                                    ]
+                                                                },
+                                                                "progress_percentage": {
+                                                                    "anyOf": [
+                                                                        {
+                                                                            "type": "string"
+                                                                        },
+                                                                        {
+                                                                            "type": "integer",
+                                                                            "enum": [
+                                                                                0
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "estimated_remaining_seconds": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "started_at": {
+                                                                    "type": "string"
+                                                                },
+                                                                "finished_at": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "provider",
+                                                                "batch_id",
+                                                                "total_jobs",
+                                                                "completed_jobs",
+                                                                "failed_jobs",
+                                                                "pending_jobs",
+                                                                "total_corrected_count",
+                                                                "total_to_correct",
+                                                                "avg_time_per_job",
+                                                                "status",
+                                                                "progress_percentage",
+                                                                "estimated_remaining_seconds",
+                                                                "started_at",
+                                                                "finished_at"
+                                                            ]
+                                                        },
+                                                        "question_progress": {
+                                                            "type": "string"
+                                                        },
+                                                        "all_corrections": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "exam_id",
+                                                        "exam_title",
+                                                        "latest_correction",
+                                                        "question_progress",
+                                                        "all_corrections"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message",
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Success"
+                                                    ]
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "exam_id": {
+                                                            "type": "string"
+                                                        },
+                                                        "stats": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "minItems": 0,
+                                                            "maxItems": 0,
+                                                            "additionalItems": false
+                                                        },
+                                                        "message": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "No correction jobs found for this exam."
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "exam_id",
+                                                        "stats",
+                                                        "message"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message",
+                                                "data"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -6383,6 +6859,441 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/sessions/{examSession}/details/{examResultDetail}/answer": {
+            "put": {
+                "operationId": "v1.exams.correction.update-answer",
+                "summary": "Update the student's answer for a specific question",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "student_answer": {
+                                        "type": "string"
+                                    },
+                                    "edit_reason": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "student_answer"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Student answer updated successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExamCorrectionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "You do not have permission to update student answers."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/sessions/{examSession}/details/{examResultDetail}/history": {
+            "get": {
+                "operationId": "v1.exams.correction.answer-history",
+                "summary": "Get answer history for a specific exam result detail",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Success"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_answer": {
+                                                    "type": [
+                                                        "array",
+                                                        "null"
+                                                    ],
+                                                    "items": {}
+                                                },
+                                                "histories": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "current_answer",
+                                                "histories"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/sessions/{examSession}/details/{examResultDetail}/restore": {
+            "post": {
+                "operationId": "v1.exams.correction.restore-answer",
+                "summary": "Restore student's answer to previous version from history",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Student answer restored successfully. Score has been reset."
+                                            ]
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExamCorrectionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "You do not have permission to restore student answers."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/exams/{exam}/sessions/{examSession}/details/{examResultDetail}/restore-to-version/{versionId}": {
+            "post": {
+                "operationId": "v1.exams.correction.restore-to-version",
+                "summary": "Restore student's answer to a specific version",
+                "tags": [
+                    "ExamCorrection"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examSession",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam session ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "examResultDetail",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam result detail ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "versionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ExamCorrectionResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "You do not have permission to restore student answers."
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -6493,93 +7404,6 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/v1/sessions/{examSession}/details/{examResultDetail}/answer": {
-            "put": {
-                "operationId": "v1.exams.correction.update-answer",
-                "summary": "Update the student's answer for a specific question",
-                "tags": [
-                    "ExamCorrection"
-                ],
-                "parameters": [
-                    {
-                        "name": "examSession",
-                        "in": "path",
-                        "required": true,
-                        "description": "The exam session ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "examResultDetail",
-                        "in": "path",
-                        "required": true,
-                        "description": "The exam result detail ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "student_answer": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "student_answer"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean"
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Student answer updated successfully"
-                                            ]
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/ExamCorrectionResource"
-                                        }
-                                    },
-                                    "required": [
-                                        "success",
-                                        "message",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -11219,6 +12043,142 @@
                 }
             }
         },
+        "/v1/question-banks/mine": {
+            "get": {
+                "operationId": "v1.question-banks.mine",
+                "tags": [
+                    "QuestionBank"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "My question banks retrieved successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/question-banks/public": {
+            "get": {
+                "operationId": "v1.question-banks.public",
+                "tags": [
+                    "QuestionBank"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Public question banks retrieved successfully"
+                                            ]
+                                        },
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/question-banks/{id}/export": {
             "get": {
                 "operationId": "v1.question-banks.export",
@@ -11663,6 +12623,133 @@
                 }
             }
         },
+        "/v1/question-banks/assets/backup": {
+            "get": {
+                "operationId": "v1.question-banks.assets.backup",
+                "summary": "Backup all assets from public storage",
+                "tags": [
+                    "QuestionBank"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/v1/question-banks/assets/restore": {
+            "post": {
+                "operationId": "v1.question-banks.assets.restore",
+                "summary": "Restore assets from uploaded zip file",
+                "tags": [
+                    "QuestionBank"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream"
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "extracted_files": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "extracted_files"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Failed to open zip file"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/question-banks": {
             "get": {
                 "operationId": "v1.question-banks.index",
@@ -11833,6 +12920,35 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "You do not have permission to view this question bank"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "",
                         "content": {
@@ -11917,6 +13033,35 @@
                                         "success",
                                         "message",
                                         "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "You do not have permission to change visibility of this question bank"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "errors"
                                     ]
                                 }
                             }
@@ -17273,22 +18418,13 @@
                         "type": "string"
                     },
                     "name": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "code": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "curriculum_type": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "description": {
                         "type": [
@@ -18583,6 +19719,9 @@
                     "subject_id": {
                         "type": "string"
                     },
+                    "is_public": {
+                        "type": "integer"
+                    },
                     "user": {
                         "anyOf": [
                             {
@@ -18639,6 +19778,7 @@
                     "name",
                     "user_id",
                     "subject_id",
+                    "is_public",
                     "user",
                     "subject",
                     "created_at",
@@ -19794,6 +20934,12 @@
                     },
                     "subject_id": {
                         "type": "integer"
+                    },
+                    "is_public": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -20941,6 +22087,18 @@
                     },
                     "subject_id": {
                         "type": "integer"
+                    },
+                    "user_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_public": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
                     }
                 },
                 "title": "UpdateQuestionBankRequest"
