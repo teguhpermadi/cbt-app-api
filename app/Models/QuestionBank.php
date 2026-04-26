@@ -40,6 +40,11 @@ final class QuestionBank extends Model
         return $this->belongsToMany(Question::class, 'list_question_of_question_bank', 'question_bank_id', 'question_id');
     }
 
+    public function reviewers(): HasMany
+    {
+        return $this->hasMany(QuestionBankReviewer::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
