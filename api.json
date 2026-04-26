@@ -13200,6 +13200,36 @@
                             "type": "integer",
                             "default": 15
                         }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "question_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc"
+                        }
                     }
                 ],
                 "responses": {
@@ -21230,12 +21260,119 @@
                         "type": "string"
                     },
                     "data": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {
-                            "type": "string"
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "difficulty": {
+                                "type": "string"
+                            },
+                            "timer": {
+                                "type": "integer"
+                            },
+                            "score": {
+                                "type": "integer"
+                            },
+                            "hint": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "is_approved": {
+                                "type": "boolean"
+                            },
+                            "reading_material_id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "update": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "content": {
+                                                    "type": "string"
+                                                },
+                                                "order": {
+                                                    "type": "integer"
+                                                },
+                                                "is_correct": {
+                                                    "type": "boolean"
+                                                },
+                                                "metadata": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "create": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                },
+                                                "option_key": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "order": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "is_correct": {
+                                                    "type": [
+                                                        "boolean",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "metadata": {
+                                                    "type": [
+                                                        "array",
+                                                        "null"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "content"
+                                            ]
+                                        }
+                                    },
+                                    "delete": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -22379,12 +22516,119 @@
                         "type": "string"
                     },
                     "data": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {
-                            "type": "string"
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "difficulty": {
+                                "type": "string"
+                            },
+                            "timer": {
+                                "type": "integer"
+                            },
+                            "score": {
+                                "type": "integer"
+                            },
+                            "hint": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "is_approved": {
+                                "type": "boolean"
+                            },
+                            "reading_material_id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "update": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "content": {
+                                                    "type": "string"
+                                                },
+                                                "order": {
+                                                    "type": "integer"
+                                                },
+                                                "is_correct": {
+                                                    "type": "boolean"
+                                                },
+                                                "metadata": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "create": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "content": {
+                                                    "type": "string"
+                                                },
+                                                "option_key": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "order": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "is_correct": {
+                                                    "type": [
+                                                        "boolean",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "metadata": {
+                                                    "type": [
+                                                        "array",
+                                                        "null"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "content"
+                                            ]
+                                        }
+                                    },
+                                    "delete": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 },
