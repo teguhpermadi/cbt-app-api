@@ -442,29 +442,21 @@ final class QuestionImportService
             return '';
         }
 
-        // Apply Mojibake fix first
-        $text = $this->fixMojibake($text);
-
-        Log::debug('processRichText input', [
+        Log::debug('processRichText START', [
             'text' => $text,
             'has_dollar' => str_contains($text, '$'),
-            'has_entity' => str_contains($text, '&#36;'),
+            'ord_first_char' => ord($text[0] ?? ''),
         ]);
 
-        // Decode HTML entities first (&#36; -> $, &dollar; -> $, etc)
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = $this->fixMojibake($text);
 
-        // 1. Convert Latex: $equation$ -> math-component
-        $text = preg_replace_callback(
-            '/\$([^$]+)\$/',
-            function ($matches) {
-                $latex = trim($matches[1]);
-                Log::debug('processRichText matched latex', ['latex' => $latex]);
+        Log::debug('processRichText after fixMojibake', [
+            'text' => $text,
+            'has_dollar' => str_contains($text, '$'),
+        ]);
 
-                return '<span data-type="math-component" latex="'.htmlspecialchars($latex, ENT_QUOTES, 'UTF-8').'"></span>';
-            },
-            $text
-        );
+        // Store LaTeX as-is without conversion
+        // The rendering to HTML spans will be done on the frontend
 
         // Enhance layout: Wrap in paragraph if it looks like a block
         $lines = explode("\n", $text);

@@ -686,38 +686,23 @@ final class WordToDatabaseParserService
             return '';
         }
 
-        // Log raw input for debugging
         Log::debug('formatRichText input', [
             'text' => $text,
             'has_dollar' => str_contains($text, '$'),
             'has_entity' => str_contains($text, '&#36;'),
         ]);
 
-        // Decode HTML entities first (&#36; -> $, &dollar; -> $, etc)
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Store LaTeX as-is without conversion
+        // The rendering to HTML spans will be done on the frontend
 
-        // Handle LaTeX pattern $...$
-        $text = preg_replace_callback(
-            '/\$([^$]+)\$/',
-            function ($m) {
-                $latex = trim($m[1]);
-                Log::debug('formatRichText matched latex', ['latex' => $latex]);
-
-                return '<span data-type="math-component" latex="'.htmlspecialchars($latex, ENT_QUOTES, 'UTF-8').'"></span>';
-            },
-            $text
-        );
-
-        // Basic multi-line to P tags if many
+        // Multi-line to P tags if many
         $lines = explode("\n", $text);
         if (count($lines) > 1) {
             $html = collect($lines)->map(fn ($l) => trim($l) ? "<p>{$l}</p>" : '')->implode('');
 
-            // After generating HTML, wrap language runs
             return $this->wrapLanguageTags($html, $wrapArabic);
         }
 
-        // Single-line: wrap language runs as well
         return $this->wrapLanguageTags($text, $wrapArabic);
     }
 
