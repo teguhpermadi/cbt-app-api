@@ -61,12 +61,29 @@ final class QuestionSuggestionController extends ApiController
     public function mine(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
+        $state = $request->input('state');
+        $questionId = $request->input('question_id');
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
 
-        $suggestions = QuestionSuggestion::query()
+        $query = QuestionSuggestion::query()
             ->where('user_id', Auth::id())
-            ->with(['question'])
-            ->latest()
-            ->paginate($perPage);
+            ->with(['question']);
+
+        if ($state) {
+            $query->where('state', $state);
+        }
+
+        if ($questionId) {
+            $query->where('question_id', $questionId);
+        }
+
+        if ($search) {
+            $query->where('description', 'like', "%{$search}%");
+        }
+
+        $suggestions = $query->orderBy($sortBy, $order)->paginate($perPage);
 
         return $this->success(
             QuestionSuggestionResource::collection($suggestions)->response()->getData(true),
