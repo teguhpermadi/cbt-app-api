@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\QuestionSuggestionStateEnum;
@@ -13,7 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class QuestionSuggestionController extends ApiController
+final class QuestionSuggestionController extends ApiController
 {
     /**
      * Display a listing of the resource with pagination, search, and sorting.
@@ -98,7 +100,7 @@ class QuestionSuggestionController extends ApiController
             ->with(['user', 'question'])
             ->find($id);
 
-        if (!$suggestion) {
+        if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
         }
 
@@ -115,7 +117,7 @@ class QuestionSuggestionController extends ApiController
     {
         $suggestion = QuestionSuggestion::find($id);
 
-        if (!$suggestion) {
+        if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
         }
 
@@ -142,11 +144,11 @@ class QuestionSuggestionController extends ApiController
     {
         $suggestion = QuestionSuggestion::find($id);
 
-        if (!$suggestion) {
+        if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
         }
 
-        if ($suggestion->user_id !== Auth::id() && !Auth::user()->isAdmin()) { // Assuming isAdmin helper exists or similar logic
+        if ($suggestion->user_id !== Auth::id() && ! Auth::user()->isAdmin()) { // Assuming isAdmin helper exists or similar logic
             // Or check if user is admin via roles/permissions. For now, let's assume policy or simple check.
             // If strictly only owner can delete:
             return $this->unauthorized('You are not authorized to delete this suggestion');
@@ -164,7 +166,7 @@ class QuestionSuggestionController extends ApiController
     {
         $suggestion = QuestionSuggestion::find($id);
 
-        if (!$suggestion) {
+        if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
         }
 
@@ -176,10 +178,19 @@ class QuestionSuggestionController extends ApiController
             return $this->error('Only pending suggestions can be approved');
         }
 
-        // Apply changes to the question
         $question = $suggestion->question;
+
         if ($suggestion->data) {
-            $question->update($suggestion->data);
+            $data = $suggestion->data;
+
+            if (isset($data['options'])) {
+                $this->applyOptionsChanges($question, $data['options']);
+                unset($data['options']);
+            }
+
+            if (! empty($data)) {
+                $question->update($data);
+            }
         }
 
         $suggestion->update(['state' => QuestionSuggestionStateEnum::APPROVED]);
@@ -197,7 +208,7 @@ class QuestionSuggestionController extends ApiController
     {
         $suggestion = QuestionSuggestion::find($id);
 
-        if (!$suggestion) {
+        if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
         }
 
@@ -215,5 +226,53 @@ class QuestionSuggestionController extends ApiController
             new QuestionSuggestionResource($suggestion),
             'Question suggestion rejected successfully'
         );
+    }
+
+    /**
+     * Apply options changes to the question.
+     */
+    private function applyOptionsChanges(Question $question, array $options): void
+    {
+        if (isset($options['delete']) && is_array($options['delete'])) {
+            foreach ($options['delete'] as $optionId) {
+                $option = $question->options()->find($optionId);
+                if ($option) {
+                    $option->delete();
+                }
+            }
+        }
+
+        if (isset($options['create']) && is_array($options['create'])) {
+            foreach ($options['create'] as $optionData) {
+                $question->options()->create([
+                    'option_key' => $optionData['option_key'] ?? null,
+                    'content' => $optionData['content'] ?? '',
+                    'order' => $optionData['order'] ?? $question->options()->max('order') + 1,
+                    'is_correct' => $optionData['is_correct'] ?? false,
+                    'metadata' => $optionData['metadata'] ?? [],
+                ]);
+            }
+        }
+
+        if (isset($options['update']) && is_array($options['update'])) {
+            foreach ($options['update'] as $optionData) {
+                if (! isset($optionData['id'])) {
+                    continue;
+                }
+                $option = $question->options()->find($optionData['id']);
+                if ($option) {
+                    $updateData = array_filter([
+                        'content' => $optionData['content'] ?? null,
+                        'order' => $optionData['order'] ?? null,
+                        'is_correct' => $optionData['is_correct'] ?? null,
+                        'metadata' => $optionData['metadata'] ?? null,
+                    ], fn ($v) => $v !== null);
+
+                    if (! empty($updateData)) {
+                        $option->update($updateData);
+                    }
+                }
+            }
+        }
     }
 }
