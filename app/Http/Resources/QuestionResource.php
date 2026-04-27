@@ -19,7 +19,7 @@ class QuestionResource extends JsonResource
             'user' => $this->whenLoaded('user') ? new UserResource($this->user) : null,
             'question_bank_id' => $this->question_bank_id ?? $this->questionBanks->first()?->id,
             'reading_material_id' => $this->reading_material_id,
-            'reading_material' => $this->whenLoaded('readingMaterial') ? $this->readingMaterial : null, // Assuming ReadingMaterialResource doesn't exist or isn't needed yet
+            'reading_material' => $this->whenLoaded('readingMaterial') ? new ReadingMaterialResource($this->readingMaterial) : null,
             'type' => $this->type,
             'difficulty' => $this->difficulty,
             'timer' => $this->timer,
