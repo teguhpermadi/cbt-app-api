@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\QuestionSuggestion\StoreQuestionSuggestionRequest;
 use App\Http\Requests\Api\V1\QuestionSuggestion\UpdateQuestionSuggestionRequest;
 use App\Http\Resources\QuestionSuggestionResource;
+use App\Models\Option;
 use App\Models\Question;
 use App\Models\QuestionSuggestion;
 use Illuminate\Http\JsonResponse;
@@ -203,6 +204,62 @@ final class QuestionSuggestionController extends ApiController
             if (isset($data['options'])) {
                 $this->applyOptionsChanges($question, $data['options']);
                 unset($data['options']);
+            }
+
+            // Handle specific question types
+            if (isset($data['matching_pairs'])) {
+                $question->options()->delete();
+                Option::createMatchingOptions($question->id, $data['matching_pairs']);
+                unset($data['matching_pairs']);
+            }
+
+            if (isset($data['sequence_items'])) {
+                $question->options()->delete();
+                $items = collect($data['sequence_items'])->pluck('content')->toArray();
+                Option::createOrderingOptions($question->id, $items);
+                unset($data['sequence_items']);
+            }
+
+            if (isset($data['keywords'])) {
+                $question->options()->delete();
+                Option::createEssayOption($question->id, $data['keywords']);
+                unset($data['keywords']);
+            }
+
+            if (isset($data['math_content'])) {
+                $question->options()->delete();
+                Option::createMathInputOption($question->id, $data['math_content']);
+                unset($data['math_content']);
+            }
+
+            if (isset($data['arabic_content'])) {
+                $question->options()->delete();
+                Option::createArabicOption($question->id, $data['arabic_content']);
+                unset($data['arabic_content']);
+            }
+
+            if (isset($data['javanese_content'])) {
+                $question->options()->delete();
+                Option::createJavaneseOption($question->id, $data['javanese_content']);
+                unset($data['javanese_content']);
+            }
+
+            if (isset($data['categorization_groups'])) {
+                $question->options()->delete();
+                Option::createCategorizationOptions($question->id, $data['categorization_groups']);
+                unset($data['categorization_groups']);
+            }
+
+            if (isset($data['arrange_words_sentence'])) {
+                $question->options()->delete();
+                Option::createArrangeWordsOption(
+                    $question->id,
+                    $data['arrange_words_sentence'],
+                    $data['arrange_words_delimiter'] ?? ' ',
+                    $data['arrange_words_is_arabic'] ?? false,
+                    $data['arrange_words_shuffle_mode'] ?? 'phrase'
+                );
+                unset($data['arrange_words_sentence'], $data['arrange_words_delimiter'], $data['arrange_words_is_arabic'], $data['arrange_words_shuffle_mode']);
             }
 
             if (! empty($data)) {
