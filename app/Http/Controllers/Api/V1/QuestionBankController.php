@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\QuestionBank\StoreQuestionBankRequest;
 use App\Http\Requests\Api\V1\QuestionBank\UpdateQuestionBankRequest;
 use App\Http\Resources\QuestionBankResource;
+use App\Http\Resources\QuestionSuggestionResource;
 use App\Models\QuestionBank;
+use App\Models\QuestionSuggestion;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -426,6 +428,46 @@ final class QuestionBankController extends ApiController
         return $this->success(
             ['extracted_files' => $extractedCount],
             "Berhasil merestore {$extractedCount} file."
+        );
+    }
+
+    /**
+     * Display suggestions for all questions in a question bank.
+     */
+    public function suggestions(string $id, Request $request): JsonResponse
+    {
+        $questionBank = QuestionBank::find($id);
+
+        if (! $questionBank) {
+            return $this->notFound('Question bank not found');
+        }
+
+        $user = auth()->user();
+        if (! $user->isAdmin() && $questionBank->user_id !== $user->id && ! $questionBank->is_public) {
+            return $this->error('You do not have permission to view this question bank', 403);
+        }
+
+        $perPage = $request->integer('per_page', 15);
+        $state = $request->input('state');
+        $userId = $request->input('user_id');
+        $search = $request->string('search')->trim();
+        $sortBy = $request->string('sort_by', 'created_at');
+        $order = $request->string('order', 'desc');
+
+        $questionIds = $questionBank->questions()->pluck('questions.id');
+
+        $suggestions = QuestionSuggestion::query()
+            ->whereIn('question_id', $questionIds)
+            ->with(['user', 'question.options'])
+            ->when($state, fn ($q) => $q->where('state', $state))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($search, fn ($q) => $q->where('description', 'like', "%{$search}%"))
+            ->orderBy($sortBy, $order)
+            ->paginate($perPage);
+
+        return $this->success(
+            QuestionSuggestionResource::collection($suggestions)->response()->getData(true),
+            'Suggestions retrieved successfully'
         );
     }
 }

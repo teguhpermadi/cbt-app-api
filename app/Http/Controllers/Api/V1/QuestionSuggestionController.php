@@ -30,7 +30,7 @@ final class QuestionSuggestionController extends ApiController
         $order = $request->string('order', 'desc');
 
         $query = QuestionSuggestion::query()
-            ->with(['user', 'question']);
+            ->with(['user', 'question.options']);
 
         if ($state) {
             $query->where('state', $state);
@@ -69,7 +69,7 @@ final class QuestionSuggestionController extends ApiController
 
         $query = QuestionSuggestion::query()
             ->where('user_id', Auth::id())
-            ->with(['question']);
+            ->with(['question.options']);
 
         if ($state) {
             $query->where('state', $state);
@@ -114,7 +114,7 @@ final class QuestionSuggestionController extends ApiController
     public function show(string $id): JsonResponse
     {
         $suggestion = QuestionSuggestion::query()
-            ->with(['user', 'question'])
+            ->with(['user', 'question.options'])
             ->find($id);
 
         if (! $suggestion) {

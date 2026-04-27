@@ -18,6 +18,7 @@ class QuestionSuggestionResource extends JsonResource
         return [
             'id' => $this->id,
             'question_id' => $this->question_id,
+            'question' => $this->whenLoaded('question'),
             'user' => new UserResource($this->whenLoaded('user')),
             'data' => $this->data,
             'description' => $this->description,

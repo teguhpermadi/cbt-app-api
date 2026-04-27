@@ -40,4 +40,25 @@ final class QuestionBankReviewer extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function scopeForUser($query)
+    {
+        return $query->whereHas('questionBank', function ($q) {
+            $q->forUser();
+        });
+    }
+
+    public function scopeMine($query)
+    {
+        return $query->whereHas('questionBank', function ($q) {
+            $q->mine();
+        });
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->whereHas('questionBank', function ($q) {
+            $q->public();
+        });
+    }
 }

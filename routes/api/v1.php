@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Learning\LearningPathController;
 use App\Http\Controllers\Api\V1\Learning\LearningUnitController;
 use App\Http\Controllers\Api\V1\OptionController;
 use App\Http\Controllers\Api\V1\QuestionBankController;
+use App\Http\Controllers\Api\V1\QuestionBankReviewerController;
 use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use App\Http\Controllers\Api\V1\StudentController;
@@ -174,6 +175,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::get('public', [QuestionBankController::class, 'public'])->name('api.v1.question-banks.public');
         Route::get('{questionBank}/export', [QuestionBankController::class, 'export'])->name('api.v1.question-banks.export');
         Route::post('{questionBank}/import', [QuestionBankController::class, 'import'])->name('api.v1.question-banks.import');
+        Route::get('{questionBank}/suggestions', [QuestionBankController::class, 'suggestions'])->name('api.v1.question-banks.suggestions');
         Route::get('trashed', [QuestionBankController::class, 'trashed'])->name('api.v1.question-banks.trashed');
         Route::post('{questionBank}/restore', [QuestionBankController::class, 'restore'])->name('api.v1.question-banks.restore');
         Route::delete('{questionBank}/force-delete', [QuestionBankController::class, 'forceDelete'])->name('api.v1.question-banks.force-delete');
@@ -189,6 +191,15 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{questionSuggestion}/reject', [App\Http\Controllers\Api\V1\QuestionSuggestionController::class, 'reject'])->name('api.v1.question-suggestions.reject');
     });
     Route::apiResource('question-suggestions', App\Http\Controllers\Api\V1\QuestionSuggestionController::class)->names('api.v1.question-suggestions');
+
+    // Question Bank Reviewers
+    Route::prefix('question-bank-reviewers')->group(function () {
+        Route::get('mine', [QuestionBankReviewerController::class, 'mine'])->name('api.v1.question-bank-reviewers.mine');
+        Route::get('public', [QuestionBankReviewerController::class, 'public'])->name('api.v1.question-bank-reviewers.public');
+        Route::post('{reviewer}/approve', [QuestionBankReviewerController::class, 'approve'])->name('api.v1.question-bank-reviewers.approve');
+        Route::post('{reviewer}/reject', [QuestionBankReviewerController::class, 'reject'])->name('api.v1.question-bank-reviewers.reject');
+    });
+    Route::apiResource('question-bank-reviewers', QuestionBankReviewerController::class)->names('api.v1.question-bank-reviewers');
 
     // Exams
     Route::prefix('exams')->group(function () {
