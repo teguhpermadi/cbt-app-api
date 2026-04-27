@@ -572,6 +572,7 @@ final class ExamController extends ApiController
         $perPage = $request->integer('per_page', 15);
 
         $results = \App\Models\ExamResult::query()
+            ->whereHas('exam') // Only include results for exams that are not deleted
             ->with([
                 'exam' => function ($query) {
                     $query->with(['subject', 'academicYear']);
