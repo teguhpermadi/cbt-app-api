@@ -31,7 +31,7 @@ final class QuestionSuggestionController extends ApiController
         $order = $request->string('order', 'desc');
 
         $query = QuestionSuggestion::query()
-            ->with(['user', 'question.options']);
+            ->with(['user', 'question.options', 'question.readingMaterial', 'question.tags', 'question.questionBanks', 'question.media']);
 
         if ($state) {
             $query->where('state', $state);
@@ -70,7 +70,7 @@ final class QuestionSuggestionController extends ApiController
 
         $query = QuestionSuggestion::query()
             ->where('user_id', Auth::id())
-            ->with(['question.options']);
+            ->with(['question.options', 'question.readingMaterial', 'question.tags', 'question.questionBanks', 'question.media']);
 
         if ($state) {
             $query->where('state', $state);
@@ -115,7 +115,7 @@ final class QuestionSuggestionController extends ApiController
     public function show(string $id): JsonResponse
     {
         $suggestion = QuestionSuggestion::query()
-            ->with(['user', 'question.options'])
+            ->with(['user', 'question.options', 'question.readingMaterial', 'question.tags', 'question.questionBanks', 'question.media'])
             ->find($id);
 
         if (! $suggestion) {
@@ -182,7 +182,9 @@ final class QuestionSuggestionController extends ApiController
      */
     public function approve(string $id): JsonResponse
     {
-        $suggestion = QuestionSuggestion::find($id);
+        $suggestion = QuestionSuggestion::query()
+            ->with(['user', 'question.options', 'question.readingMaterial', 'question.tags', 'question.questionBanks', 'question.media'])
+            ->find($id);
 
         if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
@@ -280,7 +282,9 @@ final class QuestionSuggestionController extends ApiController
      */
     public function reject(string $id): JsonResponse
     {
-        $suggestion = QuestionSuggestion::find($id);
+        $suggestion = QuestionSuggestion::query()
+            ->with(['user', 'question.options', 'question.readingMaterial', 'question.tags', 'question.questionBanks', 'question.media'])
+            ->find($id);
 
         if (! $suggestion) {
             return $this->notFound('Question suggestion not found');
