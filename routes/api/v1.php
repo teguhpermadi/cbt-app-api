@@ -213,6 +213,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::post('{exam}/force-finish', [ExamController::class, 'forceFinish'])->name('api.v1.exams.force-finish');
         Route::post('{exam}/reopen', [ExamController::class, 'reopen'])->name('api.v1.exams.reopen');
         Route::post('{exam}/regenerate-token', [ExamController::class, 'regenerateToken'])->name('api.v1.exams.regenerate-token');
+        Route::get('{exam}/export-results', [ExamController::class, 'exportResults'])->name('api.v1.exams.export-results');
         Route::post('bulk-update', [ExamController::class, 'bulkUpdate'])->name('api.v1.exams.bulk-update');
     });
     Route::apiResource('exams', ExamController::class)->names('api.v1.exams');

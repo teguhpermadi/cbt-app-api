@@ -20,9 +20,15 @@ use Illuminate\Support\Facades\DB;
 use App\Events\LiveScoreUpdated;
 use App\Events\TimerSynchronized;
 use App\Events\ExamForceFinished;
+use App\Services\ExamResultExportService;
 
 final class ExamController extends ApiController
 {
+    public function __construct(
+        protected ExamResultExportService $exportService
+    ) {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
@@ -628,5 +634,13 @@ final class ExamController extends ApiController
             ['token' => $newToken],
             'Token regenerated successfully'
         );
+    }
+
+    /**
+     * Export exam results to Excel.
+     */
+    public function exportResults(Exam $exam)
+    {
+        return $this->exportService->download($exam);
     }
 }

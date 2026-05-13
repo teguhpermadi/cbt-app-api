@@ -64,7 +64,7 @@ final class ExamResultDetail extends Model
         return $this->hasMany(ExamResultDetailAnswerHistory::class, 'exam_result_detail_id')->orderBy('created_at', 'desc');
     }
 
-    protected function getActivitylogOptions(): LogOptions
+    public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->logOnly(['student_answer'])
