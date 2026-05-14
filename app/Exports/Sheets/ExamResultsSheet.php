@@ -5,7 +5,6 @@ namespace App\Exports\Sheets;
 use App\Models\Exam;
 use App\Models\ExamResult;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -52,8 +51,8 @@ class ExamResultsSheet implements FromCollection, WithTitle, WithEvents
         $rows->push(['Tidak Lulus (< ' . $passingGrade . ')', $failedCount . ' Siswa']);
 
         // 2. Spacers (Rows 7-8)
-        $rows->push([]);
-        $rows->push([]);
+        $rows->push([null]);
+        $rows->push([null]);
 
         // 3. Table Headings (Row 9)
         $rows->push([
