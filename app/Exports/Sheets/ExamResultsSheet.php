@@ -68,7 +68,7 @@ class ExamResultsSheet implements FromQuery, WithHeadings, WithMapping, WithTitl
             $row->score_percent,
             $row->final_score,
             $row->is_passed ? 'Passed' : 'Failed',
-            $row->result_type,
+            $row->result_type?->value,
             $row->created_at->format('Y-m-d H:i:s'),
         ];
     }
