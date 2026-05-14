@@ -10,9 +10,10 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-class ExamResultsSheet implements FromCollection, WithHeadings, WithTitle, WithEvents
+class ExamResultsSheet implements FromCollection, WithTitle, WithEvents
 {
     protected Exam $exam;
+    protected array $passFailMap = [];
 
     public function __construct(Exam $exam)
     {
@@ -28,25 +29,9 @@ class ExamResultsSheet implements FromCollection, WithHeadings, WithTitle, WithE
             ->with(['user'])
             ->get();
 
-        $rows = $results->map(function ($row) {
-            return [
-                $row->id,
-                $row->user?->name,
-                $row->user?->email,
-                $row->total_score,
-                $row->score_percent,
-                $row->final_score,
-                $row->is_passed ? 'Passed' : 'Failed',
-                $row->result_type?->value,
-                $row->created_at->format('Y-m-d H:i:s'),
-            ];
-        });
+        $rows = collect();
 
-        // Add spacers
-        $rows->push([]);
-        $rows->push([]);
-
-        // Statistics
+        // 1. Statistics (Rows 1-6)
         $avgScore = $results->avg('final_score');
         $maxScore = $results->max('final_score');
         $minScore = $results->min('final_score');
@@ -65,6 +50,43 @@ class ExamResultsSheet implements FromCollection, WithHeadings, WithTitle, WithE
         $rows->push(['Lulus (>= ' . $passingGrade . ')', $passedCount . ' Siswa']);
         $rows->push(['Tidak Lulus (< ' . $passingGrade . ')', $failedCount . ' Siswa']);
 
+        // 2. Spacers (Rows 7-8)
+        $rows->push([]);
+        $rows->push([]);
+
+        // 3. Table Headings (Row 9)
+        $rows->push([
+            'ID',
+            'Student Name',
+            'Student Email',
+            'Total Score',
+            'Score Percent',
+            'Final Score',
+            'Status (Passed)',
+            'Result Type',
+            'Created At',
+        ]);
+
+        // 4. Student Data (Row 10+)
+        $currentRow = 10;
+        foreach ($results as $row) {
+            $isPassed = $row->final_score >= $passingGrade;
+            $this->passFailMap[$currentRow] = $isPassed;
+
+            $rows->push([
+                $row->id,
+                $row->user?->name,
+                $row->user?->email,
+                $row->total_score,
+                $row->score_percent,
+                $row->final_score,
+                $isPassed ? 'Passed' : 'Failed',
+                $row->result_type?->value,
+                $row->created_at->format('Y-m-d H:i:s'),
+            ]);
+            $currentRow++;
+        }
+
         return $rows;
     }
 
@@ -79,42 +101,40 @@ class ExamResultsSheet implements FromCollection, WithHeadings, WithTitle, WithE
     /**
      * @return array
      */
-    public function headings(): array
-    {
-        return [
-            'ID',
-            'Student Name',
-            'Student Email',
-            'Total Score',
-            'Score Percent',
-            'Final Score',
-            'Status (Passed)',
-            'Result Type',
-            'Created At',
-        ];
-    }
-
-    /**
-     * @return array
-     */
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $highestRow = $sheet->getHighestRow();
+                $highestColumn = $sheet->getHighestColumn();
                 
-                // Header styling
-                $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+                // Statistics styling (top 6 rows)
+                $sheet->getStyle('A1:C6')->getFont()->setBold(true);
+                $sheet->getStyle('A1')->getFont()->setSize(12)->setUnderline(true);
                 
-                // Statistics styling (last 6 rows)
-                $statsStartRow = $highestRow - 5;
-                $sheet->getStyle('A' . ($statsStartRow - 1) . ':C' . $highestRow)->getFont()->setBold(true);
-                $sheet->getStyle('A' . ($statsStartRow - 1))->getFont()->setSize(12)->setUnderline(true);
+                // Header row styling (Row 9)
+                $sheet->getStyle('A9:' . $highestColumn . '9')->getFont()->setBold(true);
+                
+                // Conditional coloring for data rows (Row 10+)
+                foreach ($this->passFailMap as $rowIndex => $isPassed) {
+                    if ($isPassed) {
+                        // Light Green
+                        $sheet->getStyle('A' . $rowIndex . ':' . $highestColumn . $rowIndex)->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()->setARGB('C6EFCE');
+                    } else {
+                        // Light Red/Pink
+                        $sheet->getStyle('A' . $rowIndex . ':' . $highestColumn . $rowIndex)->getFill()
+                            ->setFillType(Fill::FILL_SOLID)
+                            ->getStartColor()->setARGB('FFC7CE');
+                    }
+                }
 
                 // Auto-size columns
-                foreach (range('A', 'I') as $col) {
-                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+                for ($i = 1; $i <= $highestColumnIndex; $i++) {
+                    $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+                    $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
                 }
             },
         ];
