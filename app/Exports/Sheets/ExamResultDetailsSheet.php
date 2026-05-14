@@ -35,7 +35,17 @@ class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle,
             ->get();
 
         $data = collect();
-        $rowIndex = 2; // Data starts at row 2
+        
+        // Row 2: Question Content
+        $contentRow = ['', 'Konten Soal'];
+        foreach ($questions as $question) {
+            $contentRow[] = strip_tags($question->content ?? '');
+        }
+        $contentRow[] = ''; // Total Score column placeholder
+        $data->push($contentRow);
+
+        $rowIndex = 3; // Student data starts at row 3 (Row 1=Header, Row 2=Content)
+        $correctCounts = array_fill(0, $this->questionCount, 0);
 
         foreach ($results as $index => $result) {
             $row = [
@@ -43,7 +53,6 @@ class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle,
                 $result->user?->name,
             ];
 
-            // Map details by exam_question_id for quick lookup
             $details = $result->officialSession?->examResultDetails->keyBy('exam_question_id') ?? collect();
 
             foreach ($questions as $qIndex => $question) {
@@ -56,10 +65,13 @@ class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle,
                 
                 $row[] = $answer;
 
-                // Store correctness for this cell (Column C is index 3)
                 if ($detail) {
                     $colIndex = $qIndex + 3;
                     $this->isCorrectMap[$rowIndex][$colIndex] = $detail->is_correct;
+                    
+                    if ($detail->is_correct) {
+                        $correctCounts[$qIndex]++;
+                    }
                 }
             }
 
@@ -67,6 +79,14 @@ class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle,
             $data->push($row);
             $rowIndex++;
         }
+
+        // Final Row: Total Correct Summary
+        $summaryRow = ['', 'Total Benar'];
+        foreach ($correctCounts as $count) {
+            $summaryRow[] = $count;
+        }
+        $summaryRow[] = '';
+        $data->push($summaryRow);
 
         return $data;
     }
@@ -109,32 +129,47 @@ class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle,
                 // Apply background colors to answer cells
                 foreach ($this->isCorrectMap as $rowIndex => $cols) {
                     foreach ($cols as $colIndex => $isCorrect) {
-                        if ($isCorrect === null) continue; // Not corrected yet (Essay)
+                        if ($isCorrect === null) continue;
 
                         $cellAddress = $sheet->getCellByColumnAndRow($colIndex, $rowIndex)->getCoordinate();
                         
                         if ($isCorrect === true) {
                             $sheet->getStyle($cellAddress)->getFill()
                                 ->setFillType(Fill::FILL_SOLID)
-                                ->getStartColor()->setARGB('C6EFCE'); // Light Green
+                                ->getStartColor()->setARGB('C6EFCE');
                         } elseif ($isCorrect === false) {
                             $sheet->getStyle($cellAddress)->getFill()
                                 ->setFillType(Fill::FILL_SOLID)
-                                ->getStartColor()->setARGB('FFC7CE'); // Light Red/Pink
+                                ->getStartColor()->setARGB('FFC7CE');
                         }
                     }
                 }
 
-                // Header styling
                 $highestColumn = $sheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+                // Header styling
                 $sheet->getStyle('A1:' . $highestColumn . '1')->getFont()->setBold(true);
                 
-                // Auto size columns
-                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-                for ($i = 1; $i <= $highestColumnIndex; $i++) {
+                // Question Content row styling (Row 2)
+                $sheet->getStyle('A2:' . $highestColumn . '2')->getFont()->setItalic(true);
+                $sheet->getStyle('A2:' . $highestColumn . '2')->getAlignment()->setWrapText(true);
+                
+                // Summary row styling (last row)
+                $highestRow = $sheet->getHighestRow();
+                $sheet->getStyle('A' . $highestRow . ':' . $highestColumn . $highestRow)->getFont()->setBold(true);
+
+                // Column Sizing
+                $sheet->getColumnDimension('A')->setWidth(5);
+                $sheet->getColumnDimension('B')->setWidth(30);
+                
+                for ($i = 3; $i < $highestColumnIndex; $i++) {
                     $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
-                    $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
+                    $sheet->getColumnDimension($columnLetter)->setWidth(20);
                 }
+                
+                // Last column (Total Score)
+                $sheet->getColumnDimension($highestColumn)->setWidth(15);
             },
         ];
     }
