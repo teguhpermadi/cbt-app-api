@@ -3,18 +3,19 @@
 namespace App\Exports\Sheets;
 
 use App\Models\Exam;
-use App\Models\ExamResultDetail;
-use Maatwebsite\Excel\Concerns\FromQuery;
+use App\Models\ExamResult;
+use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class ExamResultDetailsSheet implements FromQuery, WithHeadings, WithMapping, WithTitle, WithEvents
+class ExamResultDetailsSheet implements FromCollection, WithHeadings, WithTitle, WithEvents
 {
     protected Exam $exam;
+    protected array $isCorrectMap = [];
+    protected int $questionCount = 0;
 
     public function __construct(Exam $exam)
     {
@@ -22,21 +23,52 @@ class ExamResultDetailsSheet implements FromQuery, WithHeadings, WithMapping, Wi
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return \Illuminate\Support\Collection
      */
-    public function query()
+    public function collection()
     {
-        // Get all detail records for the sessions that are considered "results" for this exam
-        return ExamResultDetail::query()
-            ->whereHas('examSession', function ($query) {
-                $query->where('exam_id', $this->exam->id);
-            })
-            ->with([
-                'examSession.user', 
-                'examQuestion.originalQuestion'
-            ])
-            ->orderBy('exam_session_id')
-            ->orderBy('question_number');
+        $questions = $this->exam->examQuestions()->orderBy('question_number')->get();
+        $this->questionCount = $questions->count();
+        
+        $results = ExamResult::where('exam_id', $this->exam->id)
+            ->with(['user', 'officialSession.examResultDetails'])
+            ->get();
+
+        $data = collect();
+        $rowIndex = 2; // Data starts at row 2
+
+        foreach ($results as $index => $result) {
+            $row = [
+                $index + 1,
+                $result->user?->name,
+            ];
+
+            // Map details by exam_question_id for quick lookup
+            $details = $result->officialSession?->examResultDetails->keyBy('exam_question_id') ?? collect();
+
+            foreach ($questions as $qIndex => $question) {
+                $detail = $details->get($question->id);
+                $answer = $detail ? $detail->student_answer : '-';
+                
+                if (is_array($answer)) {
+                    $answer = json_encode($answer);
+                }
+                
+                $row[] = $answer;
+
+                // Store correctness for this cell (Column C is index 3)
+                if ($detail) {
+                    $colIndex = $qIndex + 3;
+                    $this->isCorrectMap[$rowIndex][$colIndex] = $detail->is_correct;
+                }
+            }
+
+            $row[] = $result->total_score;
+            $data->push($row);
+            $rowIndex++;
+        }
+
+        return $data;
     }
 
     /**
@@ -52,41 +84,17 @@ class ExamResultDetailsSheet implements FromQuery, WithHeadings, WithMapping, Wi
      */
     public function headings(): array
     {
-        return [
-            'Student Name',
-            'Question Number',
-            'Question Content (Snapshot)',
-            'Original Question Content',
-            'Student Answer',
-            'Key Answer',
-            'Is Correct',
-            'Score Earned',
-            'Time Spent (seconds)',
-            'Answered At',
-        ];
-    }
-
-    /**
-     * @param ExamResultDetail $row
-     * @return array
-     */
-    public function map($row): array
-    {
-        $studentAnswer = is_array($row->student_answer) ? json_encode($row->student_answer) : $row->student_answer;
-        $keyAnswer = is_array($row->examQuestion?->key_answer) ? json_encode($row->examQuestion->key_answer) : $row->examQuestion?->key_answer;
-
-        return [
-            $row->examSession?->user?->name,
-            $row->question_number,
-            strip_tags($row->examQuestion?->content ?? ''),
-            strip_tags($row->examQuestion?->originalQuestion?->content ?? ''),
-            $studentAnswer,
-            $keyAnswer,
-            $row->is_correct ? 'Yes' : 'No',
-            $row->score_earned,
-            $row->time_spent,
-            $row->answered_at ? $row->answered_at->format('Y-m-d H:i:s') : '-',
-        ];
+        $questions = $this->exam->examQuestions()->orderBy('question_number')->get();
+        
+        $headings = ['No', 'Student Name'];
+        
+        foreach ($questions as $question) {
+            $headings[] = 'Soal No ' . $question->question_number;
+        }
+        
+        $headings[] = 'Total Score';
+        
+        return $headings;
     }
 
     /**
@@ -97,26 +105,36 @@ class ExamResultDetailsSheet implements FromQuery, WithHeadings, WithMapping, Wi
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $highestRow = $sheet->getHighestRow();
+                
+                // Apply background colors to answer cells
+                foreach ($this->isCorrectMap as $rowIndex => $cols) {
+                    foreach ($cols as $colIndex => $isCorrect) {
+                        if ($isCorrect === null) continue; // Not corrected yet (Essay)
 
-                for ($row = 2; $row <= $highestRow; $row++) {
-                    $isCorrect = $sheet->getCell('G' . $row)->getValue(); // Column G is 'Is Correct'
-
-                    if ($isCorrect === 'Yes') {
-                        // Light Green background
-                        $sheet->getStyle('A' . $row . ':J' . $row)->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()->setARGB('C6EFCE');
-                    } else {
-                        // Light Red/Pink background
-                        $sheet->getStyle('A' . $row . ':J' . $row)->getFill()
-                            ->setFillType(Fill::FILL_SOLID)
-                            ->getStartColor()->setARGB('FFC7CE');
+                        $cellAddress = $sheet->getCellByColumnAndRow($colIndex, $rowIndex)->getCoordinate();
+                        
+                        if ($isCorrect === true) {
+                            $sheet->getStyle($cellAddress)->getFill()
+                                ->setFillType(Fill::FILL_SOLID)
+                                ->getStartColor()->setARGB('C6EFCE'); // Light Green
+                        } elseif ($isCorrect === false) {
+                            $sheet->getStyle($cellAddress)->getFill()
+                                ->setFillType(Fill::FILL_SOLID)
+                                ->getStartColor()->setARGB('FFC7CE'); // Light Red/Pink
+                        }
                     }
                 }
 
                 // Header styling
-                $sheet->getStyle('A1:J1')->getFont()->setBold(true);
+                $highestColumn = $sheet->getHighestColumn();
+                $sheet->getStyle('A1:' . $highestColumn . '1')->getFont()->setBold(true);
+                
+                // Auto size columns
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+                for ($i = 1; $i <= $highestColumnIndex; $i++) {
+                    $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+                    $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
+                }
             },
         ];
     }
