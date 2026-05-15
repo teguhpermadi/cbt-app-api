@@ -5210,6 +5210,44 @@
                 }
             }
         },
+        "/v1/exams/{exam}/export-results": {
+            "get": {
+                "operationId": "v1.exams.export-results",
+                "summary": "Export exam results to Excel",
+                "tags": [
+                    "Exam"
+                ],
+                "parameters": [
+                    {
+                        "name": "exam",
+                        "in": "path",
+                        "required": true,
+                        "description": "The exam ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/exams/bulk-update": {
             "post": {
                 "operationId": "v1.exams.bulk-update",
@@ -20878,7 +20916,7 @@
                     "reading_material": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/ReadingMaterial"
+                                "$ref": "#/components/schemas/ReadingMaterialResource"
                             },
                             {
                                 "type": "null"
@@ -20886,7 +20924,6 @@
                         ]
                     },
                     "type": {
-                        "description": "Assuming ReadingMaterialResource doesn't exist or isn't needed yet",
                         "$ref": "#/components/schemas/QuestionTypeEnum"
                     },
                     "difficulty": {
@@ -21000,14 +21037,32 @@
                     "question_id": {
                         "type": "string"
                     },
+                    "question": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/QuestionResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "user": {
-                        "$ref": "#/components/schemas/UserResource"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "data": {
                         "type": [
                             "array",
                             "null"
                         ],
+                        "description": "Suggestion details",
                         "items": {}
                     },
                     "description": {
@@ -21032,23 +21087,125 @@
                     "state_color": {
                         "type": "string"
                     },
-                    "created_at": {
+                    "question_bank_id": {
+                        "type": "string",
+                        "description": "Aligned fields with QuestionResource (Proposed values)"
+                    },
+                    "reading_material_id": {
                         "type": "string"
                     },
-                    "updated_at": {
+                    "reading_material": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReadingMaterialResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "type": {
                         "type": "string"
+                    },
+                    "difficulty": {
+                        "type": "string"
+                    },
+                    "timer": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "score": {
+                        "type": "string"
+                    },
+                    "hint": {
+                        "type": "string"
+                    },
+                    "order": {
+                        "type": "string"
+                    },
+                    "tags": {
+                        "type": "string"
+                    },
+                    "media": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "content"
+                        ]
+                    },
+                    "options": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/OptionResource"
+                                }
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 0,
+                                "maxItems": 0,
+                                "additionalItems": false
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "deleted_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
                     }
                 },
                 "required": [
                     "id",
                     "question_id",
+                    "question",
+                    "user",
                     "data",
                     "description",
                     "state",
                     "state_label",
                     "state_color",
+                    "question_bank_id",
+                    "reading_material_id",
+                    "reading_material",
+                    "type",
+                    "difficulty",
+                    "timer",
+                    "content",
+                    "score",
+                    "hint",
+                    "order",
+                    "tags",
+                    "media",
+                    "options",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "deleted_at"
                 ],
                 "title": "QuestionSuggestionResource"
             },
@@ -21187,67 +21344,6 @@
                     "data"
                 ],
                 "title": "QueueMonitorResource"
-            },
-            "ReadingMaterial": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "user_id": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "content": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "created_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "updated_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "deleted_at": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "format": "date-time"
-                    },
-                    "question_bank_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    }
-                },
-                "required": [
-                    "id",
-                    "user_id",
-                    "title",
-                    "content",
-                    "created_at",
-                    "updated_at",
-                    "deleted_at",
-                    "question_bank_id"
-                ],
-                "title": "ReadingMaterial"
             },
             "ReadingMaterialResource": {
                 "type": "object",

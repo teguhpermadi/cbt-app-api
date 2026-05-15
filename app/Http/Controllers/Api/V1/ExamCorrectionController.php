@@ -93,7 +93,7 @@ final class ExamCorrectionController extends ApiController
             abort(404, 'Session not found for this exam.');
         }
 
-        $examSession->load(['user.classrooms', 'exam.subject', 'exam.classrooms']);
+        $examSession->load(['user.classrooms', 'exam.subject', 'exam.classrooms', 'exam.examReadingMaterials']);
 
         $details = $examSession->examResultDetails()
             ->join('exam_questions', 'exam_result_details.exam_question_id', '=', 'exam_questions.id')

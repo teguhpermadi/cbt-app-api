@@ -30,6 +30,7 @@ class ExamCorrectionResource extends JsonResource
             'answered_at' => $this->answered_at,
             'options' => $this->examQuestion->options, // Context for MC/Multiple Answer
             'tags' => $this->examQuestion->originalQuestion ? $this->examQuestion->originalQuestion->tags->pluck('name') : [],
+            'exam_reading_material' => new \App\Http\Resources\ExamReadingMaterialResource($this->examQuestion->examReadingMaterial),
             'session' => $this->whenLoaded('examSession', function () {
                 return [
                     'id' => $this->examSession->id,
