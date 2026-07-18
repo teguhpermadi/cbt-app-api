@@ -89,15 +89,24 @@ final class CorrectExamQuestionLMStudioJob implements ShouldQueue
         try {
             $response = Prism::text()
                 ->using('lmstudio', $this->model)
-                ->withSystemPrompt('Kamu adalah asisten guru pakar. Selalu balas HANYA dengan JSON valid. JSON WAJIB memiliki field "score" (number) dan "notes" (string). Contoh: {"score": 8, "notes": "Jawaban sangat baik karena..."}')
-                ->withPrompt("Koreksi jawaban siswa berikut dan BALAS HANYA dengan JSON (tanpa markdown, tanpa penjelasan lain):
+                ->withSystemPrompt('Kamu adalah asisten guru pakar dan analis integritas akademik. Selalu balas HANYA dengan JSON valid. JSON WAJIB memiliki field "score" (number), "notes" (string), "cheat_probability" (number, 0-100), dan "ai_analysis" (string). Contoh: {"score": 8, "notes": "Jawaban baik...", "cheat_probability": 10, "ai_analysis": "Jawaban terlihat natural."}')
+                ->withPrompt("Koreksi jawaban siswa berikut dan analisis apakah ada kemungkinan jawaban ini dibuat oleh AI (seperti ChatGPT). BALAS HANYA dengan JSON:
 
 Soal: {$question->content}
 Kunci Jawaban: {$keyAnswer}
 Jawaban Siswa: {$studentAnswer}
 Skor Maksimal: {$maxScore}
 
-JSON WAJIB format: {\"score\": <angka>, \"notes\": \"<catatan singkat dalam bahasa Indonesia>\"}")
+Metadata Pengerjaan:
+- Jumlah Paste: " . ($detail->metadata['paste_count'] ?? 0) . "
+- Jumlah Pindah Tab: " . ($detail->metadata['tab_switches'] ?? 0) . "
+
+JSON WAJIB format: {
+    \"score\": <angka>, 
+    \"notes\": \"<catatan koreksi>\",
+    \"cheat_probability\": <angka 0-100, probabilitas jawaban dari AI>,
+    \"ai_analysis\": \"<analisis singkat mengapa jawaban ini dicurigai dari AI atau tidak>\"
+}")
                 ->withClientOptions(['timeout' => 180])
                 ->asText();
 
@@ -106,8 +115,18 @@ JSON WAJIB format: {\"score\": <angka>, \"notes\": \"<catatan singkat dalam baha
                 'text' => $response->text,
             ]);
 
-            $aiScore = $this->extractScoreFromText($response->text, $maxScore);
-            $aiNotes = $this->extractNotesFromText($response->text);
+            $decoded = json_decode($this->cleanJsonResponse($response->text), true);
+            $aiScore = $decoded['score'] ?? 0;
+            $aiNotes = $decoded['notes'] ?? 'Koreksi AI selesai.';
+            $cheatProb = $decoded['cheat_probability'] ?? 0;
+            $aiAnalysis = $decoded['ai_analysis'] ?? '';
+
+            // Update metadata with AI analysis
+            $metadata = $detail->metadata ?? [];
+            $metadata['ai_cheat_probability'] = $cheatProb;
+            $metadata['ai_integrity_analysis'] = $aiAnalysis;
+            $detail->metadata = $metadata;
+            $detail->save();
 
             if ($aiScore > $maxScore) {
                 $aiScore = $maxScore;
@@ -279,6 +298,23 @@ JSON WAJIB format: {\"score\": <angka>, \"notes\": \"<catatan singkat dalam baha
         }
 
         return 'Koreksi AI selesai.';
+    }
+
+    protected function cleanJsonResponse(string $text): string
+    {
+        $text = trim($text);
+
+        if (str_starts_with($text, '```json')) {
+            $text = mb_substr($text, 7);
+        }
+        if (str_starts_with($text, '```')) {
+            $text = mb_substr($text, 3);
+        }
+        if (str_ends_with(trim($text), '```')) {
+            $text = mb_substr(trim($text), 0, -3);
+        }
+        
+        return trim($text);
     }
 
     protected function updateQuestionCorrectionProgress($examId, $questionId)

@@ -915,7 +915,7 @@ final class ExamCorrectionController extends ApiController
             if ($provider === 'openrouter') {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail, $userName, null);
             } elseif ($provider === 'lmstudio') {
-                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName, null, null);
+                $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, $userName, null);
             } else {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail, $userName, null);
             }
@@ -1154,5 +1154,38 @@ final class ExamCorrectionController extends ApiController
                 ];
             }),
         ]);
+    }
+
+    /**
+     * Check student answer integrity using AI (AI Detection).
+     */
+    public function checkIntegrity(Request $request, Exam $exam, ExamSession $examSession, ExamResultDetail $examResultDetail)
+    {
+        if ($examSession->exam_id !== $exam->id) {
+            abort(404, 'Session not found for this exam.');
+        }
+
+        if ($examResultDetail->exam_session_id !== $examSession->id) {
+            abort(404, 'Answer detail not found for this session.');
+        }
+
+        $provider = $request->input('provider', 'lmstudio');
+        
+        // We use the existing job but we can call it directly or dispatch sync
+        // For individual check, sync is better to get immediate result
+        try {
+            $job = new \App\Jobs\CorrectExamQuestionLMStudioJob($examResultDetail, Auth::user()->name);
+            $job->handle();
+            
+            $examResultDetail->refresh();
+            
+            return $this->success([
+                'metadata' => $examResultDetail->metadata,
+                'score_earned' => $examResultDetail->score_earned,
+                'correction_notes' => $examResultDetail->correction_notes,
+            ], 'Integrity check completed successfully.');
+        } catch (\Throwable $e) {
+            return $this->error('Failed to perform integrity check: ' . $e->getMessage(), 500);
+        }
     }
 }

@@ -29,6 +29,7 @@ final class ExamResultDetail extends Model
         'time_spent',           // Waktu yang dihabiskan untuk soal ini (dalam detik)
         'question_number',      // Nomor urut soal dalam sesi (randomized order)
         'is_flagged',           // Status ragu-ragu
+        'metadata',             // Metadata tambahan (cheat detection, dll)
     ];
 
     protected $casts = [
@@ -39,6 +40,7 @@ final class ExamResultDetail extends Model
         'time_spent' => 'integer',
         'question_number' => 'integer',
         'is_flagged' => 'boolean',
+        'metadata' => 'array',
     ];
 
     // --- RELATIONS ---

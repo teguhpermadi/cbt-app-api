@@ -444,6 +444,7 @@ final class ExamController extends ApiController
             'question_id' => 'required|string', // This is the ExamResultDetail ID
             'answer' => 'nullable', // string or array, depending on question type
             'is_flagged' => 'nullable|boolean',
+            'metadata' => 'nullable|array',
         ]);
 
         $user = Auth::user();
@@ -474,6 +475,24 @@ final class ExamController extends ApiController
         // Update answer
         $answer = $request->answer;
 
+        // Merge metadata if exists
+        if ($request->has('metadata')) {
+            $existingMetadata = $detail->metadata ?? [];
+            $newMetadata = $request->input('metadata');
+            
+            // Special handling for cumulative fields like paste_count or tab_switches
+            if (isset($newMetadata['paste_count'])) {
+                $existingMetadata['paste_count'] = ($existingMetadata['paste_count'] ?? 0) + $newMetadata['paste_count'];
+            }
+            
+            if (isset($newMetadata['tab_switches'])) {
+                $existingMetadata['tab_switches'] = ($existingMetadata['tab_switches'] ?? 0) + $newMetadata['tab_switches'];
+            }
+
+            // Merge other fields (is_pasted, etc)
+            $detail->metadata = array_merge($existingMetadata, $newMetadata);
+        }
+
         // Use ExamScoringService for auto-grading
         $scoringService = new \App\Services\ExamScoringService();
         $result = $scoringService->calculateDetailScore($detail->fill(['student_answer' => $answer]));
@@ -490,8 +509,6 @@ final class ExamController extends ApiController
         // For efficiency, we can just send the updated score and progress for this student.
         try {
             $exam = Exam::find($id);
-            $classroom = $exam->classrooms()->whereHas('students', fn ($q) => $q->where('users.id', $user->id))->first();
-
             $sessionData = $detail->examSession->getBroadcastData();
 
             event(new LiveScoreUpdated($id, $sessionData));

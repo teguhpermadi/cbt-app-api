@@ -234,6 +234,7 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
         Route::get('{exam}/sessions/{examSession}/details/{examResultDetail}/history', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'answerHistory'])->name('api.v1.exams.correction.answer-history');
         Route::post('{exam}/sessions/{examSession}/details/{examResultDetail}/restore', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'restoreAnswer'])->name('api.v1.exams.correction.restore-answer');
         Route::post('{exam}/sessions/{examSession}/details/{examResultDetail}/restore-to-version/{versionId}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'restoreToVersion'])->name('api.v1.exams.correction.restore-to-version');
+        Route::post('{exam}/sessions/{examSession}/details/{examResultDetail}/check-integrity', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'checkIntegrity'])->name('api.v1.exams.correction.check-integrity');
     });
     Route::put('sessions/{examSession}/details/{examResultDetail}', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'update'])->name('api.v1.exams.correction.update');
     Route::post('sessions/{examSession}/details/{examResultDetail}/reopen', [App\Http\Controllers\Api\V1\ExamCorrectionController::class, 'reopenByDetail'])->name('api.v1.exams.correction.reopen-by-detail');

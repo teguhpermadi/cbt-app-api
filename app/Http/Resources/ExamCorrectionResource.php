@@ -28,6 +28,7 @@ class ExamCorrectionResource extends JsonResource
             'is_correct' => $this->is_correct, // null, true, or false
             'correction_notes' => $this->correction_notes,
             'answered_at' => $this->answered_at,
+            'metadata' => $this->metadata,
             'options' => $this->examQuestion->options, // Context for MC/Multiple Answer
             'tags' => $this->examQuestion->originalQuestion ? $this->examQuestion->originalQuestion->tags->pluck('name') : [],
             'exam_reading_material' => new \App\Http\Resources\ExamReadingMaterialResource($this->examQuestion->examReadingMaterial),
