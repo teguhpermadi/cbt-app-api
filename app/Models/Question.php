@@ -38,6 +38,7 @@ class Question extends Model implements HasMedia
         'hint',
         'order',
         'is_approved',
+        'math_metadata',
     ];
 
     protected $casts = [
@@ -47,6 +48,7 @@ class Question extends Model implements HasMedia
         'score' => QuestionScoreEnum::class,
         'order' => 'integer',
         'is_approved' => 'boolean',
+        'math_metadata' => 'array',
     ];
 
     public function user()

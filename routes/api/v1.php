@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\Learning\LearningUnitController;
 use App\Http\Controllers\Api\V1\OptionController;
 use App\Http\Controllers\Api\V1\QuestionBankController;
 use App\Http\Controllers\Api\V1\QuestionBankReviewerController;
+use App\Http\Controllers\Api\V1\MathQuestionController;
 use App\Http\Controllers\Api\V1\QuestionController;
 use App\Http\Controllers\Api\V1\ReadingMaterialController;
 use App\Http\Controllers\Api\V1\StudentController;
@@ -262,6 +263,15 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
 
     // Dashboard
     Route::get('dashboard', [App\Http\Controllers\Api\V1\DashboardController::class, 'index'])->name('api.v1.dashboard');
+
+    // Math Generator
+    Route::prefix('math-generate')->group(function (): void {
+        Route::post('preview', [MathQuestionController::class, 'preview'])->name('api.v1.math-generate.preview');
+        Route::post('batch-preview', [MathQuestionController::class, 'batchPreview'])->name('api.v1.math-generate.batch-preview');
+        Route::post('save', [MathQuestionController::class, 'save'])->name('api.v1.math-generate.save');
+        Route::get('levels', [MathQuestionController::class, 'levels'])->name('api.v1.math-generate.levels');
+        Route::get('domains', [MathQuestionController::class, 'domains'])->name('api.v1.math-generate.domains');
+    });
 
     // Curricula
     Route::prefix('curricula')->group(function () {
