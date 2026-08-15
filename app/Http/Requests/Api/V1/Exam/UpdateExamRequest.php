@@ -33,6 +33,7 @@ class UpdateExamRequest extends FormRequest
             'is_randomized_answer' => ['sometimes', 'boolean'],
             'is_show_result' => ['sometimes', 'boolean'],
             'is_visible_hint' => ['sometimes', 'boolean'],
+            'is_paste_allowed' => ['sometimes', 'boolean'],
             'max_attempts' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'timer_type' => ['sometimes', new Enum(ExamTimerTypeEnum::class)],
             'passing_score' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100'],

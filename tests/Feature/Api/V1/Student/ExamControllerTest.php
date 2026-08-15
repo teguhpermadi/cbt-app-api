@@ -203,6 +203,65 @@ class ExamControllerTest extends TestCase
         ]);
     }
 
+    public function test_student_manual_retype_after_clear_resets_paste_metadata()
+    {
+        $academicYear = AcademicYear::factory()->create();
+        $student = User::factory()->student()->create();
+        $classroom = Classroom::factory()->create();
+        $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+        $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
+
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'is_published' => true,
+            'is_token_visible' => false,
+            'start_time' => now()->subDay(),
+            'end_time' => now()->addDay(),
+        ]);
+        $exam->classrooms()->sync([$classroom->id]);
+
+        ExamQuestion::factory()->create([
+            'exam_id' => $exam->id,
+            'question_type' => QuestionTypeEnum::ESSAY,
+            'score_value' => 10,
+            'key_answer' => ['rubric' => 'Jawaban esai'],
+        ]);
+
+        $this->actingAs($student, 'sanctum')->postJson(route('api.v1.student.exams.start', $exam->id));
+
+        $session = ExamSession::first();
+        $this->assertNotNull($session);
+
+        $detail = ExamResultDetail::where('exam_session_id', $session->id)->first();
+        $this->assertNotNull($detail);
+
+        $detail->update([
+            'metadata' => [
+                'is_pasted' => true,
+                'paste_count' => 2,
+                'last_pasted_at' => now()->subMinutes(2)->toISOString(),
+            ],
+        ]);
+
+        $response = $this->actingAs($student, 'sanctum')
+            ->postJson(route('api.v1.student.exams.answer', $exam->id), [
+                'question_id' => $detail->id,
+                'answer' => 'Saya menulis manual tanpa paste',
+                'metadata' => [
+                    'clear_paste_metadata' => true,
+                    'tab_switches' => 0,
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $detail->refresh();
+
+        $this->assertSame(false, $detail->metadata['is_pasted'] ?? null);
+        $this->assertSame(0, $detail->metadata['paste_count'] ?? null);
+        $this->assertNull($detail->metadata['last_pasted_at'] ?? null);
+    }
+
     public function test_student_can_finish_exam_calculates_score()
     {
         \Illuminate\Support\Facades\Bus::fake();

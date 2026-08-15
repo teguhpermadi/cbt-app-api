@@ -479,12 +479,22 @@ final class ExamController extends ApiController
         if ($request->has('metadata')) {
             $existingMetadata = $detail->metadata ?? [];
             $newMetadata = $request->input('metadata');
-            
+
+            if (($newMetadata['clear_paste_metadata'] ?? false) === true) {
+                unset($existingMetadata['is_pasted']);
+                unset($existingMetadata['paste_count']);
+                unset($existingMetadata['last_pasted_at']);
+                $newMetadata = array_diff_key($newMetadata, ['clear_paste_metadata' => true]);
+                $existingMetadata['is_pasted'] = false;
+                $existingMetadata['paste_count'] = 0;
+                $existingMetadata['last_pasted_at'] = null;
+            }
+
             // Special handling for cumulative fields like paste_count or tab_switches
             if (isset($newMetadata['paste_count'])) {
                 $existingMetadata['paste_count'] = ($existingMetadata['paste_count'] ?? 0) + $newMetadata['paste_count'];
             }
-            
+
             if (isset($newMetadata['tab_switches'])) {
                 $existingMetadata['tab_switches'] = ($existingMetadata['tab_switches'] ?? 0) + $newMetadata['tab_switches'];
             }

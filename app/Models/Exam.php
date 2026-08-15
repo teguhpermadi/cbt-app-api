@@ -36,6 +36,7 @@ class Exam extends Model
         'passing_score',    // Nilai minimum kelulusan
         'start_time',       // Waktu mulai ujian
         'end_time',         // Waktu berakhir ujian
+        'is_paste_allowed', // Apakah ujian mengizinkan salin-tempel
     ];
 
     protected $casts = [
@@ -51,6 +52,7 @@ class Exam extends Model
         'timer_type' => ExamTimerTypeEnum::class,
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'is_paste_allowed' => 'boolean',
     ];
 
     public function academicYear()

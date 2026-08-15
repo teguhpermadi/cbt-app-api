@@ -35,6 +35,7 @@ final class ExamResource extends JsonResource
             'is_randomized_answer' => $this->is_randomized_answer,
             'is_show_result' => $this->is_show_result,
             'is_visible_hint' => $this->is_visible_hint,
+            'is_paste_allowed' => $this->is_paste_allowed,
             'max_attempts' => $this->max_attempts,
             'timer_type' => $this->timer_type,
             'timer_type_label' => $this->timer_type?->label(),

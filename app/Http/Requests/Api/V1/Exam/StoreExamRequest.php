@@ -33,6 +33,7 @@ class StoreExamRequest extends FormRequest
             'is_randomized_answer' => ['boolean'],
             'is_show_result' => ['boolean'],
             'is_visible_hint' => ['boolean'],
+            'is_paste_allowed' => ['boolean'],
             'max_attempts' => ['nullable', 'integer', 'min:1'],
             'timer_type' => ['required', new Enum(ExamTimerTypeEnum::class)],
             'passing_score' => ['nullable', 'integer', 'min:0', 'max:100'],

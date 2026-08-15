@@ -162,10 +162,14 @@ class QuestionFactory extends Factory
             QuestionTypeEnum::TRUE_FALSE => $this->createTrueFalseOptions($question),
             QuestionTypeEnum::MATCHING => $this->createMatchingOptions($question),
             QuestionTypeEnum::SEQUENCE => $this->createOrderingOptions($question),
-            QuestionTypeEnum::SHORT_ANSWER => $this->createNumericalInputOption($question), // Short answer also uses one correct_answer metadata usually
+            QuestionTypeEnum::SHORT_ANSWER,
+            QuestionTypeEnum::ARABIC_RESPONSE,
+            QuestionTypeEnum::JAVANESE_RESPONSE => $this->createNumericalInputOption($question),
             QuestionTypeEnum::MATH_INPUT => $this->createNumericalInputOption($question),
             QuestionTypeEnum::ARRANGE_WORDS => $this->createArrangeWordsOptions($question),
             QuestionTypeEnum::ESSAY => $this->createEssayOption($question),
+            QuestionTypeEnum::CATEGORIZATION => $this->createCategorizationOptions($question),
+            QuestionTypeEnum::SURVEY => $this->createEssayOption($question),
             default => throw new \Exception('Unknown type in factory: ' . ($question->type->value ?? 'null')),
         };
     }
@@ -331,6 +335,31 @@ class QuestionFactory extends Factory
         if (extension_loaded('gd')) {
             $this->attachDummyMedia($option, 'option_media', "Arrange Words");
         }
+    }
+
+    /**
+     * Create categorization options
+     */
+    private function createCategorizationOptions(Question $question): void
+    {
+        $groups = [
+            [
+                'title' => 'Hewan',
+                'items' => [
+                    ['content' => 'Kucing'],
+                    ['content' => 'Burung'],
+                ],
+            ],
+            [
+                'title' => 'Buah',
+                'items' => [
+                    ['content' => 'Apel'],
+                    ['content' => 'Mangga'],
+                ],
+            ],
+        ];
+
+        Option::createCategorizationOptions($question->id, $groups);
     }
 
     /**

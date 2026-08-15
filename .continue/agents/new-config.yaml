@@ -1,0 +1,15 @@
+name: Configuration Ollama Sekolah
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Ollama MI AR RIDLO (phi4-mini)
+    provider: openai
+    model: phi4-mini
+    apiKey: ollama
+    apiBase: https://ollama.cbtmiarridlo.com/v1
+    roles:
+      - chat
+      - edit
+      - apply
+      - autocomplete
