@@ -78,6 +78,9 @@ Route::middleware(['auth:sanctum', 'throttle:authenticated'])->group(function ()
             Route::post('{exam}/answer', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'saveAnswer'])
                 ->middleware('throttle:exam-submit')
                 ->name('api.v1.student.exams.answer');
+            Route::post('{exam}/violation', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'violation'])
+                ->middleware('throttle:exam-submit')
+                ->name('api.v1.student.exams.violation');
             Route::post('{exam}/finish', [App\Http\Controllers\Api\V1\Student\ExamController::class, 'finish'])
                 ->middleware('throttle:exam-submit')
                 ->name('api.v1.student.exams.finish');

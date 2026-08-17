@@ -37,6 +37,8 @@ class ExamFactory extends Factory
             'is_randomized_answer' => $this->faker->boolean(),
             'is_show_result' => $this->faker->boolean(),
             'is_visible_hint' => $this->faker->boolean(),
+            'is_paste_allowed' => $this->faker->boolean(),
+            'is_open_other_apps_allowed' => $this->faker->boolean(),
             'max_attempts' => $this->faker->numberBetween(1, 5),
             'timer_type' => $this->faker->randomElement(ExamTimerTypeEnum::cases()),
             'passing_score' => $this->faker->numberBetween(60, 90),
@@ -51,8 +53,21 @@ class ExamFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (\App\Models\Exam $exam) {
-            $classroom = \App\Models\Classroom::factory()->create();
-            $exam->classrooms()->attach($classroom);
+            $classroomIds = [];
+
+            if ($exam->subject_id) {
+                $subject = $exam->subject()->first();
+                if ($subject && $subject->classroom_id) {
+                    $classroomIds[] = $subject->classroom_id;
+                }
+            }
+
+            if (empty($classroomIds)) {
+                $classroom = \App\Models\Classroom::factory()->create();
+                $classroomIds[] = $classroom->id;
+            }
+
+            $exam->classrooms()->syncWithoutDetaching($classroomIds);
         });
     }
 }

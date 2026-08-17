@@ -11,6 +11,7 @@ use App\Http\Resources\Student\ExamResultDetailResource;
 use App\Http\Resources\Student\ExamSessionResource;
 use App\Models\Exam;
 use App\Models\ExamQuestion;
+use App\Models\ExamResult;
 use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use Carbon\Carbon;
@@ -533,6 +534,45 @@ final class ExamController extends ApiController
                 'detail' => new ExamResultDetailResource($detail),
             ],
             'Answer saved.'
+        );
+    }
+
+    /**
+     * Record a violation and wipe the exam state for the student.
+     */
+    public function violation(Request $request, string $id): JsonResponse
+    {
+        $user = Auth::user();
+
+        $session = ExamSession::where('exam_id', $id)
+            ->where('user_id', $user->id)
+            ->where('is_finished', false)
+            ->first();
+
+        if (! $session) {
+            return $this->error('No active session found for this student.', 404);
+        }
+
+        DB::transaction(function () use ($session, $user, $id) {
+            $detailIds = $session->examResultDetails()->pluck('id')->toArray();
+
+            if (! empty($detailIds)) {
+                \App\Models\ExamResultDetailAnswerHistory::whereIn('exam_result_detail_id', $detailIds)->delete();
+            }
+
+            ExamResultDetail::where('exam_session_id', $session->id)->delete();
+            $session->delete();
+            ExamResult::where('exam_id', $id)
+                ->where('user_id', $user->id)
+                ->delete();
+        });
+
+        return $this->success(
+            [
+                'exam_id' => $id,
+                'reset' => true,
+            ],
+            'Exam session reset due to rule violation.'
         );
     }
 

@@ -37,6 +37,7 @@ class Exam extends Model
         'start_time',       // Waktu mulai ujian
         'end_time',         // Waktu berakhir ujian
         'is_paste_allowed', // Apakah ujian mengizinkan salin-tempel
+        'is_open_other_apps_allowed', // Apakah siswa diizinkan membuka aplikasi/halaman lain
     ];
 
     protected $casts = [
@@ -53,6 +54,7 @@ class Exam extends Model
         'start_time' => 'datetime',
         'end_time' => 'datetime',
         'is_paste_allowed' => 'boolean',
+        'is_open_other_apps_allowed' => 'boolean',
     ];
 
     public function academicYear()

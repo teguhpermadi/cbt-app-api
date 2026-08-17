@@ -227,7 +227,8 @@ class ExamControllerTest extends TestCase
             'key_answer' => ['rubric' => 'Jawaban esai'],
         ]);
 
-        $this->actingAs($student, 'sanctum')->postJson(route('api.v1.student.exams.start', $exam->id));
+        $startResponse = $this->actingAs($student, 'sanctum')->postJson(route('api.v1.student.exams.start', $exam->id));
+        dump($startResponse->json());
 
         $session = ExamSession::first();
         $this->assertNotNull($session);
@@ -260,6 +261,45 @@ class ExamControllerTest extends TestCase
         $this->assertSame(false, $detail->metadata['is_pasted'] ?? null);
         $this->assertSame(0, $detail->metadata['paste_count'] ?? null);
         $this->assertNull($detail->metadata['last_pasted_at'] ?? null);
+    }
+
+    public function test_student_violation_resets_exam_session_and_answers()
+    {
+        $academicYear = AcademicYear::factory()->create();
+        $student = User::factory()->student()->create();
+        $classroom = Classroom::factory()->create();
+        $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+        $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
+
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'is_published' => true,
+            'is_open_other_apps_allowed' => false,
+        ]);
+
+        ExamQuestion::factory()->create([
+            'exam_id' => $exam->id,
+            'question_type' => QuestionTypeEnum::MULTIPLE_CHOICE,
+            'key_answer' => ['answer' => 'A'],
+            'score_value' => 10,
+        ]);
+
+        $this->actingAs($student, 'sanctum')->postJson(route('api.v1.student.exams.start', $exam->id));
+
+        $session = ExamSession::first();
+        $detail = ExamResultDetail::where('exam_session_id', $session->id)->first();
+        $detail->update([
+            'student_answer' => 'A',
+            'is_correct' => true,
+            'score_earned' => 10,
+        ]);
+
+        $response = $this->actingAs($student, 'sanctum')
+            ->postJson(route('api.v1.student.exams.violation', $exam->id));
+
+        $response->assertOk();
+        $this->assertSoftDeleted('exam_sessions', ['id' => $session->id]);
+        $this->assertDatabaseMissing('exam_result_details', ['exam_session_id' => $session->id]);
     }
 
     public function test_student_can_finish_exam_calculates_score()
@@ -340,6 +380,8 @@ class ExamControllerTest extends TestCase
         $exam = Exam::factory()->create([
             'subject_id' => $subject->id,
             'is_published' => true,
+            'start_time' => now()->subDay(),
+            'end_time' => now()->addDay(),
         ]);
 
         // Create Reading Material
