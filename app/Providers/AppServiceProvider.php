@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Prism\Providers\LMStudioProvider;
+use App\Prism\Providers\OllamaProvider;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
@@ -41,6 +42,13 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app['prism-manager']->extend('lmstudio', function ($app, $config) {
             return new LMStudioProvider(
+                baseUrl: $config['url'] ?? null,
+                apiKey: $config['api_key'] ?? null,
+            );
+        });
+
+        $this->app['prism-manager']->extend('ollama', function ($app, $config) {
+            return new OllamaProvider(
                 baseUrl: $config['url'] ?? null,
                 apiKey: $config['api_key'] ?? null,
             );

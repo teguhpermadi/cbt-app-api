@@ -20,7 +20,7 @@ final class AiCorrectionCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'exam:ai-correct {exam_id?} {--provider=gemini : The AI provider to use (gemini, openrouter, or lmstudio)} {--model=gemma-3-4b : Model name for lmstudio provider} {--detail_id= : Specific ExamResultDetail ID to correct} {--user_id= : User ID to notify when finished}';
+    protected $signature = 'exam:ai-correct {exam_id?} {--provider=gemini : The AI provider to use (gemini, openrouter, lmstudio, or ollama)} {--model=phi4-mini : Model name for local provider} {--detail_id= : Specific ExamResultDetail ID to correct} {--user_id= : User ID to notify when finished}';
 
     /**
      * The console command description.
@@ -38,8 +38,8 @@ final class AiCorrectionCommand extends Command
         $provider = $this->option('provider');
         $detailId = $this->option('detail_id');
 
-        if (! in_array($provider, ['gemini', 'openrouter', 'lmstudio'])) {
-            $this->error('Invalid provider. Supported providers are: gemini, openrouter, lmstudio');
+        if (! in_array($provider, ['gemini', 'openrouter', 'lmstudio', 'ollama'])) {
+            $this->error('Invalid provider. Supported providers are: gemini, openrouter, lmstudio, ollama');
 
             return;
         }
@@ -57,6 +57,8 @@ final class AiCorrectionCommand extends Command
                 \App\Jobs\CorrectExamQuestionOpenRouterJob::dispatch($detail);
             } elseif ($provider === 'lmstudio') {
                 \App\Jobs\CorrectExamQuestionLMStudioJob::dispatch($detail, null, $this->option('model'));
+            } elseif ($provider === 'ollama') {
+                \App\Jobs\CorrectExamQuestionOllamaJob::dispatch($detail, null, $this->option('model'));
             } else {
                 \App\Jobs\CorrectExamQuestionJob::dispatch($detail);
             }
@@ -129,6 +131,8 @@ final class AiCorrectionCommand extends Command
                 $jobs[] = new \App\Jobs\CorrectExamQuestionOpenRouterJob($detail);
             } elseif ($provider === 'lmstudio') {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionLMStudioJob($detail, null, $this->option('model'));
+            } elseif ($provider === 'ollama') {
+                $jobs[] = new \App\Jobs\CorrectExamQuestionOllamaJob($detail, null, $this->option('model'));
             } else {
                 $jobs[] = new \App\Jobs\CorrectExamQuestionJob($detail);
             }
