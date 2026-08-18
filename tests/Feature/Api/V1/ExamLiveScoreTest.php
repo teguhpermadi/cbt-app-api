@@ -10,6 +10,7 @@ use App\Models\Classroom;
 use App\Models\Subject;
 use App\Models\AcademicYear;
 use App\Enums\UserTypeEnum;
+use App\Enums\ExamTimerTypeEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -38,6 +39,7 @@ describe('Exam Live Score & Monitoring', function () {
             'subject_id' => $subject->id,
             'academic_year_id' => $academicYear->id,
             'duration' => 60,
+            'timer_type' => ExamTimerTypeEnum::Strict->value,
         ]);
 
         $student1 = User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Alice']); // Not started
@@ -79,33 +81,31 @@ describe('Exam Live Score & Monitoring', function () {
             ->assertJsonStructure([
                 'success',
                 'data' => [
-                    'exam' => ['id', 'title', 'duration', 'classroom'],
-                    'students' => [
+                    'exam' => ['id', 'title', 'duration', 'classrooms', 'timer_type'],
+                    'sessions' => [
                         '*' => [
-                            'student_id',
-                            'name',
+                            'student',
                             'status',
                             'start_time',
                             'remaining_time',
-                            'current_score',
+                            'score',
                             'extra_time'
                         ]
                     ]
                 ]
             ]);
 
-        $studentsData = $response->json('data.students');
+        $studentsData = $response->json('data.sessions');
 
-        $alice = collect($studentsData)->firstWhere('student_id', $student1->id);
-        expect($alice['status'])->toBe('not_started');
+        $alice = collect($studentsData)->firstWhere('student.id', $student1->id);
+        expect($alice['status'])->toBe('idle');
 
-        $bob = collect($studentsData)->firstWhere('student_id', $student2->id);
-        expect($bob['status'])->toBe('doing')
+        $bob = collect($studentsData)->firstWhere('student.id', $student2->id);
+        expect($bob['status'])->toBe('in_progress')
             ->and($bob['remaining_time'])->toBeGreaterThan(0);
 
-        $charlie = collect($studentsData)->firstWhere('student_id', $student3->id);
-        expect($charlie['status'])->toBe('done')
-            ->and($charlie['current_score'])->toBe(85);
+        $charlie = collect($studentsData)->firstWhere('student.id', $student3->id);
+        expect($charlie['status'])->toBe('finished');
     });
 
     it('can reset exam for a student', function () {
@@ -135,16 +135,19 @@ describe('Exam Live Score & Monitoring', function () {
 
         // Assert
         $response->assertOk();
-        $this->assertDatabaseMissing('exam_sessions', ['id' => $session->id]);
-        $this->assertDatabaseMissing('exam_results', ['id' => $result->id]);
+        $this->assertSoftDeleted('exam_sessions', ['id' => $session->id]);
+        $this->assertSoftDeleted('exam_results', ['id' => $result->id]);
     });
 
-    it('can add extra time for a student', function () {
+    it('can add extra time for a student only when the exam uses strict timer', function () {
         // Arrange
         $academicYear = AcademicYear::factory()->create();
         $classroom = Classroom::factory()->create(['academic_year_id' => $academicYear->id]);
         $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
-        $exam = Exam::factory()->create(['subject_id' => $subject->id]);
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'timer_type' => ExamTimerTypeEnum::Strict->value,
+        ]);
         $student = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
 
         $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
@@ -153,6 +156,7 @@ describe('Exam Live Score & Monitoring', function () {
             'exam_id' => $exam->id,
             'user_id' => $student->id,
             'is_finished' => false,
+            'start_time' => now(),
             'extra_time' => 0,
         ]);
 
@@ -168,6 +172,64 @@ describe('Exam Live Score & Monitoring', function () {
             'id' => $session->id,
             'extra_time' => 15,
         ]);
+    });
+
+    it('rejects extra time for exams configured with a flexible timer', function () {
+        $academicYear = AcademicYear::factory()->create();
+        $classroom = Classroom::factory()->create(['academic_year_id' => $academicYear->id]);
+        $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'timer_type' => ExamTimerTypeEnum::Flexible->value,
+        ]);
+        $student = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
+
+        $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+
+        ExamSession::factory()->create([
+            'exam_id' => $exam->id,
+            'user_id' => $student->id,
+            'is_finished' => false,
+            'extra_time' => 0,
+        ]);
+
+        $response = $this->postJson(route('api.v1.exams.add-time', $exam), [
+            'user_id' => $student->id,
+            'minutes' => 15,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Extra time is only available for exams with a strict timer.');
+    });
+
+    it('does not expose countdown data for exams configured with a flexible timer', function () {
+        $academicYear = AcademicYear::factory()->create();
+        $classroom = Classroom::factory()->create(['academic_year_id' => $academicYear->id]);
+        $subject = Subject::factory()->create(['classroom_id' => $classroom->id]);
+        $exam = Exam::factory()->create([
+            'subject_id' => $subject->id,
+            'timer_type' => ExamTimerTypeEnum::Flexible->value,
+            'duration' => 60,
+        ]);
+        $student = User::factory()->create(['user_type' => UserTypeEnum::STUDENT, 'name' => 'Dana']);
+
+        $classroom->students()->attach($student->id, ['academic_year_id' => $academicYear->id]);
+
+        ExamSession::factory()->create([
+            'exam_id' => $exam->id,
+            'user_id' => $student->id,
+            'is_finished' => false,
+            'start_time' => now()->subMinutes(10),
+            'extra_time' => 0,
+        ]);
+
+        $response = $this->getJson(route('api.v1.exams.live-score', $exam));
+
+        $response->assertOk();
+        $session = collect($response->json('data.sessions'))->firstWhere('student.id', $student->id);
+
+        expect($response->json('data.exam.timer_type'))->toBe(ExamTimerTypeEnum::Flexible->value)
+            ->and($session['remaining_time'])->toBeNull();
     });
 
     it('can force finish exam for a student', function () {

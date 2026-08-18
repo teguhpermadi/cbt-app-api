@@ -371,7 +371,7 @@ final class ExamController extends ApiController
 
             $status = 'idle'; // 'not_started' mapped to 'idle'
             $startTime = null;
-            $remainingTime = 0;
+            $remainingTime = null;
             $currentScore = 0;
             $extraTime = 0;
             $progress = [
@@ -380,8 +380,8 @@ final class ExamController extends ApiController
             ];
 
             if ($activeSession) {
-                // Detect logical statuses
-                $isTimedOut = $activeSession->getRemainingSeconds() <= 0;
+                $isStrictTimer = $exam->timer_type === \App\Enums\ExamTimerTypeEnum::Strict;
+                $isTimedOut = $isStrictTimer && $activeSession->getRemainingSeconds() <= 0;
                 $isAllAnswered = ($activeSession->total_questions > 0) && ($activeSession->answered_count >= $activeSession->total_questions);
 
                 if ($activeSession->is_finished) {
@@ -389,7 +389,7 @@ final class ExamController extends ApiController
                 } elseif ($activeSession->trashed()) {
                     // Jika sesi terakhir ternyata trashed (karena di-reset manual sebelum selesai)
                     $status = 'idle';
-                } elseif ($isTimedOut) {
+                } elseif ($isStrictTimer && $isTimedOut) {
                     $status = 'timed_out';
                 } elseif ($isAllAnswered) {
                     $status = 'completed';
@@ -406,7 +406,7 @@ final class ExamController extends ApiController
                     'total' => (int) $activeSession->total_questions,
                 ];
 
-                if ($status === 'in_progress' || $status === 'completed' || $status === 'timed_out') {
+                if ($isStrictTimer && ($status === 'in_progress' || $status === 'completed' || $status === 'timed_out')) {
                     $remainingTime = $activeSession->getRemainingSeconds();
                 }
 
@@ -445,6 +445,7 @@ final class ExamController extends ApiController
                 'id' => $exam->id,
                 'title' => $exam->title,
                 'duration' => $exam->duration,
+                'timer_type' => $exam->timer_type?->value ?? $exam->timer_type,
                 'token' => $exam->token,
                 'classrooms' => $classrooms->map(fn($c) => [
                     'id' => $c->id,
@@ -499,6 +500,10 @@ final class ExamController extends ApiController
             'user_id' => ['required', 'exists:users,id'],
             'minutes' => ['required', 'integer', 'min:1'],
         ]);
+
+        if ($exam->timer_type !== \App\Enums\ExamTimerTypeEnum::Strict) {
+            return $this->error('Extra time is only available for exams with a strict timer.', 422);
+        }
 
         $session = ExamSession::where('exam_id', $exam->id)
             ->where('user_id', $request->user_id)

@@ -101,6 +101,8 @@ class ExamSession extends Model
             return (float) $s->total_score;
         })->values()->toArray();
 
+        $isStrictTimer = $exam && $exam->timer_type === \App\Enums\ExamTimerTypeEnum::Strict;
+
         return [
             'id' => $user->id,
             'student' => [
@@ -117,7 +119,7 @@ class ExamSession extends Model
                 'answered' => (int) $this->examResultDetails()->whereNotNull('student_answer')->count(),
                 'total' => (int) $this->examResultDetails()->count(),
             ],
-            'remaining_time' => (int) $this->getRemainingSeconds(),
+            'remaining_time' => $isStrictTimer ? (int) $this->getRemainingSeconds() : null,
         ];
     }
 
