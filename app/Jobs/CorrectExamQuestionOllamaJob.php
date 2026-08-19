@@ -39,7 +39,7 @@ final class CorrectExamQuestionOllamaJob implements ShouldQueue
         public ?string $triggeredBy = null,
         ?string $model = null
     ) {
-        $this->model = $model ?? config('prism.providers.ollama.model', 'phi4-mini');
+        $this->model = $model ?? config('prism.providers.ollama.model', 'phi4-mini:latest');
     }
 
     public function handle(): void

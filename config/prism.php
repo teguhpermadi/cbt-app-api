@@ -27,7 +27,7 @@ return [
         'ollama' => [
             'url' => env('OLLAMA_URL', 'http://localhost:11434'),
             'api_key' => env('OLLAMA_API_KEY', ''),
-            'model' => env('OLLAMA_MODEL', 'phi4-mini'),
+            'model' => env('OLLAMA_MODEL', 'phi4-mini:latest'),
         ],
         'mistral' => [
             'api_key' => env('MISTRAL_API_KEY', ''),

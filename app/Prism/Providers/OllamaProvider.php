@@ -100,6 +100,7 @@ final class OllamaProvider extends Provider
                 $request->messages()
             )),
             'stream' => false,
+            'format' => 'json',
             'options' => array_filter([
                 'temperature' => $request->temperature(),
                 'top_p' => $request->topP(),
