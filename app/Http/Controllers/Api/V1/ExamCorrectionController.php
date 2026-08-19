@@ -834,9 +834,16 @@ final class ExamCorrectionController extends ApiController
      */
     public function aiCorrect(Request $request, Exam $exam)
     {
-        $provider = $request->input('provider', 'gemini');
-        $examQuestionId = $request->input('exam_question_id');
-        $examSessionId = $request->input('exam_session_id');
+        $validated = $request->validate([
+            'provider' => 'nullable|string|in:gemini,openrouter,lmstudio,ollama',
+            'exam_question_id' => 'nullable|string',
+            'exam_session_id' => 'nullable|string',
+            'only_uncorrected' => 'sometimes|boolean',
+        ]);
+
+        $provider = $validated['provider'] ?? 'gemini';
+        $examQuestionId = $validated['exam_question_id'] ?? null;
+        $examSessionId = $validated['exam_session_id'] ?? null;
         $userId = Auth::id();
         $userName = Auth::user()?->name;
 

@@ -6,6 +6,7 @@ use App\Models\ExamResultDetail;
 use App\Models\ExamSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -49,6 +50,52 @@ test('teacher can fetch exam session details for correction', function () {
                 ]
             ]
         ]);
+});
+
+test('AI correction can include already corrected answers when requested', function () {
+    Bus::fake();
+
+    $teacher = User::factory()->create(['user_type' => UserTypeEnum::TEACHER]);
+    $exam = Exam::factory()->create();
+    $student = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
+    $secondStudent = User::factory()->create(['user_type' => UserTypeEnum::STUDENT]);
+    $session = ExamSession::factory()->create([
+        'exam_id' => $exam->id,
+        'user_id' => $student->id,
+    ]);
+    $secondSession = ExamSession::factory()->create([
+        'exam_id' => $exam->id,
+        'user_id' => $secondStudent->id,
+    ]);
+    $question = ExamQuestion::factory()->create([
+        'exam_id' => $exam->id,
+        'question_type' => \App\Enums\QuestionTypeEnum::ESSAY,
+    ]);
+
+    ExamResultDetail::factory()->create([
+        'exam_session_id' => $session->id,
+        'exam_question_id' => $question->id,
+        'is_correct' => true,
+    ]);
+    ExamResultDetail::factory()->create([
+        'exam_session_id' => $secondSession->id,
+        'exam_question_id' => $question->id,
+        'is_correct' => null,
+    ]);
+
+    $onlyUncorrectedResponse = $this->actingAs($teacher)
+        ->postJson(route('api.v1.exams.correction.ai-correct', $exam->id), [
+            'only_uncorrected' => true,
+        ]);
+
+    $onlyUncorrectedResponse->assertOk()->assertJsonPath('data.total_jobs', 1);
+
+    $allAnswersResponse = $this->actingAs($teacher)
+        ->postJson(route('api.v1.exams.correction.ai-correct', $exam->id), [
+            'only_uncorrected' => false,
+        ]);
+
+    $allAnswersResponse->assertOk()->assertJsonPath('data.total_jobs', 2);
 });
 
 test('teacher can update student answer score', function () {
